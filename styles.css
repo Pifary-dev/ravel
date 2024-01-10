@@ -1,0 +1,93 @@
+canvas {
+    position: absolute;
+    display: block;
+    transform-origin: center center;
+    cursor: default;
+  }
+
+  html,
+  body {
+    background-color: #222;
+    margin: 0px;
+    overflow: hidden;
+    font-family: Verdana, Arial, Times, serif;
+  }
+
+  p {
+    margin: 0px;
+    font-size: 20px;
+    color: #FFF
+  }
+
+  #main {
+    position: fixed;
+    left: 0px;
+    top: 0px;
+    width: 100%;
+    height: 100%;
+    margin-top: 20px;
+  }
+
+  #play {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+  }
+  #connect {
+    position: relative;
+    width: 115px;
+    color: rgb(255,255,255);
+    font-weight: bold;
+    text-align: center;
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    height: 47px;
+    line-height: 47px;
+    border-radius: 34px;
+    border-color: white;
+    display: inline-block;
+    background-color: #a3a3a3;
+    transition:.5s;
+  }
+  #connect:hover {
+    background-color: #63c458;
+  }
+  #interact {
+    background-color: #EEE;
+    padding: 4px;
+  }
+  #panel{
+    position: fixed;
+    left: 0px;
+    top: 0px;
+    z-index: 20;
+  }
+  #name{
+    position: fixed;
+    left: 10px;
+    top: 70px;
+    z-index: 20;
+  }
+  #world {
+    margin: 10px
+  }
+
+  #alert {
+    position: absolute;
+    bottom: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+  }
+
+  #settings {
+    position: absolute;
+    left: 0px;
+    top: 50%;
+    background-color: white;
+    padding: 5px;
+  }
+  .settingsElement {
+    margin: 5px;
+  }

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>evades</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="icon" href="texture/favicon.ico" />
+</head>
+<body>
+  <div id="menu">
+    <div id="main">
+      <div id="play">
+        <button type="button" name="button" id="connect">Enter game</button><br>
+        <select id='hero'>
+          <option>Normal</option>
+          <option>Magmax</option>
+          <option>Rime</option>
+          <option>Morfe</option>
+          <option>Aurora</option>
+          <option>Necro</option>
+          <option>Brute</option>
+          <option>Shade</option>
+          <option>Chrono</option>
+          <option>Reaper</option>
+          <option>Rameses</option>
+          <option>Cent</option>
+          <option>Jötunn</option>
+          <option>Candy</option>
+          <option>Mirage</option>
+          <option>Clown</option>
+          <option>Burst</option>
+          <option>Lantern</option>
+          <option>Pole</option>
+          <option>Polygon</option>
+          <option>Idk</option>
+        </select>
+      </div>
+    </div>
+    <div id='alert'></div>
+    <div id="panel">
+      <div id="interact">
+        <input type="file" id="load" accept="application/x-yaml, .json, .yaml" name="file">
+      </div>
+      <select id='world'>
+        <option>Original</option>
+        <option>Hard</option>
+        <option>Bruh</option>
+        <option>Custom</option>
+      </select>
+      <select id='diff'>
+        <option>Easy</option>
+        <option>Medium</option>
+        <option>Hard</option>
+      </select>
+      <select id='wreath'>
+        <option>Gold</option>
+        <option>Spring</option>
+        <option>Autumn</option>
+        <option>Winter</option>
+        <option>Summer</option>
+        <option>Halo</option>
+        <option>Santa Hat</option>
+        <option>Blue Santa Hat</option>
+        <option>Stars</option>
+        <option>Flames</option>
+        <option>Blue Flames</option>
+        <option>Orbit Ring</option>
+        <option>Sticky Coat</option>
+        <option>Toxic Coat</option>
+        <option>Gold Crown</option>
+        <option>Silver Crown</option>
+        <option>Bronze Crown</option>
+        <option>Legacy Hat</option>
+        <option>None</option>
+      </select>
+    </div>
+    <div id="name">
+      <input type="text" id="nick" value="Ravelfett">
+    </div>
+    <div id="settings">
+      <div>Settings:</div>
+      <div class="settingsElement">
+  <input type="checkbox" id="mouse_toggle" checked>
+  <label>Mouse Toggle Movement</label>
+  <br><br>
+  <input type="checkbox" id="outline" checked>
+  <label>Enemy outline</label>
+  <br><br>
+  <input type="checkbox" id="sandbox" checked>
+  <label>Sandbox(60FPS)</label>
+  <br><br>
+  <input type="checkbox" id="timer">
+  <label>Timer</label>
+  <br><br>
+  <input type="checkbox" id="tiles" checked>
+  <label>Tiles</label>
+  <br><br>
+  <input type="checkbox" id="no_points">
+  <label>No Points</label>
+  <br><br>
+  <input type="checkbox" id="deathcd">
+  <label>After Death Cooldown</label>
+  <br><br>
+  <input type="checkbox" id="dev">
+  <label>Test Mode</label>
+      </div>
+    </div>
+  </div>
+  <script src="listeners.js"></script>
+  <div id="gamed" style="display:none;">
+    <canvas id="game" width="1280" height="720"></canvas>
+  </div>
+  <script src="evades_yaml.js"></script>
+  <script src="maps.js"></script>
+  <script src="vector.js"></script>
+  <script src="utils.js"></script>
+  <script src="entities.js"></script>
+  <script src="game.js"></script>
+  <script src="drawer.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
