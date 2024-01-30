@@ -2609,10 +2609,10 @@ class Star extends Enemy {
   behavior(time, area, offset, players) {
     this.clock += time;
     this.speedMultiplier = 0
-    if (this.clock > 500) {
+    if (this.clock > 400) {
       this.speedMultiplier = 1;
       this.starPos = !this.starPos;
-      this.clock = this.clock % 500;
+      this.clock = this.clock % 400;
     }
   }
 }
