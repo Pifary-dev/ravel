@@ -350,7 +350,7 @@ class World {
           var object = {
             type: values.types,
             radius: values.radius,
-            speed: values.speed*1,
+            speed: values.speed,
             count: count,//Math.round(count*1.15),
             x:values.x,
             y:values.y,
@@ -749,6 +749,7 @@ class Area {
         var x = this.preset[i].x;
         var y = this.preset[i].y;
         var angle = undefined;
+        console.log(this.preset)
 
         if(typeof this.preset[i].angle === "string" && currentVariables.length>0){
           if(this.preset[i].angle.startsWith("var")){
