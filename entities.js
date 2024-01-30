@@ -2159,7 +2159,7 @@ class Quicksand extends Enemy {
 }
 
 class Defender extends Enemy {
-  constructor(pos, radius, speed, angle, auraRadius) {
+  constructor(pos, radius, speed, angle, auraRadius = 150) {
     super(pos, entityTypes.indexOf("defender") - 1, radius, speed, angle, "#312f40", true, "rgba(0, 0, 0, 0.2)", auraRadius / 32);
     this.imune = true;
   }
