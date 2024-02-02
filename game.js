@@ -373,6 +373,14 @@ class World {
             object.ignore_invulnerability = values.ignore_invulnerability;
           }
 
+          if(object.type == "gravity"){
+            object.gravity = values.gravity;
+          } 
+
+          if(object.type == "repelling"){
+            object.repulsion = values.repulsion;
+          }
+
           if(object.type == "frost_giant"){
             object.angle = values.angle;
             object.direction = values.direction;
@@ -749,7 +757,6 @@ class Area {
         var x = this.preset[i].x;
         var y = this.preset[i].y;
         var angle = undefined;
-        console.log(this.preset)
 
         if(typeof this.preset[i].angle === "string" && currentVariables.length>0){
           if(this.preset[i].angle.startsWith("var")){
@@ -882,10 +889,10 @@ class Area {
             enemy = new Spiral(new Vector(posX, posY), radius / 32, speed, angle)
           }
           if (this.preset[i].type[rand] == "gravity") {
-            enemy = new Gravity(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
+            enemy = new Gravity(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, this.preset[i].gravity)
           }
           if (this.preset[i].type[rand] == "repelling") {
-            enemy = new Repelling(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
+            enemy = new Repelling(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, this.preset[i].repulsion)
           }
           if (this.preset[i].type[rand] == "gravity_ghost") {
             enemy = new Gravity_Ghost(new Vector(posX, posY), radius / 32, speed, angle)

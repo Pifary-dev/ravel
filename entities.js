@@ -2910,9 +2910,9 @@ class Spiral extends Enemy {
   }
 }
 class Gravity extends Enemy {
-  constructor(pos, radius, speed, angle, auraRadius = 150) {
+  constructor(pos, radius, speed, angle, auraRadius = 150, gravity = 6) {
     super(pos, entityTypes.indexOf("gravity") - 1, radius, speed, angle, "#78148c", true, "rgba(60, 0, 115, 0.15)", auraRadius / 32);
-    this.gravity = 6 / 32;
+    this.gravity = gravity / 32;
   }
   auraEffect(player, worldPos, time) {
     if (!invulnerable(player) && distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -2950,9 +2950,9 @@ class Gravity_Ghost extends Enemy {
 }
 
 class Repelling extends Enemy {
-  constructor(pos, radius, speed, angle, auraRadius = 150) {
+  constructor(pos, radius, speed, angle, auraRadius = 150, repulsion = 6) {
     super(pos, entityTypes.indexOf("repelling") - 1, radius, speed, angle, "#7b9db2", true, "rgba(210, 228, 239, 0.2)", auraRadius / 32);
-    this.gravity = 6 / 32;
+    this.gravity = repulsion / 32;
   }
   auraEffect(player, worldPos, time) {
     if (!invulnerable(player) && distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
