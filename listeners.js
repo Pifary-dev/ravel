@@ -1,4 +1,4 @@
-const maxDelay = 100;
+const maxDelay = 66.6;
 let Delay = maxDelay+0;
 let isActive = true;
 
