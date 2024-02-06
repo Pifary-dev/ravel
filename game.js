@@ -213,31 +213,44 @@ class World {
     var last_width;
     var last_right;
     var last_y;
+    var last_area_y;
+    var last_area_right;
     for (var i = 0; i < areas.length; i++) {
+      var curArea = areas[i];
       var areaName = "Area "+(i+1);
-      if (areas[i].name!==undefined) {
-        areaName = areas[i].name
+      if (curArea.name!==undefined) {
+        areaName = curArea.name
       }
-      var areaPosX = areas[i].x - xBase;
-      var areaPosY = areas[i].y - yBase;
-      var zones = areas[i].zones;
-      var assets = areas[i].assets;
-      var propertiesC = areas[i].properties;
-      if (areas[i].x == "var x") {
+      var areaPosX = curArea.x - xBase;
+      var areaPosY = curArea.y - yBase;
+      var zones = curArea.zones;
+      var assets = curArea.assets;
+      var propertiesC = curArea.properties;
+      var curAreaXStr = curArea.x.toString();
+      var curAreaYStr = curArea.y.toString();
+      if (curArea.x == "var x") {
         areaPosX = 0;
       }
-      if (areas[i].y == "var y") {
+      if (curArea.y == "var y") {
         areaPosY = 0;
       }
-      if (areas[i].x.toString().startsWith("last_right")) {
-        areaPosX = last_right;
+      if (curAreaXStr.startsWith("last_right")) {
+        areaPosX = last_area_right;
       }
-      if (areas[i].y.toString().startsWith("last_y")) {
-        areaPosY = last_y;
+      if (curAreaYStr.startsWith("last_y") || curAreaYStr.startsWith("last_bottom")) {
+        areaPosY = last_area_y;
       }
-      if (areas[i].y.toString().startsWith("last_bottom")) {
-        areaPosY = last_y;
+      if(curAreaXStr.includes("+")){
+         areaPosX += parseFloat(curAreaXStr.split("+")[1])
+      } else if (curAreaXStr.includes("-",1)){
+         areaPosX -= parseFloat(curAreaXStr.substring(1).split("-")[1])
       }
+      if(curAreaYStr.includes("+")){
+        areaPosY += parseFloat(curAreaYStr.split("+")[1])
+     } else if (curAreaYStr.includes("-",1)){
+        areaPosY -= parseFloat(curAreaYStr.substring(1).split("-")[1])
+     }
+      last_area_y = areaPosY;
       var area = new Area(new Vector(areaPosX / 32, areaPosY / 32));
       area.name = areaName;
       area.background_color = this.background_color;
@@ -278,42 +291,27 @@ class World {
           area.pellet_count = propertiesC.pellet_count;
         }
       }
+      var last_pos = 0;
       for (var j = 0; j < zones.length; j++) {
-        var type = 0;
-        if (zones[j].type == "active") {
-          type = 0;
-        }
-        if (zones[j].type == "safe") {
-          type = 1;
-        }
-        if (zones[j].type == "exit") {
-          type = 2;
-        }
-        if (zones[j].type == "teleport") {
-          type = 3;
-        }
-        if (zones[j].type == "victory") {
-          type = 4;
-        }
-        if (zones[j].type == "removal") {
-          type = 5;
-        }
-        var areax = zones[j].x;
-        var areay = zones[j].y;
+        var zone = zones[j];
+        var type = zoneTypeToId(zone.type)
+        var areax = zone.x;
+        var areay = zone.y;
         if (areax.toString().startsWith("last_right")) {
           areax = last_right - areaPosX;
         }
-        if (areay.toString().startsWith("last_y")) {
+        if (areay.toString().startsWith("last_y") || areay.toString().startsWith("last_bottom")) {
           areay = last_y;
         }
-        if (areay.toString().startsWith("last_bottom")) {
-          areay = last_y;
+        var absoluteZoneRight = areax+zone.width+areaPosX;
+        if(last_pos<absoluteZoneRight){
+          last_pos = absoluteZoneRight;
         }
         var xPos = areaPosX + areax;
         var yPos = areaPosY + areay;
-        var spawner = zones[j].spawner;
-        var widthSize = zones[j].width;
-        var heightSize = zones[j].height
+        var spawner = zone.spawner;
+        var widthSize = zone.width;
+        var heightSize = zone.height
 
         if (heightSize.toString().startsWith("last_height")) {
           heightSize = last_height;
@@ -323,35 +321,32 @@ class World {
         }
         var block = new Zone(new Vector(xPos / 32 - areaPosX / 32, yPos / 32 - areaPosY / 32), new Vector(widthSize / 32, heightSize / 32), type);
         block.background_color = area.background_color
-        if (zones[j].properties!==undefined) {
-          if (zones[j].properties.background_color!==undefined) {
-            var colorC = zones[j].properties.background_color
+        if (zone.properties!==undefined) {
+          if (zone.properties.background_color!==undefined) {
+            var colorC = zone.properties.background_color
             block.color = true;
             block.background_color = "rgba(" + colorC[0] + "," + colorC[1] + "," + colorC[2] + "," + colorC[3] / 255 + ")"
           }
-          if(zones[j].properties.minimum_speed!==undefined){
-            block.minimum_speed=zones[j].properties.minimum_speed;
+          if(zone.properties.minimum_speed!==undefined){
+            block.minimum_speed=zone.properties.minimum_speed;
           }
         }
-        else if(zones.type == 4){
+        else if(type == 4){
           //block.color = true;
           //block.background_color = "rgb(255,244,108,255)";
         }
-        if (zones[j].type == "teleport" || zones[j].type == "exit") {
-          block.translate = new Vector(zones[j].translate.x / 32, zones[j].translate.y / 32);
+        if (zone.type == "teleport" || zone.type == "exit") {
+          block.translate = new Vector(zone.translate.x / 32, zone.translate.y / 32);
         }
 
         for (var k in spawner) {
           var values = spawner[k];
-          var count = values.count
-          if (count==undefined) {
-            count = 1;
-          }
+          var count = values.count||1
           var object = {
             type: values.types,
-            radius: values.radius,
-            speed: values.speed,
-            count: count,//Math.round(count*1.15),
+            radius: values.radius,//*number
+            speed: values.speed,//*number,
+            count: count,//Math.round(count*number),
             x:values.x,
             y:values.y,
             angle:values.angle
@@ -415,6 +410,7 @@ class World {
         last_right = xPos + widthSize;
         last_height = heightSize;
         last_width = widthSize;
+        last_area_right = last_pos;
       }
       for (var k in assets) {
         var type = 0;

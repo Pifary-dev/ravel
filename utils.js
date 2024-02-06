@@ -130,7 +130,7 @@ function warpAround(rect,lengthT,rad){
   var xpos;
   var ypos;
   var dir;
-  console.log(length,rect,rad)
+  //console.log(length,rect,rad)
   if (length<rect.w) {
     dir = 0;
     ypos = rect.y;
@@ -337,12 +337,13 @@ const secondsFormat = (time) => {
   return `${minutes}m ${seconds}s`
 }
 
-function collides(enemy,enemy2){
-  const dx = enemy.pos.x - enemy2.pos.x;
-  const dy = enemy.pos.y - enemy2.pos.y;
+function collides(enemy,enemy2,offset){
+  const dx = enemy.pos.x - (enemy2.pos.x + offset.x);
+  const dy = enemy.pos.y - (enemy2.pos.y + offset.y);
+  const radius_sum = enemy.radius + enemy2.radius;
   const distance = Math.sqrt(dx * dx + dy * dy);
 
-  if (distance < enemy.radius + enemy2.radius) {
+  if (distance < radius_sum) {
       return true;
   } else {return false}
 }
@@ -430,7 +431,7 @@ function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive
   if(Harmless === undefined){
     Harmless = (enemy.healing > 0) ? true : enemy.Harmless;
   }
-  if (distance(player.pos, new Vector(enemy.pos.x + offset.x, enemy.pos.y + offset.y)) < player.radius + enemy.radius && (!player.safeZone||!killInSafeZone)) {
+  if (collides(player,enemy,offset) && (!player.safeZone||!killInSafeZone)) {
     inDistance = true;
     if(enemy.healing > 0)player.isDead = false;
     if((barrierInvulnerable&&player.inBarrier)||player.god)return {dead: false, inDistance: inDistance}
@@ -733,4 +734,21 @@ function degrees_to_radians(degrees){
 }
 function radians_to_degrees(radians){
   return radians * (180/Math.PI);
+}
+
+function zoneTypeToId(type){
+  switch(type){
+    case "active":
+      return 0
+    case "safe":
+      return 1;
+    case "exit":
+      return 2;
+    case "teleport":
+      return 3;
+    case "victory":
+      return 4;
+    case "removal":
+      return 5;
+  }
 }
