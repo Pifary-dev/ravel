@@ -747,9 +747,9 @@ class Area {
         }
         var pattern_id = this.preset[i].pattern_id;
         var auraRadius = this.preset[i].auraRadius;
-        var count = this.preset[i].count;
-        var radius = this.preset[i].radius;
-        var speed = this.preset[i].speed;
+        var count = this.preset[i].count||1;
+        var radius = this.preset[i].radius||0;
+        var speed = this.preset[i].speed||0;
         var x = this.preset[i].x;
         var y = this.preset[i].y;
         var angle = undefined;
@@ -783,7 +783,7 @@ class Area {
         if(typeof x === "string" && currentVariables.length>0){
           if(x.startsWith("var")){
             x = find_variable(this.preset[i].x,currentVariables,hashVariables,pattern_id,pattern_amount)
-          }
+          } 
         }
 
         if(typeof y === "string" && currentVariables.length>0){
@@ -798,18 +798,24 @@ class Area {
           }
         }
 
-        if (count==undefined) {
-          count = 1;
-        }
-
         for (var j = 0; j < count; j++) {
           var posX = Math.random() * (boundary.w-radius / 16) + boundary.x + radius / 32;
           var posY = Math.random() * (boundary.h-radius / 16) + boundary.y + radius / 32;
           if (x!==undefined) {
-            var posX = x/32;
+            if(typeof x == "string" && x.includes(',')){
+              var xArray = x.split(',');
+              var posX = min_max(parseFloat(xArray[0]),parseFloat(xArray[1]))/32;
+            } else {
+              var posX = x/32;
+            }
           }
           if (y!==undefined) {
-            var posY = y/32;
+            if(typeof y == "string" && y.includes(',')){
+              var yArray = y.split(',');
+              var posY = min_max(parseFloat(yArray[0]),parseFloat(yArray[1]))/32;
+            } else {
+              var posY = y/32;
+            }
           }
 
           if(radius<0){radius = 0;}
