@@ -21,15 +21,22 @@ class Entity {
     this.no_collide = false;
   }
   angleToVel(ang = this.angle) {
-    //if(!angle){angle = this.angle}
-    this.vel.x = Math.cos(ang) * this.speed;
-    this.vel.y = Math.sin(ang) * this.speed;
+    if(this.useRealVel){
+      this.realVel.x = Math.cos(ang) * this.speed;
+      this.realVel.y = Math.sin(ang) * this.speed;
+    } else {
+      this.vel.x = Math.cos(ang) * this.speed;
+      this.vel.y = Math.sin(ang) * this.speed;  
+    }
   }
   velToAngle() {
-    //if(!angle){angle = this.angle}
-    this.angle = Math.atan2(this.vel.y, this.vel.x);
-    var dist = distance(new Vector(0, 0), this.vel);
-    this.speed = dist;
+    if(this.useRealVel){
+      this.angle = Math.atan2(this.realVel.y, this.realVel.x);
+    } else {
+      this.angle = Math.atan2(this.vel.y, this.vel.x);
+      var dist = distance(new Vector(0, 0), this.vel);
+      this.speed = dist;
+    }
   }
   update(time) {
     if(this.color == "#a0a7d6"){if(time>averageFPS*2||isNaN(averageFPS)||!isActive){return}}
@@ -54,71 +61,7 @@ class Entity {
     this.vel.y *= dim;
   }
   colide(boundary) {
-    if(this.no_collide)return
-    if(this.area_collide)boundary=game.worlds[game.players[0].world].areas[game.players[0].area].getBoundary();
-    let updated = false;
-    if(!boundary.wall){
-    if(this.color == "#7e7cd6"&&!this.precise_movement)this.angleToVel();
-    if (this.pos.x - this.radius < boundary.x) {
-      this.vel.x = Math.abs(this.vel.x);
-      updated = true;
-    }
-    if (this.pos.x + this.radius > boundary.x + boundary.w) {
-      this.vel.x = -Math.abs(this.vel.x);
-      updated = true
-    }
-    if (this.pos.y - this.radius < boundary.y) {
-      this.vel.y = Math.abs(this.vel.y);
-      updated = true;
-    }
-    if (this.pos.y + this.radius > boundary.y + boundary.h) {
-      this.vel.y = -Math.abs(this.vel.y);
-      updated = true;
-    }} else {
-      isSpawned(boundary,this)
-      const radius = this.radius||0.1;
-      const circle = {x:this.pos.x,y:this.pos.y,r:radius,vel:this.vel,angle:this.angle}
-      if(this.isEnemy){
-        const intersect = intersects(circle,boundary,this.vel);
-        this.vel = (intersect !== null) ? intersect : this.vel;
-        if(intersect!==null&&this.weak){this.toRemove = true}
-      }
-      
-      /*if(this.pos.x - radius < boundary.x + boundary.w&&!(this.pos.x + radius > boundary.x&&!(this.pos.x + radius > boundary.x + boundary.w)&&!(this.pos.y>boundary.y+boundary.h||this.pos.y<boundary.y))&&this.pos.x + radius > boundary.x&&!(this.pos.y>boundary.y+boundary.h||this.pos.y<boundary.y)){
-        this.pos.x = boundary.x+boundary.w+radius;
-        if(this.color == "#7e7cd6"&&!this.precise_movement)this.angleToVel();
-        this.vel.x = Math.abs(this.vel.x);
-        updated = true;
-        if(this.weak){this.vel = {x:100000,y:100000}}
-      }
-      if (this.pos.x + radius > boundary.x&&!(this.pos.x + radius > boundary.x + boundary.w)&&!(this.pos.y>boundary.y+boundary.h||this.pos.y<boundary.y)) {
-        this.pos.x = boundary.x-radius;
-        if(this.color == "#7e7cd6"&&!this.precise_movement)this.angleToVel();
-        this.vel.x = -Math.abs(this.vel.x);
-        updated = true;
-        if(this.weak){this.vel = {x:100000,y:100000}}
-      }
-      if(this.pos.y - radius < boundary.y + boundary.h&&!(this.pos.y + radius > boundary.y&&!(this.pos.y + radius > boundary.y + boundary.h)&&this.pos.x>boundary.x&&this.pos.x<boundary.x+boundary.w)&&this.pos.y + radius > boundary.y&&this.pos.x>boundary.x&&this.pos.x<boundary.x+boundary.w){
-        this.pos.y = boundary.y+boundary.h+radius;
-        if(this.color == "#7e7cd6"&&!this.precise_movement)this.angleToVel();
-        this.vel.y = Math.abs(this.vel.y);
-        updated = true;
-        if(this.weak){this.vel = {x:100000,y:100000}}
-      }
-      if (this.pos.y + radius > boundary.y&&!(this.pos.y + radius > boundary.y + boundary.h)&&this.pos.x>boundary.x&&this.pos.x<boundary.x+boundary.w) {
-        this.pos.y = boundary.y-radius;
-        if(this.color == "#7e7cd6"&&!this.precise_movement)this.angleToVel();
-        this.vel.y = -Math.abs(this.vel.y);
-        updated = true
-        if(this.weak){this.vel = {x:100000,y:100000}}
-      }*/
-      this.isSpawned = false;
-      if(updated){
-        if(this.color == "#7e7cd6"&&!this.precise_movement){
-          this.velToAngle();
-        }
-      }
-    }
+    collisionEnemy(this,boundary,this.vel,this.pos,this.radius)
   }
   behavior(time, area, offset, players) {
 
@@ -965,8 +908,8 @@ class Dynamite extends Entity {
     this.friction = 0.1;
     this.owner = id;
     this.collide = false;
+    this.no_collide = true;
   }
-  colide(boundary) {}
 }
 class ExplosionParticle extends Entity {
   constructor(pos) {
@@ -1413,7 +1356,6 @@ class Chrono extends Player {
       this.pos = this.teleportPosition[0];
       this.energy -= 30;
       if(this.isDead){
-        console.log(this.deathTimer)
         this.deathTimer+=2500;
         if(Math.ceil(this.deathTimer)>=60000){
           this.isDead = false;
@@ -2006,10 +1948,10 @@ class Dasher extends Enemy {
     this.time_since_last_dash = 0;
     this.velToAngle();
     this.oldAngle = this.angle;
+    this.dasher = true;
     
   }
   compute_speed(){
-    //console.log(this.base_speed)
     this.speed = (this.time_since_last_dash < this.time_between_dashes && this.time_dashing == 0 && this.time_preparing == 0) ? 0 : (this.time_dashing == 0) ? this.prepare_speed : this.base_speed//(this.time_preparing>0) ? this.prepare_speed : this.base_speed
     this.angleToVel();
     this.oldAngle = this.angle;
@@ -2048,54 +1990,13 @@ class Dasher extends Enemy {
     }
     this.compute_speed();
   }
-  colide(boundary) {
-    this.angle = this.oldAngle;
-    if (this.pos.x - this.radius < boundary.x) {
-      this.vel.x = Math.abs(this.vel.x);
-      this.velToAngle();
-    }
-    if (this.pos.x + this.radius > boundary.x + boundary.w) {
-      this.vel.x = -Math.abs(this.vel.x);
-      this.velToAngle();
-    }
-    if (this.pos.y - this.radius < boundary.y) {
-      this.vel.y = Math.abs(this.vel.y);
-      this.velToAngle();
-    }
-    if (this.pos.y + this.radius > boundary.y + boundary.h) {
-      this.vel.y = -Math.abs(this.vel.y);
-      this.velToAngle();
-    }
-    this.oldAngle = this.angle;
-  }
 }
 class Homing extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("homing") - 1, radius, speed, angle, "#966e14");
     this.velToAngle();
     this.targetAngle = this.angle;
-  }
-  colide(boundary) {
-    if (this.pos.x - this.radius < boundary.x) {
-      this.vel.x = Math.abs(this.vel.x);
-      this.velToAngle();
-      this.targetAngle = this.angle;
-    }
-    if (this.pos.x + this.radius > boundary.x + boundary.w) {
-      this.vel.x = -Math.abs(this.vel.x);
-      this.velToAngle();
-      this.targetAngle = this.angle;
-    }
-    if (this.pos.y - this.radius < boundary.y) {
-      this.vel.y = Math.abs(this.vel.y);
-      this.velToAngle();
-      this.targetAngle = this.angle;
-    }
-    if (this.pos.y + this.radius > boundary.y + boundary.h) {
-      this.vel.y = -Math.abs(this.vel.y);
-      this.velToAngle();
-      this.targetAngle = this.angle;
-    }
+    this.homing = true;
   }
   behavior(time, area, offset, players) {
     var min = 5.625;
@@ -2206,29 +2107,12 @@ class Turning extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("turning") - 1, radius, speed, angle, "#336600");
     this.dir = speed / 150;
+    this.turning = true;
   }
   behavior(time, area, offset, players) {
     this.velToAngle();
     this.angle += this.dir * (time / 30);
     this.angleToVel();
-  }
-  colide(boundary) {
-    if (this.pos.x - this.radius < boundary.x) {
-      this.vel.x = Math.abs(this.vel.x);
-      this.dir = -this.dir;
-    }
-    if (this.pos.x + this.radius > boundary.x + boundary.w) {
-      this.vel.x = -Math.abs(this.vel.x);
-      this.dir = -this.dir;
-    }
-    if (this.pos.y - this.radius < boundary.y) {
-      this.vel.y = Math.abs(this.vel.y);
-      this.dir = -this.dir;
-    }
-    if (this.pos.y + this.radius > boundary.y + boundary.h) {
-      this.vel.y = -Math.abs(this.vel.y);
-      this.dir = -this.dir;
-    }
   }
 }
 class Liquid extends Enemy {
@@ -2327,6 +2211,59 @@ class SniperBullet extends Entity {
   }
   behavior(time, area, offset, players) {
     this.clock += time;
+  }
+  interact(player, worldPos) {
+    interactionWithEnemy(player,this,worldPos,true,this.corrosive,this.imune);
+  }
+}
+
+class Stalactite extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("stalactite") - 1, radius, speed, angle, "#302519");
+    this.collision = false;
+    this.speed = speed;
+    this.pos = pos;
+    this.radius = radius;
+  }
+  behavior(time, area, offset, players) {
+    if (this.collision){
+      this.collision = false;
+      area.addSniperBullet(15, this.pos, undefined, this.radius / 2, this.speed / 2);
+    }
+  }
+  colide(boundary){
+    if(collisionEnemy(this,boundary,this.vel,this.pos,this.radius).col)this.collision = true;
+  }
+}
+
+class StalactiteProjectile extends Entity {
+  constructor(pos, radius, speed) {
+    super(pos, radius, "#614c37");
+    let angle = Math.random();
+    let xvel = Math.cos(angle * Math.PI * 2) * speed;
+    let yvel = Math.sin(angle * Math.PI * 2) * speed;
+    this.angle = angle;
+    this.vel = new Vector(xvel, yvel);
+    this.clock = 0;
+    this.outline = true;
+    this.renderFirst = false;
+    this.decayed = false;
+    this.imune = false;
+    this.shatterTime = 0;
+    this.isEnemy = true;
+    this.repelled = false;
+  }
+  behavior(time, area, offset, players) {
+    this.clock += time;
+    this.decayed = false;
+    this.repelled = false;
+    this.shatterTime -= time;
+    if (this.shatterTime < 0) {
+      this.shatterTime = 0;
+    }
+    if (this.clock > 1500){
+      this.toRemove = true;
+    }
   }
   interact(player, worldPos) {
     interactionWithEnemy(player,this,worldPos,true,this.corrosive,this.imune);
@@ -2811,45 +2748,7 @@ class Icicle extends Enemy {
     }
   }
   colide(boundary) {
-    if(!boundary.wall){
-    if (this.pos.x - this.radius < boundary.x) {
-      this.vel.x = Math.abs(this.vel.x);
-      this.wallHit = true;
-    }
-    if (this.pos.x + this.radius > boundary.x + boundary.w) {
-      this.vel.x = -Math.abs(this.vel.x);
-      this.wallHit = true;
-    }
-    if (this.pos.y - this.radius < boundary.y) {
-      this.vel.y = Math.abs(this.vel.y);
-      this.wallHit = true;
-    }
-    if (this.pos.y + this.radius > boundary.y + boundary.h) {
-      this.vel.y = -Math.abs(this.vel.y);
-      this.wallHit = true;
-    }} else if(!this.wallHit){
-      isSpawned(boundary,this)
-      if(this.pos.x - this.radius < boundary.x + boundary.w&&!(this.pos.x + this.radius > boundary.x&&!(this.pos.x + this.radius > boundary.x + boundary.w)&&!(this.pos.y>boundary.y+boundary.h||this.pos.y<boundary.y))&&this.pos.x + this.radius > boundary.x&&!(this.pos.y>boundary.y+boundary.h||this.pos.y<boundary.y)){
-        this.pos.x = boundary.x+boundary.w+this.radius;
-        this.vel.x = Math.abs(this.vel.x);
-        this.wallHit = true;
-      }
-      if (this.pos.x + this.radius > boundary.x&&!(this.pos.x + this.radius > boundary.x + boundary.w)&&!(this.pos.y>boundary.y+boundary.h||this.pos.y<boundary.y)) {
-        this.pos.x = boundary.x-this.radius;
-        this.vel.x = -Math.abs(this.vel.x);
-        this.wallHit = true;
-      }
-      if(this.pos.y - this.radius < boundary.y + boundary.h&&!(this.pos.y + this.radius > boundary.y&&!(this.pos.y + this.radius > boundary.y + boundary.h)&&this.pos.x>boundary.x&&this.pos.x<boundary.x+boundary.w)&&this.pos.y + this.radius > boundary.y&&this.pos.x>boundary.x&&this.pos.x<boundary.x+boundary.w){
-        this.pos.y = boundary.y+boundary.h+this.radius;
-        this.vel.y = Math.abs(this.vel.y);
-        this.wallHit = true;
-      }
-      if (this.pos.y + this.radius > boundary.y&&!(this.pos.y + this.radius > boundary.y + boundary.h)&&this.pos.x>boundary.x&&this.pos.x<boundary.x+boundary.w) {
-        this.pos.y = boundary.y-this.radius;
-        this.vel.y = -Math.abs(this.vel.y);
-        this.wallHit = true;
-      }
-    }
+    if(collisionEnemy(this,boundary,this.vel,this.pos,this.radius).col)this.wallHit=true;
   }
   behavior(time, area, offset, players) {
     if (this.wallHit) {
@@ -2869,6 +2768,7 @@ class Spiral extends Enemy {
     this.angleIncrementChange = 0.004;
     this.angleAdd = false;
     this.dir = 1
+    this.turning = true;
   }
   behavior(time, area, offset, players) {
     if (this.angleIncrement < 0.001) {
@@ -2889,24 +2789,6 @@ class Spiral extends Enemy {
     this.velToAngle();
     this.angle += this.angleIncrement * this.dir * (time / (1000 / 30));
     this.angleToVel();
-  }
-  colide(boundary) {
-    if (this.pos.x - this.radius < boundary.x) {
-      this.vel.x = Math.abs(this.vel.x);
-      this.dir = -this.dir;
-    }
-    if (this.pos.x + this.radius > boundary.x + boundary.w) {
-      this.vel.x = -Math.abs(this.vel.x);
-      this.dir = -this.dir;
-    }
-    if (this.pos.y - this.radius < boundary.y) {
-      this.vel.y = Math.abs(this.vel.y);
-      this.dir = -this.dir;
-    }
-    if (this.pos.y + this.radius > boundary.y + boundary.h) {
-      this.vel.y = -Math.abs(this.vel.y);
-      this.dir = -this.dir;
-    }
   }
 }
 class Gravity extends Enemy {
@@ -3000,7 +2882,8 @@ class Wavy extends Enemy {
     this.dir = 1;
     this.switchInterval = 800;
     this.switchTime = 400;
-    this.angleIncrement = (this.speed + 6) / this.circleSize
+    this.angleIncrement = (this.speed + 6) / this.circleSize;
+    this.turning = true;
   }
   behavior(time, area, offset, players) {
     if (this.switchTime > 0) {
@@ -3012,24 +2895,6 @@ class Wavy extends Enemy {
     this.velToAngle();
     this.angle += this.angleIncrement * this.dir * (time / (1000 / 30));
     this.angleToVel();
-  }
-  colide(boundary) {
-    if (this.pos.x - this.radius < boundary.x) {
-      this.vel.x = Math.abs(this.vel.x);
-      this.dir = -this.dir;
-    }
-    if (this.pos.x + this.radius > boundary.x + boundary.w) {
-      this.vel.x = -Math.abs(this.vel.x);
-      this.dir = -this.dir;
-    }
-    if (this.pos.y - this.radius < boundary.y) {
-      this.vel.y = Math.abs(this.vel.y);
-      this.dir = -this.dir;
-    }
-    if (this.pos.y + this.radius > boundary.y + boundary.h) {
-      this.vel.y = -Math.abs(this.vel.y);
-      this.dir = -this.dir;
-    }
   }
 }
 class Zigzag extends Enemy {
@@ -3657,46 +3522,7 @@ class Snowman extends Enemy {
     this.lightCount = this.radius*32+60;
   }
   colide(boundary) {
-    if(!boundary.wall){
-      if (this.pos.x - this.radius < boundary.x) {
-        this.vel.x = Math.abs(this.vel.x);
-        this.wallHit = true;
-      }
-      if (this.pos.x + this.radius > boundary.x + boundary.w) {
-        this.vel.x = -Math.abs(this.vel.x);
-        this.wallHit = true;
-      }
-      if (this.pos.y - this.radius < boundary.y) {
-        this.vel.y = Math.abs(this.vel.y);
-        this.wallHit = true;
-      }
-      if (this.pos.y + this.radius > boundary.y + boundary.h) {
-        this.vel.y = -Math.abs(this.vel.y);
-        this.wallHit = true;
-      }} else if(!this.wallHit){
-        isSpawned(boundary,this)
-        if(this.pos.x - this.radius < boundary.x + boundary.w&&!(this.pos.x + this.radius > boundary.x&&!(this.pos.x + this.radius > boundary.x + boundary.w)&&!(this.pos.y>boundary.y+boundary.h||this.pos.y<boundary.y))&&this.pos.x + this.radius > boundary.x&&!(this.pos.y>boundary.y+boundary.h||this.pos.y<boundary.y)){
-          this.pos.x = boundary.x+boundary.w+this.radius;
-          this.vel.x = Math.abs(this.vel.x);
-          this.wallHit = true;
-        }
-        if (this.pos.x + this.radius > boundary.x&&!(this.pos.x + this.radius > boundary.x + boundary.w)&&!(this.pos.y>boundary.y+boundary.h||this.pos.y<boundary.y)) {
-          this.pos.x = boundary.x-this.radius;
-          this.vel.x = -Math.abs(this.vel.x);
-          this.wallHit = true;
-        }
-        if(this.pos.y - this.radius < boundary.y + boundary.h&&!(this.pos.y + this.radius > boundary.y&&!(this.pos.y + this.radius > boundary.y + boundary.h)&&this.pos.x>boundary.x&&this.pos.x<boundary.x+boundary.w)&&this.pos.y + this.radius > boundary.y&&this.pos.x>boundary.x&&this.pos.x<boundary.x+boundary.w){
-          this.pos.y = boundary.y+boundary.h+this.radius;
-          this.vel.y = Math.abs(this.vel.y);
-          this.wallHit = true;
-        }
-        if (this.pos.y + this.radius > boundary.y&&!(this.pos.y + this.radius > boundary.y + boundary.h)&&this.pos.x>boundary.x&&this.pos.x<boundary.x+boundary.w) {
-          this.pos.y = boundary.y-this.radius;
-          this.vel.y = -Math.abs(this.vel.y);
-          this.wallHit = true;
-        }
-        //this.isSpawned = false;
-      }
+    if(collisionEnemy(this,boundary,this.vel,this.pos,this.radius).col)this.wallHit=true;
   }
   behavior(time, area, offset, players) {
     if (this.wallHit) {
@@ -4169,7 +3995,7 @@ class Lunging extends Enemy {
         closest_entity = i;
         dX = (players[closest_entity].pos.x - offset.x) - this.pos.x;
         dY = (players[closest_entity].pos.y - offset.y) - this.pos.y;
-        closest_entity_distance = dX ** 2 + dY ** 2//Math.atan2(dY, dX);
+        closest_entity_distance = dX ** 2 + dY ** 2;
       }
     }
 
@@ -4222,7 +4048,6 @@ class Lunging extends Enemy {
         (random(1)) ? this.pos.x -= 2/32 * timeFix : this.pos.x += 2/32 * timeFix;
       }
     }
-  
   }
 
   behavior(time, area, offset, players) {
@@ -4246,6 +4071,8 @@ class Sand extends Enemy {
     this.realVel = new Vector(this.vel.x, this.vel.y);
     this.collision = false;
     this.friction = 1;
+    this.useRealVel = true;
+    this.speed = speed;
   }
   behavior(time, area, offset, players) {
     this.friction += time / 1000;
@@ -4259,7 +4086,7 @@ class Sand extends Enemy {
     this.vel = new Vector(this.realVel.x * this.friction, this.realVel.y * this.friction);
   }
   colide(boundary) {
-    this.collision = collisionEnemy(boundary,this.vel,this.pos,this.radius,this.realVel).col;
+    if(collisionEnemy(this,boundary,this.realVel,this.pos,this.radius).col)this.collision=true;
   }
 }
 
@@ -4270,6 +4097,8 @@ class Sandrock extends Enemy {
     this.minimum_speed = 0.1;
     this.collision = false;
     this.friction = 1;
+    this.useRealVel = true;
+    this.speed = speed;
   }
   behavior(time, area, offset, players) {
     this.friction -= time / 3000;
@@ -4285,7 +4114,7 @@ class Sandrock extends Enemy {
     this.vel = new Vector(this.realVel.x * this.friction, this.realVel.y * this.friction);
   }
   colide(boundary) {
-    this.collision = collisionEnemy(boundary,this.vel,this.pos,this.radius,this.realVel).col;
+    if(collisionEnemy(this,boundary,this.realVel,this.pos,this.radius).col)this.collision=true;
   }
 }
 
@@ -4324,7 +4153,7 @@ class Crumbling extends Enemy {
     this.radius = this.realRadius;
   }
   colide(boundary) {
-    this.collision = collisionEnemy(boundary,this.vel,this.pos,this.realRadius).col;
+    if(collisionEnemy(this,boundary,this.vel,this.pos,this.realRadius).col)this.collision=true;
   }
 }
 
@@ -4440,7 +4269,6 @@ class SeedlingProjectile extends Entity {
     this.angleToVel();
     this.dir = this.speed/30;
     this.seedOffset = new Vector(0,-this.radius*1.5*32);
-    console.log(this.vel)
   }
   behavior(time, area, offset, players) {
     this.pos = new Vector(this.spawner.pos.x,this.spawner.pos.y)

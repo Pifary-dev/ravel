@@ -260,11 +260,6 @@ function invulnerable(player){
   return false
 }
 
-/*function immune(entity){
-  if (entity.immune) return true;
-  return false
-}*/
-
 function death(player,enemy){
   if(player.className == "Morfe" && !player.isDead){
     const entities = game.worlds[player.world].areas[player.area].entities;
@@ -397,30 +392,140 @@ function drawNearbyMinimap(t,ctx,canvas,zones,areaPos){
   }
 }
 
-function collisionEnemy(boundary,vel,pos,radius,realVel = {x:0,y:0}){
+function collisionEnemy(enemy,boundary,vel,pos,radius,inject = ""){
   let collision = false;
-  if (pos.x - radius < boundary.x) {
-    vel.x = Math.abs(vel.x);
-    realVel.x = Math.abs(realVel.x);
+  if(enemy.no_collide) return
+  if(enemy.area_collide && !boundary.wall)boundary=game.worlds[game.players[0].world].areas[game.players[0].area].getBoundary();
+  if(enemy.dasher) enemy.angle = enemy.oldAngle;
+  if(!boundary.wall){
+    if (pos.x - radius < boundary.x) {
+      vel.x = Math.abs(vel.x);
+      enemy.velToAngle();
+    }
+    if (pos.x + radius > boundary.x + boundary.w) {
+      vel.x = -Math.abs(vel.x);
+      enemy.velToAngle();
+    }
+    if (pos.y - radius < boundary.y) {
+      vel.y = Math.abs(vel.y);
+      enemy.velToAngle();
+    }
+    if (pos.y + radius > boundary.y + boundary.h) {
+      vel.y = -Math.abs(vel.y);
+      enemy.velToAngle();
+    }
+
+    if(pos.x - radius < boundary.x ||
+      pos.x + radius > boundary.x + boundary.w ||
+      pos.y - radius < boundary.y ||
+      pos.y + radius > boundary.y + boundary.h){
+        collision = true;
+    }
+  } else {
+    isSpawned(boundary,enemy);
+      const circle = {x:enemy.pos.x,y:enemy.pos.y,r:radius,angle:enemy.angle,vel:vel}
+      if(enemy.isEnemy){
+        const intersect = intersects(circle,boundary);
+        if(intersect.collision&&enemy.weak){enemy.toRemove = true}
+        else if (intersect.collision){
+          collision = true;
+          const halfWidth = boundary.w/2;
+          const halfHeight = boundary.h/2;
+          const center_x = boundary.x+halfWidth;
+          const center_y = boundary.y+halfHeight;
+          const relative_x = (circle.x - center_x) / halfWidth;
+          const relative_y = (circle.y - center_y) / halfHeight;
+          const newAngle = Math.atan2(intersect.y,intersect.x);
+          if (Math.abs(relative_x) > Math.abs(relative_y)) {
+            if (relative_x > 0) {
+              if(relative_y*halfHeight > halfHeight){
+                circle.x = center_x + halfWidth + circle.r*Math.cos(newAngle);
+                circle.y = center_y + halfHeight + circle.r*Math.sin(newAngle);
+                enemy.angle=newAngle;
+                enemy.angleToVel();
+              } else if (relative_y*halfHeight < -halfHeight){
+                circle.x = center_x + halfWidth + circle.r*Math.cos(newAngle);
+                circle.y = center_y - halfHeight + circle.r*Math.sin(newAngle);
+                enemy.angle=newAngle;
+                enemy.angleToVel();
+              } else {
+                circle.x = center_x + halfWidth + circle.r;
+                vel.x=Math.abs(vel.x);
+                enemy.velToAngle();
+              }
+            } else {
+              if(relative_y*halfHeight > halfHeight){
+                circle.x = center_x - halfWidth + circle.r*Math.cos(newAngle);
+                circle.y = center_y + halfHeight + circle.r*Math.sin(newAngle);
+                enemy.angle=newAngle;
+                enemy.angleToVel();
+              } else if (relative_y*halfHeight < -halfHeight){
+                circle.x = center_x - halfWidth + circle.r*Math.cos(newAngle);
+                circle.y = center_y - halfHeight + circle.r*Math.sin(newAngle);
+                enemy.angle=newAngle;
+                enemy.angleToVel();
+              } else {
+                circle.x = center_x - halfWidth - circle.r;
+                vel.x=-Math.abs(vel.x);
+                enemy.velToAngle();
+              }
+            }
+          } else {
+            if (relative_y > 0) {
+              if(relative_x*halfWidth > halfWidth){
+                circle.x = center_x + halfWidth + circle.r*Math.cos(newAngle);
+                circle.y = center_y + halfHeight + circle.r*Math.sin(newAngle);
+                enemy.angle=newAngle;
+                enemy.angleToVel();
+              } else if (relative_x*halfWidth < -halfWidth){
+                circle.x = center_x - halfWidth + circle.r*Math.cos(newAngle);
+                circle.y = center_y + halfHeight + circle.r*Math.sin(newAngle);
+                enemy.angle=newAngle;
+                enemy.angleToVel();
+              } else {
+                circle.y = center_y + halfHeight + circle.r;
+                vel.y=Math.abs(vel.y);
+                enemy.velToAngle();
+              }
+            } else {
+              if (relative_x*halfWidth > halfWidth){
+                circle.x = center_x + halfWidth + circle.r*Math.cos(newAngle);
+                circle.y = center_y - halfHeight + circle.r*Math.sin(newAngle);
+                enemy.angle=newAngle;
+                enemy.angleToVel();
+              } else if (relative_x*halfWidth < -halfWidth){
+                circle.x = center_x - halfWidth + circle.r*Math.cos(newAngle);
+                circle.y = center_y - halfHeight + circle.r*Math.sin(newAngle);
+                enemy.angle=newAngle;
+                enemy.angleToVel();
+              } else {
+                circle.y = center_y - halfHeight - circle.r;
+                vel.y=-Math.abs(vel.y);
+                enemy.velToAngle();
+              }
+            }
+          }
+          enemy.pos.x = circle.x;
+          enemy.pos.y = circle.y;
+        }
+      }
+      enemy.isSpawned = false;
   }
-  if (pos.x + radius > boundary.x + boundary.w) {
-    vel.x = -Math.abs(vel.x);
-    realVel.x = -Math.abs(realVel.x);
-  }
-  if (pos.y - radius < boundary.y) {
-    vel.y = Math.abs(vel.y);
-    realVel.y = Math.abs(realVel.y);
-  }
-  if (pos.y + radius > boundary.y + boundary.h) {
-    vel.y = -Math.abs(vel.y);
-    realVel.y = -Math.abs(realVel.y);
+  
+  if(enemy.useRealVel){
+    enemy.realVel = new Vector(vel.x,vel.y);
   }
 
-  if(pos.x - radius < boundary.x ||
-     pos.x + radius > boundary.x + boundary.w ||
-     pos.y - radius < boundary.y ||
-     pos.y + radius > boundary.y + boundary.h){
-      collision = true;
+  if(enemy.dasher) enemy.oldAngle = enemy.angle;
+
+  if(collision){
+    if(enemy.color == "#7e7cd6"&&!enemy.precise_movement){
+      enemy.velToAngle();
+    } else if(enemy.homing){
+      enemy.targetAngle = enemy.angle;
+    } else if(enemy.turning){
+      enemy.dir = -enemy.dir;
+    }
   }
   return {col:collision};
 }
@@ -635,99 +740,21 @@ function loadImages(character){
 
 }
 
-/*function intersects(circle,rect){
-  const circlePosition = {x:circle.x - (rect.x+rect.w/2),y:circle.y - (rect.y+rect.h/2)}
-  const circleDistance = {x:Math.abs(circlePosition.x),y:Math.abs(circlePosition.y)}
-  if (circleDistance.x > (rect.w/2 + circle.r)) { return false; }
-  if (circleDistance.y > (rect.h/2 + circle.r)) { return false; }
-  //const checkPosition = {left: -circlePosition.x, right:circlePosition.x, top: -circlePosition.y, bottom: circlePosition.y}
+function clamp(circle,left,right){
+  return Math.min(right,Math.max(left,circle))
+}
 
-  if (circleDistance.x <= (rect.w/2)) { return true; }
-  if (circleDistance.x <= (rect.w/2)) { return true; }
-
-  if (circleDistance.y <= (rect.h/2)) { return true; }
-  if (circleDistance.y <= (rect.h/2)) { return true; }
-
-  cornerDistance_sq = (circleDistance.x - rect.w/2)^2 + (circleDistance.y - rect.h/2)^2;
-  return (cornerDistance_sq <= (circle.r^2));
-}*/
-/*function intersects(circle,rect,vel){
-  const circlePosition = {x:circle.x - (rect.x+rect.w/2),y:circle.y - (rect.y+rect.h/2)}
-  const circleDistance = {x:Math.abs(circlePosition.x),y:Math.abs(circlePosition.y)}
-  console.log(circleDistance.x+circle.r)
-  if (circleDistance.x > (rect.w/2 + circle.r) || circleDistance.y > (rect.h/2 + circle.r)) { return null; }
-  //const checkPosition = {left: -circlePosition.x, right:circlePosition.x, top: -circlePosition.y, bottom: circlePosition.y}
-
-  //if(circleDistance.x - (rect.w/2 + circle.r) > circleDistance.y - (rect.h/2 + circle.r)){
-       if (circleDistance.x+circle.r > 0) { vel.x = -vel.x} //right
-  //} else {
-       if (circleDistance.y-circle.r < rect.h/2) { vel.y = -vel.y} //bottom
-  //}
-  
-  return vel;
-}*/
-
-function intersects(circle,rect,vel){
-
-  const circlePosition = {x:circle.x - (rect.x+rect.w/2),y:circle.y - (rect.y+rect.h/2)}
-  const circleDistance = {x:Math.abs(circlePosition.x),y:Math.abs(circlePosition.y)}
-  if (circleDistance.x > (rect.w/2 + circle.r) || circleDistance.y > (rect.h/2 + circle.r)) { return null; }
-  if(Math.abs(vel.x)>Math.abs(vel.y)){
-    if (circlePosition.x-circle.r < 0){vel.x = -Math.abs(vel.x)}
-    else if (circlePosition.x+circle.r > 0){vel.x = Math.abs(vel.x)}
-    else if (circlePosition.y-circle.r < 0){vel.y = -Math.abs(vel.y)}
-    else if (circlePosition.y+circle.r > 0){vel.y = Math.abs(vel.y)}
-  } else if (Math.abs(vel.y)>Math.abs(vel.x)){
-    if (circlePosition.y-circle.r < 0){vel.y = -Math.abs(vel.y)}
-    else if (circlePosition.y+circle.r > 0){vel.y = Math.abs(vel.y)}
-    else if (circlePosition.x-circle.r < 0){vel.x = -Math.abs(vel.x)}
-    else if (circlePosition.x+circle.r > 0){vel.x = Math.abs(vel.x)}
-  } else {
-    if (circlePosition.x-circle.r < 0){vel.x = -Math.abs(vel.x)}
-    else if (circlePosition.x+circle.r > 0){vel.x = Math.abs(vel.x)}
-    if (circlePosition.y-circle.r < 0){vel.y = -Math.abs(vel.y)}
-    else if (circlePosition.y+circle.r > 0){vel.y = Math.abs(vel.y)}
+function intersects(circle, boundary) { // need to replace this with stovoy's library "bolt" later
+  const tx = clamp(circle.x,boundary.x,boundary.x+boundary.w), dx = (circle.x-tx);
+  const ty = clamp(circle.y,boundary.y,boundary.y+boundary.h), dy = (circle.y-ty);
+  const distance = Math.sqrt(dx**2+dy**2);
+  const enemy = {
+    collision : distance < circle.r,
+    x : dx,
+    y : dy
   }
-
-  return vel;
-}
-
-// Calculates the magnitude (length) of a vector
-function magnitude(vec) {
-  return Math.sqrt(vec.x * vec.x + vec.y * vec.y);
-}
-
-// Normalizes a vector (i.e. gives it a length/magnitude of 1)
-function normalize(vec) {
-  const mag = magnitude(vec);
-  if (mag === 0) {
-    return { x: 0, y: 0 };
-  }
-  return { x: vec.x / mag, y: vec.y / mag };
-}
-
-// Calculates the dot product of two vectors
-function dot(vec1, vec2) {
-  return vec1.x * vec2.x + vec1.y * vec2.y;
-}
-
-// Subtracts one vector from another
-function subtract(vec1, vec2) {
-  return { x: vec1.x - vec2.x, y: vec1.y - vec2.y };
-}
-
-// Multiplies a vector by a scalar
-function multiply(vec, scalar) {
-  return { x: vec.x * scalar, y: vec.y * scalar };
-}
-
-function reflect(vel, nx, ny) {
-  // Reflect the velocity vector across the normal vector
-  let dot_product = vel.x*nx + vel.y*ny;
-  let reflected_vx = vel.x - 2*dot_product*nx;
-  let reflected_vy = vel.y - 2*dot_product*ny;
-  return { x: reflected_vx, y: reflected_vy };
-}
+  return enemy;
+};
 
 function degrees_to_radians(degrees){
   return degrees * (Math.PI/180);

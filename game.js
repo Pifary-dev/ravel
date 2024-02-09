@@ -1052,6 +1052,9 @@ class Area {
           if (this.preset[i].type[rand] == "regen_ghost") {
             enemy = new RegenGhost(new Vector(posX, posY), radius / 32, speed, angle)
           }
+          if (this.preset[i].type[rand] == "stalactite") {
+            enemy = new Stalactite(new Vector(posX, posY), radius / 32, speed, angle)
+          }
           enemy.isSpawned = true;
           this.entities[this.preset[i].type].push(enemy)
         }
@@ -1180,6 +1183,13 @@ class Area {
         }
         var bullet = new Residue(new Vector(pos.x,pos.y), angle, radius, speed);
         this.entities["Residue"].push(bullet);
+        break;
+      case 15:
+        if (!this.entities["stalactite_projectile"]) {
+          this.entities["stalactite_projectile"] = [];
+        }
+        var bullet = new StalactiteProjectile(new Vector(pos.x,pos.y), radius, speed);
+        this.entities["stalactite_projectile"].push(bullet);
         break;
     }
   }
