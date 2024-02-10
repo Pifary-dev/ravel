@@ -2161,7 +2161,7 @@ class Switch extends Enemy {
   }
   behavior(time, area, offset, players) {
     this.clock += time;
-    if (this.clock > 5000) {
+    if (this.clock > 3000) {
       this.disabled = !this.disabled;
     }
     if (this.disabled) {
@@ -2170,7 +2170,7 @@ class Switch extends Enemy {
       this.Harmless = false;
     }
     if(this.clownHarm){this.Harmless = true}
-    this.clock = this.clock % 5000;
+    this.clock = this.clock % 3000;
   }
 }
 class Sniper extends Enemy {
