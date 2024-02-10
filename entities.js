@@ -2224,11 +2224,18 @@ class Stalactite extends Enemy {
     this.speed = speed;
     this.pos = pos;
     this.radius = radius;
+    this.clock = 0;
   }
   behavior(time, area, offset, players) {
     if (this.collision){
-      this.collision = false;
-      area.addSniperBullet(15, this.pos, undefined, this.radius / 2, this.speed / 2);
+      if(this.clock == 0) area.addSniperBullet(15, this.pos, undefined, this.radius / 2, this.speed / 2);
+      this.clock += time;
+      if (this.clock > 1000) {
+        this.collision = false;
+        this.clock = 0;
+      } else {
+        this.speedMultiplier = 0;
+      }
     }
   }
   colide(boundary){
