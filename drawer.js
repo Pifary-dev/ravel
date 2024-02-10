@@ -243,17 +243,17 @@ function renderTiles(area, players, focus) {
           ctx.drawImage(tile_image, Math.abs(posX) * 32 + textureType * 128, Math.abs(posY) * 32 + area.texture * 128, 32, 32, Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
           ctx.closePath();
           ctx.beginPath();
-          ctx.fillStyle = area.background_color;
+          ctx.fillStyle = (zone.background_color) ? zone.background_color : area.background_color;
           ctx.fillRect(Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
           ctx.fill();
           ctx.closePath();
-          if (zone.color) {
+          /*if (zone.color) {
             ctx.beginPath();
             ctx.fillStyle = zone.background_color;
             ctx.fillRect(Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
             ctx.fill();
             ctx.closePath();
-          }
+          }*/
       }
     }
   }
