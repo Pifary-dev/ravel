@@ -12,7 +12,7 @@ function renderArea(area, players, focus, old) {
   ligth.width = width,
   ligth.height = height;
   var world = game.worlds[players[0].world];
-  if(old.area!=players[0].area||old.world!=players[0].world||!canv){
+  if(old.area!=players[0].area||old.world!=players[0].world||!canv&&tiles.complete){
     canv = renderTiles(area, players, focus);
   }
   if(canv){
@@ -24,21 +24,24 @@ function renderArea(area, players, focus, old) {
   renderPlayers(area, players, focus);
   renderSecondEntities(area, players, focus)
   for (var i in players) {
-    try{
     var player = players[i];
-    var grad = context1.createRadialGradient(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, 0, width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (player.radius + 30 / 32) * fov);
+    
+    if(player.lantern_active && player.lantern){
+      player.lightCount=200/32;
+    } else {player.lightCount = 50/32;}
+
+    var grad = context1.createRadialGradient(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, 0, width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.lightCount * fov);
     grad.addColorStop(0, "rgba(0, 0, 0, 1)");
     grad.addColorStop(1, "rgba(0, 0, 0, 0)");
     context1.beginPath();
     context1.fillStyle = grad;
-    context1.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (player.radius + 30 / 32) * fov, 0, 2 * Math.PI, !1);
+    context1.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.lightCount * fov, 0, 2 * Math.PI, !1);
     context1.fill();
     context1.closePath();
-    }catch(e){}
-    if(player.flashlight_active){
-      player.energy -= 1 / 30;
+
+    if(player.flashlight_active && player.flashlight){
       if(player.energy<=0){player.flashlight_active = false}
-      try{var player = players[i];
+      var player = players[i];
       var grad = context1.createRadialGradient(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, 0, width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (460 / 32) * fov);
       grad.addColorStop(0, "rgba(0, 0, 0, 1)");
       grad.addColorStop(1, "rgba(0, 0, 0, 0)");
@@ -80,18 +83,18 @@ function renderArea(area, players, focus, old) {
       context1.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (flashlight_distance / 32) * fov,(Math.PI/180)*(-flashlight_angle+player.lastAng), (Math.PI/180)*(flashlight_angle+player.lastAng));
       context1.fill();
       context1.closePath();
-      }catch(e){}}
+      }
   }
   for(let i in area.entities){
     for(let j in area.entities[i]){
       var ent = area.entities[i][j]
-      if(ent.isLight){
-        try{var grad1 = context1.createRadialGradient(width / 2 + (area.pos.x + ent.pos.x - focus.x) * fov, height / 2 + (area.pos.y + ent.pos.y - focus.y) * fov, 0, width / 2 + (area.pos.x + ent.pos.x - focus.x) * fov, height / 2 + (area.pos.y + ent.pos.y - focus.y) * fov, (ent.radius + ent.lightCount / 32) * fov);
+      if(ent.isLight && ent.lightCount>0){
+        try{var grad1 = context1.createRadialGradient(width / 2 + (area.pos.x + ent.pos.x - focus.x) * fov, height / 2 + (area.pos.y + ent.pos.y - focus.y) * fov, 0, width / 2 + (area.pos.x + ent.pos.x - focus.x) * fov, height / 2 + (area.pos.y + ent.pos.y - focus.y) * fov, ent.lightCount/32 * fov);
         grad1.addColorStop(0, "rgba(0, 0, 0, 1)");
         grad1.addColorStop(1, "rgba(0, 0, 0, 0)");
         context1.beginPath();
         context1.fillStyle = grad1;
-        context1.arc(width / 2 + (area.pos.x + ent.pos.x - focus.x) * fov, height / 2 + (area.pos.y + ent.pos.y - focus.y) * fov, (ent.radius + ent.lightCount / 32) * fov, 0, 2 * Math.PI, !1);
+        context1.arc(width / 2 + (area.pos.x + ent.pos.x - focus.x) * fov, height / 2 + (area.pos.y + ent.pos.y - focus.y) * fov, ent.lightCount/32 * fov, 0, 2 * Math.PI, !1);
         context1.fill();
         context1.closePath();
         }catch(e){}
@@ -184,16 +187,18 @@ function renderArea(area, players, focus, old) {
   context.fill();
   context.stroke();
   context.closePath();
+  let scalingWidth = width / 1280;
+  let scalingHeight = height / 720;
   if (players[0].hasCheated) {
     context.beginPath();
     context.fillStyle = "purple"
-    context.fillRect(370, height - (width / 2 - 258 - 370), width / 2 - 258 - 370, width / 2 - 258 - 370);
+    context.fillRect(370, height-12*scalingHeight, 12*scalingWidth, 12*scalingHeight);
     context.closePath();
   }
   if (settings.sandbox) {
     context.beginPath();
     context.fillStyle = "black"
-    context.fillRect(370, height - ((width / 2 - 258 - 370) * 2), width / 2 - 258 - 370, width / 2 - 258 - 370);
+    context.fillRect(370, height-24*scalingHeight, 12*scalingWidth, 12*scalingHeight);
     context.closePath();
   }
   context.beginPath();
@@ -203,8 +208,8 @@ function renderArea(area, players, focus, old) {
 }
 
 function renderTiles(area, players, focus) {
-  var boundary = area.boundary; let wid = boundary.w*32, heig = boundary.h*32, world = game.worlds[players[0].world];
-  var tile_image = (settings.tiles) ? tiles : notiles;
+  var boundary = area.boundary; let wid = boundary.w*fov, heig = boundary.h*fov, world = game.worlds[players[0].world];
+  var tile_image = tiles;
   const can = createOffscreenCanvas(wid,heig)
   const ctx = can.getContext('2d');
   ctx.translate(-Math.round(width / 2 + ((area.pos.x)) * fov),-Math.round(height / 2 + ((area.pos.y)) * fov))
@@ -240,17 +245,10 @@ function renderTiles(area, players, focus) {
           ctx.drawImage(tile_image, Math.abs(posX) * 32 + textureType * 128, Math.abs(posY) * 32 + area.texture * 128, 32, 32, Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
           ctx.closePath();
           ctx.beginPath();
-          ctx.fillStyle = area.background_color;
+          ctx.fillStyle = (zone.background_color) ? zone.background_color : area.background_color;
           ctx.fillRect(Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
           ctx.fill();
           ctx.closePath();
-          if (zone.color) {
-            ctx.beginPath();
-            ctx.fillStyle = zone.background_color;
-            ctx.fillRect(Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
-            ctx.fill();
-            ctx.closePath();
-          }
       }
     }
   }
@@ -270,15 +268,17 @@ function renderFirstEntities(area, players, focus) {
           context.beginPath();
           context.fillStyle = "black";
           context.fillRect(-entities[i][j].size.x*fov,-entities[i][j].size.y*fov, entities[i][j].size.x*fov*2, entities[i][j].size.y*fov*2);
-          //context.fillRect(-(width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov), -(height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov), entities[i][j].size.x*fov*2, entities[i][j].size.y*fov*2);
           context.fill();
           context.closePath();
           context.restore();
         }else {
           context.beginPath();
           context.fillStyle = entities[i][j].color;
-          if (entities[i][j].Harmless&&!entities[i][j].texture) {
+          if ((entities[i][j].Harmless || entities[i][j].healing>0)&&!entities[i][j].texture) {
             context.globalAlpha = 0.4;
+            if(entities[i][j].healing>0){
+              context.fillStyle="rgb(0, 221, 0)";
+            }
           }
           if(entities[i][j].radius * fov>0){
           if(!entities[i][j].texture)context.arc(width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov, entities[i][j].radius * fov, 0, Math.PI * 2, true);
@@ -293,7 +293,7 @@ function renderFirstEntities(area, players, focus) {
             }
             if(Texture){
               context.imageSmoothingEnabled = true;
-              context.drawImage(Texture,width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x-0.95) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y-0.95) * fov,entities[i][j].radius * fov*2,entities[i][j].radius * fov*2)
+              context.drawImage(Texture,width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x-entities[i][j].radius) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y-entities[i][j].radius) * fov,entities[i][j].radius * fov*2,entities[i][j].radius * fov*2)
               Texture = 0;
               context.imageSmoothingEnabled = false;
             }
@@ -341,6 +341,12 @@ function renderPlayers(area, players, focus) {
         context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, 190/32 * fov, 0, Math.PI * 2, true);
         context.fill();
         context.closePath();
+      } else if(player.auraType == 4){
+        context.beginPath();
+        context.fillStyle = "rgba(76, 240, 161, 0.25)";
+        context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, 190/32 * fov, 0, Math.PI * 2, true);
+        context.fill();
+        context.closePath();
       }
     }
 
@@ -349,28 +355,26 @@ function renderPlayers(area, players, focus) {
       context.beginPath();
       context.fillStyle = colors[player.prevColor]
       context.strokeStyle = "black"
-      context.lineWidth = 2;
+      context.lineWidth = 2/(32/fov);
       context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.clownBallSize/32 * fov, 0, Math.PI * 2, true);
       context.fill();
       if(settings.outline)context.stroke();
       context.closePath();
     }
-    context.beginPath();
-    if (!player.die) {
-      if(player.wallGod){
-        context.fillStyle = "rgba(139,0,0,.5)"
-      } else if (player.god&&!player.reaperShade) {
-        context.fillStyle = "purple";
-      } else {
-        context.fillStyle = player.tempColor;
-        let rgb = hexToRgb(player.tempColor);
-        if(player.night){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.6)`}
-        if(player.mortarTime>0&&player.mortarTime<1000){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},${1-player.mortarTime/1000})`}
-        if(player.fusion){context.fillStyle="rgba(60, 60, 75)"}
-      }
+    let rgb;
+    if(player.wallGod){
+      context.fillStyle = "rgba(139,0,0,.5)"
+    } else if (player.god&&!player.reaperShade) {
+      context.fillStyle = "purple";
     } else {
-      context.fillStyle = "red";
+      context.fillStyle = player.tempColor;
+      rgb = hexToRgb(player.tempColor);
+      if(player.night){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.6)`}
+      if(player.mortarTime>0&&player.mortarTime<1000){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},${1-player.mortarTime/1000})`}
+      if(player.fusion){context.fillStyle="rgba(60, 60, 75)"}
     }
+    if(player.isDead && !player.god)context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.4)`;
+    context.beginPath();
     if (player.type==7) {
       if (player.shape>0) {
         context.moveTo(width / 2 + (player.pos.x - focus.x + player.radius * Math.cos(-Math.PI/2)) * fov, height / 2 + (player.pos.y - focus.y + player.radius * Math.sin(-Math.PI/2)) * fov);
@@ -422,6 +426,12 @@ function renderPlayers(area, players, focus) {
     context.textAlign = "center";
     if(!player.reaperShade)context.fillText(player.name, width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov - player.radius * fov - 11 / 32 * fov);
     context.closePath();
+    if(player.isDead){
+      context.textAlign="center";
+      context.fillStyle="red";
+      context.font = 16 / 32 * fov + "px Tahoma, Verdana, Segoe, sans-serif";
+      context.fillText((Math.abs(Math.floor(player.deathTimer)/1e3)).toFixed(0),width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov + 6 * (fov/32))
+    }
   }
 }
 
@@ -492,11 +502,21 @@ function renderSecondEntities(area, players, focus) {
           context.globalAlpha = 1;
           context.beginPath();
           context.fillStyle = entities[i][j].color;
-          if (entities[i][j].Harmless&&!entities[i][j].texture) {
+          if ((entities[i][j].Harmless || entities[i][j].healing>0)&&!entities[i][j].texture) {
             context.globalAlpha = 0.4;
           }
           if (entities[i][j].alpha){
             if(!entities[i][j].Harmless){context.globalAlpha = entities[i][j].alpha;}
+          }
+          if (entities[i][j].color_change){
+            const rgbColor = hexToRgb(entities[i][j].color);
+            rgbColor[0] = parseInt(rgbColor[0])+entities[i][j].color_change;
+            rgbColor[1] = parseInt(rgbColor[1])-1.45*entities[i][j].color_change;
+            rgbColor[2] = parseInt(rgbColor[2])-1.3*entities[i][j].color_change;
+            context.fillStyle = `rgb(${rgbColor[0]},${rgbColor[1]},${rgbColor[2]})`;
+          }
+          if(entities[i][j].healing>0){
+            context.fillStyle="rgb(0, 221, 0)";
           }
           context.lineWidth = 2
           context.strokeStyle = "black"
@@ -531,6 +551,7 @@ function renderSecondEntities(area, players, focus) {
               context.fill();
             }
             if (entities[i][j].outline && settings.outline) {
+              context.lineWidth = 2/(32/fov);
               context.stroke()
             }
             context.globalAlpha = 1;
@@ -607,7 +628,7 @@ function renderUI(area, players, focus) {
   context.beginPath();
   context.strokeStyle = "#000000";
   context.fillStyle = "rgba(0, 0, 0, 0.8)"
-  if(!(game.players[0].magnet||game.players[0].flashlight)){context.fillRect(width / 2 - 516 / 2, height - 85, 516, 85);}
+  if(!(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern)){context.fillRect(width / 2 - 516 / 2, height - 85, 516, 85);}
   else{context.fillRect(width / 2 - 516 / 2, height - 85, 516+82, 85);}
   context.fill();
   context.closePath();
@@ -615,7 +636,7 @@ function renderUI(area, players, focus) {
   context.beginPath();
   context.strokeStyle = "#000000";
   context.fillStyle = `rgb(${c[0]},${c[1]},${c[2]},0.4)`
-  if(!(game.players[0].magnet||game.players[0].flashlight)){context.fillRect(width / 2 - 516 / 2, height - 100, 516, 15);}
+  if(!(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern)){context.fillRect(width / 2 - 516 / 2, height - 100, 516, 15);}
   else{context.fillRect(width / 2 - 516 / 2, height - 100, 516+82, 15);}
   context.fill();
   context.closePath();
@@ -623,16 +644,17 @@ function renderUI(area, players, focus) {
   context.beginPath();
   context.strokeStyle = "#000000";
   context.fillStyle = game.players[0].color
-  if(!(game.players[0].magnet||game.players[0].flashlight)){context.fillRect(width / 2 - 516 / 2, height - 100, (game.players[0].currentExperience / game.players[0].maxExperience) * 516, 15);}
+  if(!(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern)){context.fillRect(width / 2 - 516 / 2, height - 100, (game.players[0].currentExperience / game.players[0].maxExperience) * 516, 15);}
   else{context.fillRect(width / 2 - 516 / 2, height - 100, (game.players[0].currentExperience / game.players[0].maxExperience) * 598, 15);}
   context.fill();
   context.closePath();
 
-  if(game.players[0].magnet||game.players[0].flashlight){
+  if(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern){
     context.beginPath();
     if(game.players[0].magnet){if(game.players[0].magnetDirection == "Down")context.drawImage(magnetDown,width/2+(516-132+82+82)/2,height-68,48,48)
     else if(game.players[0].magnetDirection == "Up")context.drawImage(magnetUp,width/2+(516-132+82+82)/2,height-68,48,48)}
     else if(game.players[0].flashlight){context.drawImage(flashlight,width/2+(516-132+82+82)/2,height-68,48,48)}
+    else if(game.players[0].lantern){context.drawImage(lantern,width/2+(516-132+82+82)/2,height-68,48,48)}
     context.closePath();
 
     context.beginPath();
@@ -653,6 +675,14 @@ function renderUI(area, players, focus) {
     var text1 = "[Z] or [J]";
     var text2 = "[X] or [K]";
     var text3 = "Locked";
+    if(players[0].usesPellets == 1 || players[0].usesPellets == 3){
+      players[0].firstAbilityCooldown = players[0].firstPellet;
+      players[0].firstTotalCooldown = players[0].firstPelletTotal;
+    }
+    if(players[0].usesPellets == 2 || players[0].usesPellets == 3){
+      players[0].secondAbilityCooldown = players[0].secondPellet;
+      players[0].secondTotalCooldown = players[0].secondPelletTotal;
+    }
     for(var a = 0; a<2; a++){
       var text = (a==1) ? text1 : text2;
       var ab = (a==1) ? players[0].ab1 : players[0].ab2;
@@ -662,6 +692,7 @@ function renderUI(area, players, focus) {
       var ab1ML = (a==1) ? players[0].ab1ML||false : players[0].ab2ML||false;
       if(!abL){text = text3;}
       var correct = (a==1) ? 0 : 82;
+      var cooldownTime = abC/abTC;
       context.fillStyle = "white";
       context.font = 10 + "px Tahoma, Verdana, Segoe, sans-serif";
       context.textAlign = "center";
@@ -669,12 +700,12 @@ function renderUI(area, players, focus) {
       context.drawImage(ab, width / 2 - 516 / 2 + 105 + 41 + 246 + correct - 24, height - 85 - 3 + 17 + 44 - 17 - 24,48,48)
       context.fillText(text, width / 2 - 516 / 2 + 105 + 41 + 246 + correct, height - 85 + 17/2 + 44 - 17 + 24 + 17)
       context.closePath();
-      if(!abL){context.fillStyle="rgba(0, 0, 0, 0.6)"}
+      if(!abL||cooldownTime==1){context.fillStyle="rgba(0, 0, 0, 0.6)"}
       else{context.fillStyle="rgba(0, 0, 0, 0.2)"};
       context.fillRect(width / 2 - 516 / 2 + 105 + 41 + 246 + correct - 24, height - 85 - 3 + 17 + 44 - 17 - 24,48,48)
       context.lineWidth = 1;
       for(var p = 0; p<5; p++){
-        (!abL)?context.strokeStyle="rgb(150, 150, 150)":context.strokeStyle="rgb(200, 200, 200)"
+        (!abL||cooldownTime==1)?context.strokeStyle="rgb(150, 150, 150)":context.strokeStyle="rgb(200, 200, 200)"
         context.beginPath();
         var h = width / 2 - 516 / 2 + 105 + 41 + 246 + correct - 24 + 5; var f = h + 40; var y = height - 85 - 3 + 17 + 44 - 17 - 24 + 45 - 48 - 6;
         var b = (ab1ML)? (h+(f-h)*(2/(5-1))):h+(f-h)*(p/(5-1))
@@ -693,7 +724,6 @@ function renderUI(area, players, focus) {
         if(abL)context.stroke();
         context.closePath();
       }
-      var cooldownTime = abC/abTC;
       context.fillStyle="rgba(0, 0, 0, 0.6)";
       sectorInRect(context,width / 2 - 516 / 2 + 105 + 41 + 246 + correct - 24,height - 85 - 3 + 17 + 44 - 17 - 24,48,48,360*(1-cooldownTime)-90)
     }
@@ -758,7 +788,7 @@ function renderUI(area, players, focus) {
   context.fillStyle = "white";
   context.font = 22 + "px Tahoma, Verdana, Segoe, sans-serif";
   context.textAlign = "center";
-  context.fillText(players[0].speed, width / 2 - 516 / 2 + 105 + 41, height - 85 + 17 + 44 - 17)
+  context.fillText(parseFloat(players[0].speed.toFixed(1)), width / 2 - 516 / 2 + 105 + 41, height - 85 + 17 + 44 - 17)
   context.closePath();
 
   context.beginPath();
@@ -792,7 +822,7 @@ function renderUI(area, players, focus) {
 
 function renderAssets(area, players, focus) {
   context.globalAlpha = 1;
-  var tile_image = (settings.tiles) ? tiles : notiles;
+  var tile_image = tiles
   var player = players[0];
   for (var i in area.assets) {
     var zone = area.assets[i];
