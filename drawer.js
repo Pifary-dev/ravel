@@ -187,16 +187,18 @@ function renderArea(area, players, focus, old) {
   context.fill();
   context.stroke();
   context.closePath();
+  let scalingWidth = width / 1280;
+  let scalingHeight = height / 720;
   if (players[0].hasCheated) {
     context.beginPath();
     context.fillStyle = "purple"
-    context.fillRect(370, height - (width / 2 - 258 - 370), width / 2 - 258 - 370, width / 2 - 258 - 370);
+    context.fillRect(370, height-12*scalingHeight, 12*scalingWidth, 12*scalingHeight);
     context.closePath();
   }
   if (settings.sandbox) {
     context.beginPath();
     context.fillStyle = "black"
-    context.fillRect(370, height - ((width / 2 - 258 - 370) * 2), width / 2 - 258 - 370, width / 2 - 258 - 370);
+    context.fillRect(370, height-24*scalingHeight, 12*scalingWidth, 12*scalingHeight);
     context.closePath();
   }
   context.beginPath();
@@ -206,7 +208,7 @@ function renderArea(area, players, focus, old) {
 }
 
 function renderTiles(area, players, focus) {
-  var boundary = area.boundary; let wid = boundary.w*32, heig = boundary.h*32, world = game.worlds[players[0].world];
+  var boundary = area.boundary; let wid = boundary.w*fov, heig = boundary.h*fov, world = game.worlds[players[0].world];
   var tile_image = tiles;
   const can = createOffscreenCanvas(wid,heig)
   const ctx = can.getContext('2d');
@@ -247,13 +249,6 @@ function renderTiles(area, players, focus) {
           ctx.fillRect(Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
           ctx.fill();
           ctx.closePath();
-          /*if (zone.color) {
-            ctx.beginPath();
-            ctx.fillStyle = zone.background_color;
-            ctx.fillRect(Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
-            ctx.fill();
-            ctx.closePath();
-          }*/
       }
     }
   }
@@ -360,7 +355,7 @@ function renderPlayers(area, players, focus) {
       context.beginPath();
       context.fillStyle = colors[player.prevColor]
       context.strokeStyle = "black"
-      context.lineWidth = 2;
+      context.lineWidth = 2/(32/fov);
       context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.clownBallSize/32 * fov, 0, Math.PI * 2, true);
       context.fill();
       if(settings.outline)context.stroke();
@@ -556,6 +551,7 @@ function renderSecondEntities(area, players, focus) {
               context.fill();
             }
             if (entities[i][j].outline && settings.outline) {
+              context.lineWidth = 2/(32/fov);
               context.stroke()
             }
             context.globalAlpha = 1;
