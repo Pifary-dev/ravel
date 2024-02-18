@@ -212,45 +212,25 @@ function renderTiles(area, players, focus) {
   var tile_image = tiles;
   const can = createOffscreenCanvas(wid,heig)
   const ctx = can.getContext('2d');
-  ctx.translate(-Math.round(width / 2 + ((area.pos.x)) * fov),-Math.round(height / 2 + ((area.pos.y)) * fov))
+  const zoneCanvas = createOffscreenCanvas(128,128);
+  const zoneCTX = zoneCanvas.getContext('2d');
+	ctx.scale(fov/32,fov/32);
   for (var i in area.zones) {
     var zone = area.zones[i];
-    var areaXMinus = 0;
-    var areaYMinus = 0;
-    zone.size.x = Math.round(zone.size.x)
-    zone.size.y = Math.round(zone.size.y)
-    if(area.pos.x!=Math.round(area.pos.x))areaXMinus = Math.round(area.pos.x) - area.pos.x
-    if(area.pos.y!=Math.round(area.pos.y))areaYMinus = Math.round(area.pos.y) - area.pos.y
-    for (var j = 0; j < zone.size.x; j++) {
-      for (var k = 0; k < zone.size.y; k++) {
-        ctx.beginPath();
-        var posX = ((area.pos.x + zone.pos.x + j) % 4);
-        var posY = ((area.pos.y + zone.pos.y + k) % 4);
-        if (posX < 0) {
-          posX = 4 - Math.abs(posX);
-        }
-        if (posY < 0) {
-          posY = 4 - Math.abs(posY);
-        }
-        var sizeX = zone.size.x;
-        posX-=areaXMinus;
-        posY-=areaYMinus;
-        //console.log(Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov))
-        //console.log(Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov))
-        //console.log(width,height)
-        var textureType = zone.type
-        if(zone.type == 4){textureType = 2;}
-        else if(zone.type == 5){textureType = 4;}
-          ctx.imageSmoothingEnabled = true;
-          ctx.drawImage(tile_image, Math.abs(posX) * 32 + textureType * 128, Math.abs(posY) * 32 + area.texture * 128, 32, 32, Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
-          ctx.closePath();
-          ctx.beginPath();
-          ctx.fillStyle = (zone.background_color) ? zone.background_color : area.background_color;
-          ctx.fillRect(Math.round(width / 2 + ((area.pos.x + zone.pos.x + j)) * fov), Math.round(height / 2 + ((area.pos.y + zone.pos.y + k)) * fov), fov, fov);
-          ctx.fill();
-          ctx.closePath();
-      }
-    }
+    var textureType = zone.type;
+    if(zone.type == 4){textureType = 2;}
+    else if(zone.type == 5){textureType = 4;}
+		zoneCTX.drawImage(tile_image,textureType*128,area.texture*128,128,128,0,0,128,128);
+    ctx.imageSmoothingEnabled = true;
+		var pattern=ctx.createPattern(zoneCanvas,"repeat");
+    ctx.fillStyle=pattern;
+    ctx.beginPath();
+    ctx.fillRect(Math.round((zone.pos.x)*32),Math.round((zone.pos.y)*32),zone.size.x*32,zone.size.y*32);
+    ctx.closePath();
+    ctx.fillStyle = (zone.background_color) ? zone.background_color : area.background_color;
+    ctx.beginPath();
+    ctx.fillRect(Math.round((zone.pos.x)*32),Math.round((zone.pos.y)*32),zone.size.x*32,zone.size.y*32);
+    ctx.closePath();
   }
   return {can:can,ctx:ctx};
 }
