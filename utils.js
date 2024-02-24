@@ -777,5 +777,7 @@ function zoneTypeToId(type){
       return 4;
     case "removal":
       return 5;
+    case "dummy":
+      return 6;
   }
 }

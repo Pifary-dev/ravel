@@ -962,7 +962,7 @@ class Area {
           if (this.preset[i].type[rand] == "fake_pumpkin") {
             enemy = new FakePumpkin(new Vector(posX, posY), radius / 32)
           }
-          if (this.preset[i].type[rand] == "experience_draining") {
+          if (this.preset[i].type[rand] == "experience_drain") {
             enemy = new ExperienceDraining(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
           }
           if (this.preset[i].type[rand] == "fire_trail") {

@@ -577,18 +577,18 @@ function renderMinimap(area, players, focus) {
   var yOff = minimapSize.y - bound.h * coef
   for (var i in area.zones) {
     context.beginPath();
-    if (area.zones[i].type == 0) {
-      context.fillStyle = "rgb(255, 255, 255)"
+    var zoneType=area.zones[i].type;
+    switch(zoneType){
+      case 0:context.fillStyle = "rgb(255, 255, 255)";break;
+      case 1:case 6:context.fillStyle = "rgb(195, 195, 195)";break;
+      case 2:case 4:context.fillStyle = "rgb(255, 244, 108)";break;
+      case 3:context.fillStyle = "rgb(106, 208, 222)";break;
+      case 5:context.fillStyle = "rgb(255, 249, 186)";break;
     }
-    if (area.zones[i].type == 1) {
-      context.fillStyle = "rgb(195, 195, 195)"
-    }
-    if (area.zones[i].type == 2) {
-      context.fillStyle = "rgb(255, 244, 108)"
-    }
-    if (area.zones[i].type == 3) {
-      context.fillStyle = "rgb(106, 208, 222)"
-    }
+    context.fillRect((area.zones[i].pos.x - bound.x) * coef, height - minimapSize.y + (area.zones[i].pos.y - bound.y) * coef + yOff, area.zones[i].size.x * coef, area.zones[i].size.y * coef);
+    context.closePath();
+    context.beginPath();
+    context.fillStyle=area.zones[i].background_color;
     context.fillRect((area.zones[i].pos.x - bound.x) * coef, height - minimapSize.y + (area.zones[i].pos.y - bound.y) * coef + yOff, area.zones[i].size.x * coef, area.zones[i].size.y * coef);
     context.closePath();
   }
@@ -624,8 +624,8 @@ function renderUI(area, players, focus) {
   context.beginPath();
   context.strokeStyle = "#000000";
   context.fillStyle = game.players[0].color
-  if(!(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern)){context.fillRect(width / 2 - 516 / 2, height - 100, (game.players[0].currentExperience / game.players[0].maxExperience) * 516, 15);}
-  else{context.fillRect(width / 2 - 516 / 2, height - 100, (game.players[0].currentExperience / game.players[0].maxExperience) * 598, 15);}
+  if(!(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern)){context.fillRect(width / 2 - 516 / 2, height - 100, ((Math.floor(game.players[0].experience)-Math.floor(game.players[0].previousLevelExperience)) / (Math.floor(game.players[0].nextLevelExperience)-Math.floor(game.players[0].previousLevelExperience))) * 516, 15);}
+  else{context.fillRect(width / 2 - 516 / 2, height - 100, ((Math.floor(game.players[0].experience)-Math.floor(game.players[0].previousLevelExperience)) / (Math.floor(game.players[0].nextLevelExperience)-Math.floor(game.players[0].previousLevelExperience))) * 598, 15);}
   context.fill();
   context.closePath();
 

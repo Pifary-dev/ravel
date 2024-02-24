@@ -112,6 +112,7 @@ class Player {
     this.speed = speed;
     this.world = 0;
     this.area = 0;
+    this.experienceDraining=false;
     this.maxEnergy = 30;
     this.vertSpeed = -1;
     this.reaperShade = false;
@@ -161,8 +162,7 @@ class Player {
     this.dyingPos = new Vector(0, 0);
     this.level = 1;
     this.points = (settings.no_points)? 0 : 150;
-    this.maxExperience = this.level * 4;
-    this.currentExperience = 0;
+    this.experience = 0;
     this.deathCounter = 0;
     this.hasCheated = false;
     this.safeZone = true;
@@ -174,6 +174,8 @@ class Player {
     this.d_y = 0;
     this.cent_max_distance = 10;
     this.cent_distance = 0;
+    this.previousLevelExperience = 0;
+    this.nextLevelExperience = 4;
     this.cent_input_ready = true;
     this.cent_deceleration = 0.50;
     this.cent_acceleration = 0.50;
@@ -378,17 +380,17 @@ class Player {
       }
     }
   }
+  calculateExperience(HeroLevel){
+    return Math.floor(Math.min(HeroLevel,100)*Math.min(HeroLevel+1,101)*2+Math.max(0,HeroLevel*(HeroLevel+1)*(2*HeroLevel-179)/60-3535))
+  }
   updateExperience(toAdd){
-    this.currentExperience += toAdd;
-    while (this.currentExperience > this.maxExperience-1) {
+    this.experience += toAdd;
+    while (this.experience >= this.nextLevelExperience) {
+      this.previousLevelExperience = this.calculateExperience(this.level);
       this.level++;
-      this.currentExperience -= this.maxExperience;
+      this.experience = this.previousLevelExperience;
+      this.nextLevelExperience = this.calculateExperience(this.level);
       this.points++;
-      if(this.level > 100){
-        this.maxExperience = this.level * (4 + (Math.ceil(this.level - 100) / 10));
-      } else {
-        this.maxExperience = this.level * 4;
-      }
     }
   }
   update(time, friction, magnet) {
@@ -583,7 +585,17 @@ class Player {
         this.energy = 0;
       }
     }
-
+    if(this.experienceDraining){
+      this.experience-=(2*this.level*time/1e3)*this.effectImmune/this.effectReplayer;
+      this.experience=Math.max(0,this.experience);
+      if(this.experience<this.previousLevelExperience){
+        var diff=this.previousLevelExperience-this.experience;
+        this.previousLevelExperience-=diff;
+        this.nextLevelExperience+=diff;
+        this.previousLevelExperience=Number(this.previousLevelExperience.toFixed(5));
+        this.nextLevelExperience=Number(this.nextLevelExperience.toFixed(5));
+      }
+    }
     if(this.speedghost){
       this.speed-=(0.1*this.effectImmune)/this.effectReplayer*timeFix;
       this.statSpeed-=(0.1*this.effectImmune)/this.effectReplayer*timeFix;
@@ -696,6 +708,7 @@ class Player {
     this.cobweb = false;
     this.sticky = false;
     this.draining = false;
+    this.experienceDraining = false;
     this.speedghost = false;
     this.regenghost = false;
     this.inEnemyBarrier = false;
@@ -3677,7 +3690,7 @@ class ExperienceDraining extends Enemy {
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
-      
+      player.experienceDraining=true;
     }
   }
 }
