@@ -617,8 +617,8 @@ class Player {
     }
 
     if((this.quicksand || this.quicksand === 0) && !(this.god||this.inBarrier||(this.invicible&&this.className=="Magmax"))){
-      this.pos.x -= Math.cos(this.quicksand * (Math.PI/180)) * (5/32) * timeFix;
-      this.pos.y -= Math.sin(this.quicksand * (Math.PI/180)) * (5/32) * timeFix;  
+      this.pos.x += Math.cos(this.quicksand * (Math.PI/180)) * (5/32) * timeFix;
+      this.pos.y += Math.sin(this.quicksand * (Math.PI/180)) * (5/32) * timeFix;  
       console.log(this.quicksand);
       this.quicksand = false;
     }
