@@ -124,6 +124,8 @@ class Player {
     this.regen = 1;
     this.vel = new Vector(0, 0);
     this.invicible = false;
+    this.tempPrevExperience=0;
+    this.tempNextExperience=4;
     this.speedMultiplier = 1;
     this.speedAdditioner = 0;
     this.radiusMultiplier = 1;
@@ -386,10 +388,12 @@ class Player {
   updateExperience(toAdd){
     this.experience += toAdd;
     while (this.experience >= this.nextLevelExperience) {
-      this.previousLevelExperience = this.calculateExperience(this.level);
+      this.experience-=this.tempPrevExperience-this.previousLevelExperience;
       this.level++;
-      this.experience = this.previousLevelExperience;
-      this.nextLevelExperience = this.calculateExperience(this.level);
+        this.tempPrevExperience=this.calculateExperience(this.level-1)
+        this.tempNextExperience=this.calculateExperience(this.level)
+        this.nextLevelExperience=this.tempNextExperience;
+        this.previousLevelExperience=this.tempPrevExperience;
       this.points++;
     }
   }
