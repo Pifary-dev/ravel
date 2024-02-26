@@ -396,6 +396,9 @@ class World {
           if (values.move_clockwise!==undefined) {
             object.move_clockwise = values.move_clockwise;
           }
+          if (values.initial_side!==undefined) {
+            object.initial_side = values.initial_side;
+          }
           if (values.horizontal!==undefined) {
             object.horizontal = values.horizontal;
           }
@@ -825,7 +828,7 @@ class Area {
             enemy = new Normal(new Vector(posX, posY), radius / 32, speed, angle)
           }
           if (this.preset[i].type[rand] == "wall") {
-            enemy = new Wall(new Vector(posX, posY), radius / 32, speed, this.getActiveBoundary(), j, count,this.preset[i].move_clockwise)
+            enemy = new Wall(new Vector(posX, posY), radius / 32, speed, this.getActiveBoundary(), j, count,this.preset[i].move_clockwise,this.preset[i].initial_side)
           }
           if (this.preset[i].type[rand] == "dasher") {
             enemy = new Dasher(new Vector(posX, posY), radius / 32, speed, angle)

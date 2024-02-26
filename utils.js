@@ -44,7 +44,7 @@ var entityTypes = [
   "negative_magnetic_sniper",
   "positive_magnetic_ghost",
   "negative_magnetic_ghost",
-  "experience_draining",
+  "experience_drain",
   "fire_trail",
   "wind_ghost",
   "ice_ghost",
@@ -509,7 +509,6 @@ function collisionEnemy(enemy,boundary,vel,pos,radius,inject = ""){
           enemy.pos.y = circle.y;
         }
       }
-      enemy.isSpawned = false;
   }
   
   if(enemy.useRealVel){
@@ -525,8 +524,13 @@ function collisionEnemy(enemy,boundary,vel,pos,radius,inject = ""){
       enemy.targetAngle = enemy.angle;
     } else if(enemy.turning){
       enemy.dir = -enemy.dir;
+    } else if(enemy.wall){
+      enemy.direction = enemy.rotate(enemy.direction,enemy.move_clockwise);
     }
   }
+
+  enemy.isSpawned = false;
+
   return {col:collision};
 }
 

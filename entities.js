@@ -179,8 +179,8 @@ class Player {
     this.previousLevelExperience = 0;
     this.nextLevelExperience = 4;
     this.cent_input_ready = true;
-    this.cent_deceleration = 0.50;
-    this.cent_acceleration = 0.50;
+    this.cent_deceleration = 0.666;
+    this.cent_acceleration = 0.333;
     this.cent_accelerating = false;
     this.cent_is_moving = false;
     this.mortarTime = 0;
@@ -324,18 +324,33 @@ class Player {
             if(this.slippery){this.mouse_distance_full_strenght = 1;}
 
             if(this.className!="Cent" || (this.className=="Cent" && this.cent_input_ready)){
-              if(this.className=="Cent"){this.cent_input_ready = false; this.cent_is_moving = true; this.cent_accelerating = true; this.mouse_distance_full_strenght = 1;}
+
+              if(this.className=="Cent"){
+                this.cent_input_ready = false;
+                this.cent_is_moving = true;
+                this.cent_accelerating = true; 
+                this.mouse_distance_full_strenght = 1;
+              }
+
               this.dirX = Math.round(input.mouse.x - width / 2);
               this.dirY = Math.round(input.mouse.y - height / 2);
               this.dist = distance(new Vector(0, 0), new Vector(this.dirX, this.dirY));
+
               if (this.dist > this.mouse_distance_full_strenght) {
                 this.dirX = this.dirX * (this.mouse_distance_full_strenght / this.dist);
                 this.dirY = this.dirY * (this.mouse_distance_full_strenght / this.dist);
               }
+              
               this.mouse_angle = Math.atan2(this.dirY,this.dirX);
               this.input_angle = this.mouse_angle;
               this.mouse_distance = Math.min(this.mouse_distance_full_strenght,Math.sqrt(this.dirX**2+this.dirY**2))
               this.distance_movement*=this.mouse_distance/this.mouse_distance_full_strenght;
+
+              if(this.className == "Cent" && this.cent_input_ready){
+                this.cent_saved_angle = this.input_angle;
+                this.cent_input_ready = false;
+                this.cent_is_moving = true;
+              }
 
               this.d_x = this.distance_movement*Math.cos(this.mouse_angle)
               this.d_y = this.distance_movement*Math.sin(this.mouse_angle)
@@ -349,26 +364,35 @@ class Player {
         } else if (!this.cent_is_moving){
             this.dirY = 0; this.dirX = 0;
             this.moving = false;
-            if(this.className == "Cent"  && this.cent_input_ready)if(input.keys[87] || input.keys[38]||input.keys[65] || input.keys[37]||input.keys[83] || input.keys[40]||input.keys[68] || input.keys[39]){this.cent_is_moving = true;}
-            if(input.keys[87] || input.keys[38]||input.keys[65] || input.keys[37]||input.keys[83] || input.keys[40]||input.keys[68] || input.keys[39]){
+            if(this.isMovementKeyPressed(input)){
+              if(this.className == "Cent" && this.cent_input_ready) this.cent_is_moving = true;
               this.moving=true;
               input.isMouse = false;
               this.cent_input_ready = false;
               this.cent_accelerating = true;
             }
             if (input.keys[83] || input.keys[40]) {
-              this.dirY=1;//if(this.className!="Cent"){if(!this.magnet||this.magnet&&this.safeZone){if(this.vertSpeed==-1){this.d_y = this.speed;this.addY = this.speedAdditioner}else{this.d_y = this.vertSpeed}}}else{this.dirY=1}
+              this.dirY = 1;
             }
             if (input.keys[87] || input.keys[38]) {
-              this.dirY=-1;//if(this.className!="Cent"){if(!this.magnet||this.magnet&&this.safeZone){if(this.vertSpeed==-1){this.d_y = -this.speed;this.addY = -this.speedAdditioner}else{this.d_y= -this.vertSpeed}}}else{this.dirY=-1}
+              this.dirY = -1;
             }
             if (input.keys[65] || input.keys[37]) {
-              this.dirX=-1;//if(this.className!="Cent"){this.d_x = -this.speed;this.addX = -this.speedAdditioner}else{this.dirX=-1}
+              this.dirX = -1;
             }
             if (input.keys[68] || input.keys[39]) {
-              this.dirX=1;//if(this.className!="Cent"){this.d_x = this.speed;this.addX = this.speedAdditioner}else{this.dirX=1}
+              this.dirX = 1;
             }
         }
+
+        this.input_angle = Math.atan2(this.dirY,this.dirX)
+
+        if(this.className == "Cent" && this.cent_input_ready){
+          this.cent_saved_angle = this.input_angle;
+          this.cent_input_ready = false;
+          this.cent_is_moving = true;
+        }
+
         if(this.cent_distance){
           this.d_x = this.dirX * this.cent_distance;
           this.d_y = this.dirY * this.cent_distance;
@@ -381,6 +405,9 @@ class Player {
         this.speed=this.statSpeed;
       }
     }
+  }
+  isMovementKeyPressed(input){
+    return (input.keys[87] || input.keys[38]||input.keys[65] || input.keys[37]||input.keys[83] || input.keys[40]||input.keys[68] || input.keys[39]);
   }
   calculateExperience(HeroLevel){
     return Math.floor(Math.min(HeroLevel,100)*Math.min(HeroLevel+1,101)*2+Math.max(0,HeroLevel*(HeroLevel+1)*(2*HeroLevel-179)/60-3535))
@@ -509,21 +536,21 @@ class Player {
       }
 
       if(this.mortarTime>0){this.speedMultiplier = 0;}
-      if(this.minimum_speed>this.speed+this.speedAdditioner){this.speed=this.minimum_speed}
+      if(this.minimum_speed>this.speed + this.speedAdditioner){this.speed=this.minimum_speed}
         if(this.className == "Cent"){
           this.distance_movement = (this.speed*this.speedMultiplier)+this.speedAdditioner;
-          this.cent_max_distance = this.distance_movement*2;
+          this.cent_max_distance = this.distance_movement * 2;
           if(this.cent_is_moving){
             if(this.cent_accelerating){
               if(this.cent_distance < this.cent_max_distance){
-                this.cent_distance+=this.cent_acceleration*this.distance_movement*timeFix/2;
+                this.cent_distance += this.cent_acceleration * this.distance_movement * timeFix;
               } else {
                 this.cent_distance = this.cent_max_distance;
                 this.cent_accelerating = false;
               }
             } else {
               if(this.cent_distance > 0){
-                this.cent_distance -= this.cent_deceleration * this.distance_movement*timeFix*2;
+                this.cent_distance -= this.cent_deceleration * this.distance_movement * timeFix;
               } else {
                 this.cent_distance = 0;
                 this.cent_accelerating = true;
@@ -532,17 +559,6 @@ class Player {
               }
             }
             if(this.cent_distance<0){this.cent_distance = 0;}
-            if(this.cent_distance){
-              if(input.isMouse){
-              var dirX = Math.round(input.mouse.x - width / 2);
-              var dirY = Math.round(input.mouse.y - height / 2);
-              var dist = distance(new Vector(0, 0), new Vector(dirX, dirY));
-              if (dist > 1) {
-                dirX = dirX * (1 / dist);
-                dirY = dirY * (1 / dist);
-              }
-              this.vel.x = dirX * this.cent_distance;
-              this.vel.y = dirY * this.cent_distance;}}
           }
           this.distance_movement = this.cent_distance;
         }
@@ -619,7 +635,6 @@ class Player {
     if((this.quicksand || this.quicksand === 0) && !(this.god||this.inBarrier||(this.invicible&&this.className=="Magmax"))){
       this.pos.x += Math.cos(this.quicksand * (Math.PI/180)) * (5/32) * timeFix;
       this.pos.y += Math.sin(this.quicksand * (Math.PI/180)) * (5/32) * timeFix;  
-      console.log(this.quicksand);
       this.quicksand = false;
     }
 
@@ -680,23 +695,25 @@ class Player {
     this.d_x += this.slide_x;
     this.d_y += this.slide_y;
 
-    this.abs_d_x = Math.abs(this.d_x)
-    this.abs_d_y = Math.abs(this.d_y)
+    this.abs_d_x = Math.abs(this.d_x);
+    this.abs_d_y = Math.abs(this.d_y);
+
     if(this.className == "Cent"){
       if(this.abs_d_x > this.cent_max_distance && !this.slippery){
         this.d_x *= this.cent_max_distance / this.abs_d_x;
       }
       if(this.abs_d_y > this.cent_max_distance && !this.slippery){
-        this.d_y *= this.cent_max_distance / this.abs_d_y
+        this.d_y *= this.cent_max_distance / this.abs_d_y;
       }
     } else {
       if(this.abs_d_x>this.distance_movement&&!this.slippery){
         this.d_x *= this.distance_movement / this.abs_d_x;
       }
       if(this.abs_d_y>this.distance_movement&&!this.slippery){
-        this.d_y *= this.distance_movement / this.abs_d_y
+        this.d_y *= this.distance_movement / this.abs_d_y;
       }
     }
+    
     this.prevSlippery = this.slippery;
     if (this.abs_d_x<0.001) {
       this.d_x = 0;
@@ -1064,6 +1081,7 @@ class Cent extends Player {
         this.mortarTime = 4000;
       }
     }
+    if(this.god) this.mortarTime = 0;
     if(this.fusionTime>0||this.mortarTime>0){this.invicible = true}else{this.invicible = false;}
     if(this.fusionTime>0){this.fusionTime-=time;if(this.fusionTime<=0){this.fusion = false;}}
   }
@@ -1871,81 +1889,127 @@ class Corrosive extends Enemy {
 }
 
 class Wall extends Enemy {
-  constructor(pos, radius, speed, boundary, index, count, dir) {
+  constructor(pos, radius, speed, boundary, wallIndex, count, move_clockwise = true, initial_side) {
     super(pos, entityTypes.indexOf("wall") - 1, radius, speed, undefined,"#222222");
-    var rad = this.radius;// / count * index;
-    var newBound = {
-      x: boundary.x,// + rad,
-      y: boundary.y,// + rad,
-      w: boundary.w,//- rad * 2,
-      h: boundary.h// - rad * 2
+    this.speed = speed;
+    this.wall = true;
+    this.boundary = boundary
+    this.move_clockwise = !move_clockwise;
+    var x,y;
+    var radius = radius;
+    var distance = wallIndex * (
+      (boundary.w - radius * 2) * 2 +
+      (boundary.h - radius * 2) * 2) / count
+
+    this.initial_side = (initial_side) ? initial_side : 0; 
+
+    if (this.initial_side == 0) {
+      x = (boundary.w / 2) + this.left();
+      y = this.top() + radius;
     }
-    var peri = perimeter(newBound) / count * index + boundary.w/2;
-    var posAround = warpAround(newBound, peri, this.radius);
-    this.pos.x = posAround.x;
-    this.pos.y = posAround.y;
-    this.dirAct = 1;
-    if (dir !== undefined) {
-      //console.log("hi");
-      this.dirAct = -1;
+    else if (this.initial_side == 1) {
+      x = this.right() - radius;
+      y = (boundary.h / 2) + this.top();
     }
-    this.velToAngle();
-    if (posAround.dir == 0) {
-      this.vel.y = 0;
-      this.vel.x = this.speed * this.dirAct;
+    else if (this.initial_side == 2) {
+      x = (boundary.w / 2) + this.left();
+      y = this.bottom() - radius;
     }
-    if (posAround.dir == 1) {
-      this.vel.x = 0;
-      this.vel.y = this.speed * this.dirAct;
+    else if (this.initial_side == 3) {
+      x = this.left() + radius;
+      y = (boundary.h / 2) + this.top();
+    } else {
+      console.error(this.initial_side)
     }
-    if (posAround.dir == 2) {
-      this.vel.y = 0;
-      this.vel.x = -this.speed * this.dirAct;
+
+    this.direction = this.rotate(this.initial_side,this.move_clockwise)
+    var anti_crash = 0;
+    while (distance > 0){
+      if(anti_crash>1000){
+        console.error("It sometimes crashes, but this is in evades code...");
+        break;
+      }
+      anti_crash++;
+      if(this.direction == 0){
+        y -= distance;
+          if(y < this.top() + radius){
+            distance = (this.top() + radius) - y;
+            y = this.top() + radius;
+            this.direction = this.rotate(this.direction,this.move_clockwise);
+          } else break;
+      } else if (this.direction == 1){
+        x += distance;
+        if (x > this.right() - radius){
+          distance = x - (this.right() - radius);
+          x = this.right() - radius;
+          this.direction = this.rotate(this.direction,this.move_clockwise);
+        } else break;
+      } else if (this.direction == 2){
+        y += distance;
+        if (y > this.bottom() - radius){
+          distance = y - (this.bottom() - radius);
+          y = this.bottom() - radius;
+          this.direction = this.rotate(this.direction,this.move_clockwise);
+        } else break;
+      } else if (this.direction == 3){
+        x -= distance;
+        if (x < this.left() + radius){
+          distance = (this.left() + radius) - x;
+          x = this.left() + radius;
+          this.direction = this.rotate(this.direction,this.move_clockwise);
+        } else break;
+      }
     }
-    if (posAround.dir == 3) {
-      this.vel.x = 0;
-      this.vel.y = -this.speed * this.dirAct;
-    }
+    this.pos = new Vector(x,y);
     this.imune = true;
+    this.applySpeed();
   }
-  colide(rect) {
-    if(!rect.wall){
-    this.velToAngle();
-    if (this.pos.x < rect.x + this.radius) {
-      this.vel.x = 0;
-      this.vel.y = -this.speed * this.dirAct;
-    } else
-    if (this.pos.y < rect.y + this.radius) {
-      this.vel.x = this.speed * this.dirAct;
-      this.vel.y = 0;
-    } else
-    if (this.pos.x > rect.x + rect.w - this.radius) {
-      this.vel.x = 0;
-      this.vel.y = this.speed * this.dirAct;
-    } else
-    if (this.pos.y > rect.y + rect.h - this.radius) {
-      this.vel.x = -this.speed * this.dirAct;
-      this.vel.y = 0;
-    }}else{
-      if(this.pos.x - this.radius < rect.x + rect.w&&this.pos.x + this.radius > rect.x&&!(this.pos.y>rect.y+rect.h||this.pos.y<rect.y)){
-        this.vel.x = Math.abs(this.vel.x);
-        this.dirAct = (this.dirAct == 1) ? -1 : 1
-      }
-      if (this.pos.x + this.radius > rect.x&&!(this.pos.x + this.radius > rect.x + rect.w)&&!(this.pos.y>rect.y+rect.h||this.pos.y<rect.y)) {
-        this.vel.x = -Math.abs(this.vel.x);
-        this.dirAct = (this.dirAct == 1) ? -1 : 1
-      }
-      if(this.pos.y - this.radius < rect.y + rect.h&&this.pos.y + this.radius > rect.y&&this.pos.x>rect.x&&this.pos.x<rect.x+rect.w){
-        this.vel.y = Math.abs(this.vel.y);
-        this.dirAct = (this.dirAct == 1) ? -1 : 1
-      }
-      if (this.pos.y + this.radius > rect.y&&!(this.pos.y + this.radius > rect.y + rect.h)&&this.pos.x>rect.x&&this.pos.x<rect.x+rect.w) {
-        this.vel.y = -Math.abs(this.vel.y);
-        this.dirAct = (this.dirAct == 1) ? -1 : 1
-      }
+  top () {
+    return this.boundary.y;
+  }
+  bottom (){
+    return this.boundary.y+this.boundary.h;
+    
+  }
+  right () {
+    return this.boundary.x+this.boundary.w;
+  }
+  left (){
+    return this.boundary.x;
+  }
+
+  rotate(direction,move_clockwise){
+    switch (direction){
+      case 0:
+        return (move_clockwise) ? 3: 1;
+      case 2:
+        return (move_clockwise) ? 1 : 3;
+      case 1:
+        return (move_clockwise) ? 0 : 2;
+      case 3:
+        return (move_clockwise) ? 2 : 0;
     }
+  }
+
+  getVector(){
+    switch(this.direction){
+      case 0: this.vel = new Vector(0,-this.speed); break;
+      case 2: this.vel = new Vector(0,this.speed); break;
+      case 1: this.vel = new Vector(this.speed,0); break;
+      case 3: this.vel = new Vector(-this.speed,0); break;
+    }
+  }
+
+  applySpeed(){
+    this.getVector();
+    this.velToAngle();
+  }
+
+  behavior(time, area, offset, players) {
+    this.applySpeed();
   }
 }
+
 class Dasher extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("dasher") - 1, radius, speed, angle, "#003c66");
@@ -1963,7 +2027,6 @@ class Dasher extends Enemy {
     this.velToAngle();
     this.oldAngle = this.angle;
     this.dasher = true;
-    
   }
   compute_speed(){
     this.speed = (this.time_since_last_dash < this.time_between_dashes && this.time_dashing == 0 && this.time_preparing == 0) ? 0 : (this.time_dashing == 0) ? this.prepare_speed : this.base_speed//(this.time_preparing>0) ? this.prepare_speed : this.base_speed

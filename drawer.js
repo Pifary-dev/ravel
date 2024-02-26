@@ -390,14 +390,16 @@ function renderPlayers(area, players, focus) {
     context.closePath();
     context.beginPath();
     context.fillStyle = "blue";
-    if(player.sweetToothConsumed){context.fillStyle = "rgb(255, 43, 143)";}
+    if(!settings.cooldown)context.fillStyle = "rgb(255, 255, 0)";
+    else if(player.sweetToothConsumed)context.fillStyle = "rgb(255, 43, 143)";
     if(!player.reaperShade)context.fillRect(width / 2 + (player.pos.x - focus.x) * fov - 18 / 32 * fov, height / 2 + (player.pos.y - focus.y) * fov - player.radius * fov - 8 / 32 * fov, 36 / 32 * fov * player.energy / player.maxEnergy, 7 / 32 * fov);
     context.fill();
     context.closePath();
     context.beginPath();
     context.strokeStyle = "rgb(68, 118, 255)";
     context.lineWidth = 1;
-    if(player.sweetToothConsumed){context.strokeStyle = "rgb(212, 0, 100)";}
+    if(!settings.cooldown)context.strokeStyle = "rgb(211, 211, 0)";
+    else if(player.sweetToothConsumed)context.strokeStyle = "rgb(212, 0, 100)";
     if(!player.reaperShade)context.strokeRect(width / 2 + (player.pos.x - focus.x) * fov - 18 / 32 * fov, height / 2 + (player.pos.y - focus.y) * fov - player.radius * fov - 8 / 32 * fov, 36 / 32 * fov, 7 / 32 * fov);
     context.closePath();
     context.beginPath();
