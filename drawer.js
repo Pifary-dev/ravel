@@ -808,6 +808,7 @@ function renderAssets(area, players, focus) {
     var zone = area.assets[i];
     for (var j = 0; j < zone.size.x; j++) {
       for (var k = 0; k < zone.size.y; k++) {
+        if (zone.type > 3) continue;
         var tileSize = 4;
         if (zone.texture == 4) {
           tileSize = 16
