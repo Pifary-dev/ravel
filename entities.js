@@ -59,7 +59,7 @@ class Entity {
     }
     if(game.players[0].className == "Chrono" && this.isEnemy){
       this.teleportPosition.push(new Vector(this.pos.x,this.pos.y));
-      if(this.teleportPosition.length>75*timeFix){this.teleportPosition.shift();}
+      if(this.teleportPosition.length>75/timeFix){this.teleportPosition.shift();}
     }
     var dim = 1 - this.friction;
     this.vel.x *= dim;
@@ -1385,7 +1385,7 @@ class Chrono extends Player {
   abilities(time, area, offset) {
     const timeFix = time / (1000 / 30);
     this.teleportPosition.push(new Vector(this.pos.x,this.pos.y));
-    if(this.teleportPosition.length>75*timeFix){this.teleportPosition.shift();}
+    if(this.teleportPosition.length>75/timeFix){this.teleportPosition.shift();}
 
     if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 30) {
       this.firstAbilityActivated = !this.firstAbilityActivated;
@@ -1393,7 +1393,7 @@ class Chrono extends Player {
       this.pos = this.teleportPosition[0];
       this.energy -= 30;
       if(this.isDead){
-        this.deathTimer+=2500;
+        this.deathTimer+=2500+time;
         if(Math.ceil(this.deathTimer)>=60000){
           this.isDead = false;
         } else {this.deathTimer = 200}
@@ -1837,7 +1837,7 @@ class Enemy extends Entity {
     var timeFix = time / (1000 / 30);
     if(game.players[0].className == "Chrono"){
       this.teleportPosition.push(new Vector(this.pos.x,this.pos.y));
-      if(this.teleportPosition.length>75*timeFix){this.teleportPosition.shift();}
+      if(this.teleportPosition.length>75/timeFix){this.teleportPosition.shift();}
     }
     var vel = new Vector(this.vel.x * this.speedMultiplier, this.vel.y * this.speedMultiplier)
     this.speedMultiplier = 1;
