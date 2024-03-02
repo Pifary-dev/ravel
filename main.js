@@ -39,6 +39,7 @@ function loadMain() {
   game.worlds[17] = new World(new Vector(-61, 1400), 17, magnetic_monopole);
   game.worlds[18] = new World(new Vector(-61, 1440), 18, assorted_alcove);
   game.worlds[19] = new World(new Vector(-61, -15), 19, stellarSquare);
+  game.worlds[20] = new World(new Vector(2898.375, 1400), 20, magnetic_monopole_hard);
 }
 
 function loadHard(){
