@@ -19,6 +19,7 @@ class Entity {
     this.isEnemy = false;
     this.toRemove = false;
     this.no_collide = false;
+    this.teleportPosition = [];
   }
   angleToVel(ang = this.angle) {
     if(this.useRealVel){
@@ -55,6 +56,10 @@ class Entity {
     if(this.sugar_rush>0){
       this.speedMultiplier*=0.05;
       this.sugar_rush-=time;
+    }
+    if(game.players[0].className == "Chrono" && this.isEnemy){
+      this.teleportPosition.push(new Vector(this.pos.x,this.pos.y));
+      if(this.teleportPosition.length>75*timeFix){this.teleportPosition.shift();}
     }
     var dim = 1 - this.friction;
     this.vel.x *= dim;
@@ -1809,7 +1814,6 @@ class Enemy extends Entity {
     this.imune = false;
     this.isEnemy = true;
     this.self_destruction = false;
-    this.teleportPosition = [];
   }
   update(time) {
     if(this.color == "#7e7cd6"){if(time>averageFPS*2||isNaN(averageFPS)||!isActive){return}}
