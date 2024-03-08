@@ -1191,7 +1191,7 @@ class Area {
         if (!this.entities["stalactite_projectile"]) {
           this.entities["stalactite_projectile"] = [];
         }
-        var bullet = new StalactiteProjectile(new Vector(pos.x,pos.y), radius, speed);
+        var bullet = new StalactiteProjectile(new Vector(pos.x,pos.y), radius);
         this.entities["stalactite_projectile"].push(bullet);
         break;
     }

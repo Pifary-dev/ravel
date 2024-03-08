@@ -2309,7 +2309,7 @@ class Stalactite extends Enemy {
   }
   behavior(time, area, offset, players) {
     if (this.collision){
-      if(this.clock == 0) area.addSniperBullet(15, this.pos, undefined, this.radius / 2, this.speed / 2);
+      if(this.clock == 0) area.addSniperBullet(15, this.pos, undefined, this.radius / 2);
       this.clock += time;
       if (this.clock > 1000) {
         this.collision = false;
@@ -2325,9 +2325,10 @@ class Stalactite extends Enemy {
 }
 
 class StalactiteProjectile extends Entity {
-  constructor(pos, radius, speed) {
+  constructor(pos, radius) {
     super(pos, radius, "#614c37");
     let angle = Math.random();
+    let speed = 3;
     let xvel = Math.cos(angle * Math.PI * 2) * speed;
     let yvel = Math.sin(angle * Math.PI * 2) * speed;
     this.angle = angle;

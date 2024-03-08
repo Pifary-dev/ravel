@@ -27,7 +27,7 @@ function renderArea(area, players, focus, old) {
     var player = players[i];
     
     if(player.lantern_active && player.lantern){
-      player.lightCount=200/32;
+      player.lightCount=250/32;
     } else {player.lightCount = 50/32;}
 
     var grad = context1.createRadialGradient(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, 0, width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.lightCount * fov);
