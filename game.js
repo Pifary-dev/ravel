@@ -751,7 +751,7 @@ class Area {
         var pattern_id = this.preset[i].pattern_id;
         var auraRadius = this.preset[i].auraRadius;
         var count = this.preset[i].count||1;
-        var radius = this.preset[i].radius||0;
+        var radius = this.preset[i].radius;
         var speed = this.preset[i].speed||0;
         var x = this.preset[i].x;
         var y = this.preset[i].y;
@@ -802,6 +802,9 @@ class Area {
         }
 
         for (var j = 0; j < count; j++) {
+          var rand = Math.floor(Math.random() * this.preset[i].type.length);
+          if(radius==void 0){radius=getEnemyConfig()[this.preset[i].type[rand].replace("fake_","")+"_enemy"].radius;}
+          if(radius<0){radius = 0;}
           var posX = Math.random() * (boundary.w-radius / 16) + boundary.x + radius / 32;
           var posY = Math.random() * (boundary.h-radius / 16) + boundary.y + radius / 32;
           if (x!==undefined) {
@@ -820,9 +823,6 @@ class Area {
               var posY = y/32;
             }
           }
-
-          if(radius<0){radius = 0;}
-          var rand = Math.floor(Math.random() * this.preset[i].type.length);
           var enemy = new Unknown(new Vector(posX, posY), radius / 32, speed,angle)
           if (this.preset[i].type[rand] == "normal") {
             enemy = new Normal(new Vector(posX, posY), radius / 32, speed, angle)
