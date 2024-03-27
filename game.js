@@ -803,7 +803,7 @@ class Area {
 
         for (var j = 0; j < count; j++) {
           var rand = Math.floor(Math.random() * this.preset[i].type.length);
-          if(radius==void 0){radius=getEnemyConfig()[this.preset[i].type[rand].replace("fake_","")+"_enemy"].radius;}
+          if(radius==void 0){radius=getEnemyConfig()[this.preset[i].type[rand].replace("fake_","")+"_enemy"]?.radius??getEnemyConfig().default.radius;}
           if(radius<0){radius = 0;}
           var posX = Math.random() * (boundary.w-radius / 16) + boundary.x + radius / 32;
           var posY = Math.random() * (boundary.h-radius / 16) + boundary.y + radius / 32;
