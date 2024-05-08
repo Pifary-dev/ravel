@@ -217,9 +217,14 @@ class World {
     var last_height;
     var last_width;
     var last_right;
+    var last_bottom;
     var last_y;
+    var last_x;
+    var last_area_x;
     var last_area_y;
     var last_area_right;
+    var last_area_bottom;
+
     for (var i = 0; i < areas.length; i++) {
       var curArea = areas[i];
       var areaName = "Area "+(i+1);
@@ -233,17 +238,23 @@ class World {
       var propertiesC = curArea.properties;
       var curAreaXStr = curArea.x.toString();
       var curAreaYStr = curArea.y.toString();
-      if (curArea.x == "var x") {
+      if (curAreaXStr.startsWith("var x")) {
         areaPosX = 0;
       }
-      if (curArea.y == "var y") {
+      if (curAreaYStr.startsWith("var y")) {
         areaPosY = 0;
       }
       if (curAreaXStr.startsWith("last_right")) {
         areaPosX = last_area_right;
       }
-      if (curAreaYStr.startsWith("last_y") || curAreaYStr.startsWith("last_bottom")) {
+      if (curAreaYStr.startsWith("last_y")) {
         areaPosY = last_area_y;
+      }
+      if (curAreaXStr.startsWith("last_x")) {
+        areaPosX = last_area_x;
+      }
+      if(curAreaYStr.startsWith("last_bottom")){
+        areaPosY = last_area_bottom;
       }
       if(curAreaXStr.includes("+")){
          areaPosX += parseFloat(curAreaXStr.split("+")[1])
@@ -252,9 +263,10 @@ class World {
       }
       if(curAreaYStr.includes("+")){
         areaPosY += parseFloat(curAreaYStr.split("+")[1])
-     } else if (curAreaYStr.includes("-",1)){
+      } else if (curAreaYStr.includes("-",1)){
         areaPosY -= parseFloat(curAreaYStr.substring(1).split("-")[1])
-     }
+      }
+      last_area_x = areaPosX;
       last_area_y = areaPosY;
       var area = new Area(new Vector(areaPosX / 32, areaPosY / 32));
       area.name = areaName;
@@ -300,34 +312,44 @@ class World {
           area.pellet_multiplier = propertiesC.multiplier;
         }
       }
-      var last_pos = 0;
+      var last_pos_x = 0;
+      var last_pos_y = 0;
       for (var j = 0; j < zones.length; j++) {
         var zone = zones[j];
         var type = zoneTypeToId(zone.type)
         var areax = zone.x;
         var areay = zone.y;
-        if (areax.toString().startsWith("last_right")) {
-          areax = last_right - areaPosX;
-        }
-        if (areay.toString().startsWith("last_y") || areay.toString().startsWith("last_bottom")) {
-          areay = last_y;
-        }
-        var absoluteZoneRight = areax+zone.width+areaPosX;
-        if(last_pos<absoluteZoneRight){
-          last_pos = absoluteZoneRight;
-        }
-        var xPos = areaPosX + areax;
-        var yPos = areaPosY + areay;
-        var spawner = zone.spawner;
         var widthSize = zone.width;
-        var heightSize = zone.height
-
+        var heightSize = zone.height;
         if (heightSize.toString().startsWith("last_height")) {
           heightSize = last_height;
         }
         if (widthSize.toString().startsWith("last_width")) {
           widthSize = last_width;
         }
+        if (areax.toString().startsWith("last_right")) {
+          areax = last_right - areaPosX;
+        }
+        if (areay.toString().startsWith("last_bottom")) {
+          areay = last_bottom - areaPosY;
+        }
+        if (areay.toString().startsWith("last_y")||areay.toString().startsWith("last_top")) {
+          areay = last_y;
+        }
+        if (areax.toString().startsWith("last_x")||areax.toString().startsWith("last_left")) {
+          areax = last_x;
+        }
+        var absoluteZoneRight = areax+zone.width+areaPosX;
+        if(last_pos_x<absoluteZoneRight){
+          last_pos_x = absoluteZoneRight;
+        }
+        var absoluteZoneBottom = areay+zone.height+areaPosY;
+        if(last_pos_y<absoluteZoneBottom){
+          last_pos_y = absoluteZoneBottom;
+        }
+        var xPos = areaPosX + areax;
+        var yPos = areaPosY + areay;
+        var spawner = zone.spawner;
         var block = new Zone(new Vector(xPos / 32 - areaPosX / 32, yPos / 32 - areaPosY / 32), new Vector(widthSize / 32, heightSize / 32), type);
         block.background_color = area.background_color
         if (zone.properties!==undefined) {
@@ -434,10 +456,13 @@ class World {
         area.preset.sort((a,b)=>{return b.radius-a.radius})
         area.zones.push(block);
         last_y = areay;
-        last_right = xPos + widthSize;
+        last_x = areax;
         last_height = heightSize;
         last_width = widthSize;
-        last_area_right = last_pos;
+        last_right = xPos + widthSize;
+        last_bottom = yPos + heightSize;
+        last_area_right = last_pos_x;
+        last_area_bottom = last_pos_y;
       }
       for (var k in assets) {
         var type = 0;
