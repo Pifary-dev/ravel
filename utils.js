@@ -1,5 +1,5 @@
 var entityTypes = [
-  "unknown", // don't use this
+  "unknown", // this is used if enemy type is not known
   "normal",
   "wall",
   "dasher",
@@ -248,7 +248,7 @@ function combineSpeed(player){
 }
 
 function returnToSafePoint (player){
-  if(settings.timerClear){player.timer = 0}
+  if(settings.timer_clear){player.timer = 0}
   const safeP = {world:player.safePoint.world,area:player.safePoint.area,pos:{x:player.safePoint.pos.x,y:player.safePoint.pos.y}};
   player.pos = safeP.pos;
   player.world = safeP.world;
@@ -656,7 +656,6 @@ function find_variable(preset, variables, hashVariables, pattern_id, amount){
 }
 
 function loadImages(character){
-
   if(localStorage.tiles == "true"){
     tiles.src = "texture/tiles.jpg";
   } else {
@@ -741,14 +740,13 @@ function loadImages(character){
   pumpkinOn.src = "texture/pumpkin_on.png";
   magnetUp.src = "texture/magnetism_up.png";
   magnetDown.src = "texture/magnetism_down.png";
-
 }
 
-function clamp(circle,left,right){
-  return Math.min(right,Math.max(left,circle))
+function clamp(value,min,max){
+  return Math.min(max,Math.max(min,value))
 }
 
-function intersects(circle, boundary) { // need to replace this with stovoy's library "bolt" later
+function intersects(circle, boundary) { // TODO: rewrite stovoy's rust library to js and use it instead
   const tx = clamp(circle.x,boundary.x,boundary.x+boundary.w), dx = (circle.x-tx);
   const ty = clamp(circle.y,boundary.y,boundary.y+boundary.h), dy = (circle.y-ty);
   const distance = Math.sqrt(dx**2+dy**2);
@@ -785,3 +783,148 @@ function zoneTypeToId(type){
       return 6;
   }
 }
+
+function interval(duration, fn){
+  var _this = this
+  this.baseline = undefined
+  
+  this.run = function(){
+    if(_this.baseline === undefined){
+      _this.baseline = new Date().getTime()
+    }
+    fn()
+    var end = new Date().getTime()
+    _this.baseline += duration
+ 
+    var nextTick = duration - (end - _this.baseline);
+    if(nextTick < -10000){
+      _this.baseline = new Date().getTime();
+    } 
+    if (nextTick<0){
+      nextTick = 0;
+    }
+    
+    _this.timer = setTimeout(function(){
+      _this.run(end)
+    }, nextTick)
+  }
+
+  this.stop = function(){
+    clearTimeout(_this.timer)
+  }
+}
+
+function updateBackground(context,width,height,color){
+  context.clearRect(0, 0, width, height);
+  context.beginPath();
+  context.fillStyle = color;
+  context.rect(0, 0, width, height);
+  context.fill();
+  context.closePath();
+}
+
+function drawAreaHeader(context,lineSize,strokeStyle,text,width,height,world,size = 35,fillStyle = "#f4faff"){
+  context.beginPath();
+  context.textAlign = "center";
+  context.lineWidth = lineSize;
+  context.fillStyle = fillStyle;
+  context.strokeStyle = strokeStyle;
+  context.font = "bold " + size + "px Tahoma, Verdana, Segoe, sans-serif";
+  context.textAlign = "center";
+  if(world != null){
+    context.strokeText(world.name + ": " + text, width / 2, height);
+    context.fillText(world.name + ": " + text, width / 2, height);
+  } else {
+    context.strokeText(text, width / 2, height);
+    context.fillText(text, width / 2, height);
+  }
+  context.closePath();
+}
+
+function drawShape(context, type, x, y, color, width, height) {
+  context.beginPath();
+  context.fillStyle = color;
+  
+  if (type === 'rect') {
+    context.fillRect(x, y - height, width, height);
+  } else if (type === 'triangle') {
+    context.moveTo(x, y);
+    context.lineTo(x + width, y);
+    context.lineTo(x + width / 2, y - height + 2);
+    context.fill();
+  }
+  
+  context.closePath();
+}
+
+function applyScale(context,scale,drawFunction){
+  if(scale != 1){
+    context.save();
+    context.scale(scale,height/staticHeight); //hmm...
+  }
+  drawFunction();
+  if(scale != 1){
+    context.restore();
+  }
+}
+
+function applyInputDelay(inputDelay,fn){
+  if(inputDelay > 0){
+    setTimeout(()=>{
+      fn();
+    },inputDelay)
+  } else {
+    fn();
+  }
+}
+
+function changeResolution(newWidth,newHeight){ //hmm...
+  const scalingFactor = newWidth/staticWidth;
+  width = newWidth;
+  height = newHeight;
+  fov = 32 * scalingFactor;
+  settings.scale = scalingFactor;
+  canvas.width = newWidth;
+  canvas.height = newHeight;
+  window.onresize();
+  canv = null;
+}
+
+function getInputKeys(keysArray){
+  const newKeys = [];
+  for(const i in keysArray){
+    const key = keysArray[i];
+    if(key){
+      newKeys.push(Number(i));
+    }
+  }
+  return newKeys;
+}
+
+function findEqualKeys(keysArray,inputKeys){
+  let index = null;
+  for(let i in keysArray){
+    const keyInput = keysArray[i].inputKeys;
+    const wrong = isKeysEqual(inputKeys,keyInput);
+    if (!wrong){
+      index = i;
+      if(keysArray[i-1])if(isKeysEqual(keysArray[i-1].inputDelay,inputKeys)){
+        index = null;
+      }
+    }
+  }
+  return index;
+}
+
+function isKeysEqual(arr1,arr2){
+  if(!arr1 || !arr2) return false
+  const a1 = [...arr1].sort();
+  const a2 = [...arr2].sort();
+  return JSON.stringify(a1)==JSON.stringify(a2);
+}
+
+const hexToRgb = hex =>
+  hex.replace(/^#?([a-f\d])([a-f\d])([a-f\d])$/i
+             ,(m, r, g, b) => '#' + r + r + g + g + b + b)
+    .substring(1).match(/.{2}/g)
+    .map(x => parseInt(x, 16))

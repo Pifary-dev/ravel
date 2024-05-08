@@ -134,6 +134,7 @@ class Game {
     obj.partial_magnetism = area.partial_magnetism;
     obj.applies_lantern = area.applies_lantern;
     obj.pellet_count = area.pellet_count;
+    obj.pellet_multiplier = area.multiplier;
     return obj;
   }
 }
@@ -148,6 +149,7 @@ class World {
     this.lighting = 1;
     this.magnet = false;
     this.pellet_count = 25;
+    this.pellet_multiplier = 1;
     this.fromJson(map)
   }
   update(area, time, players) {
@@ -186,6 +188,9 @@ class World {
       }
       if (properties.pellet_count !== undefined) {
         this.pellet_count = properties.pellet_count;
+      }
+      if (properties.pellet_multiplier !== undefined) {
+        this.pellet_multiplier = properties.pellet_multiplier;
       }
       if (properties.texture !== undefined) {
         switch(properties.texture){
@@ -258,6 +263,7 @@ class World {
       area.text = areas[i].text;
       area.lighting = this.lighting;
       area.pellet_count = this.pellet_count;
+      area.pellet_multiplier = this.pellet_multiplier;
       area.texture = this.texture;
       if (propertiesC) {
         if (propertiesC.background_color) {
@@ -289,6 +295,9 @@ class World {
         }
         if(propertiesC.pellet_count) {
           area.pellet_count = propertiesC.pellet_count;
+        }
+        if(propertiesC.pellet_multiplier) {
+          area.pellet_multiplier = propertiesC.multiplier;
         }
       }
       var last_pos = 0;
@@ -346,7 +355,7 @@ class World {
             type: values.types,
             radius: values.radius,//*number
             speed: values.speed,//*number,
-            count: count,//Math.round(count*number),
+            count: count,//Math.round(count*1.5),
             x:values.x,
             y:values.y,
             angle:values.angle
@@ -358,6 +367,7 @@ class World {
 
           if(object.type == "quicksand"){
             object.push_direction = values.push_direction;
+            object.quicksand_strength = values.quicksand_strength;
           }
 
           if(object.type == "flower"){
@@ -366,6 +376,14 @@ class World {
 
           if(object.type == "wind" || object.type == "wind_ghost"){
             object.ignore_invulnerability = values.ignore_invulnerability;
+          }
+
+          if(object.type == "speed_sniper"){
+            object.speed_loss = values.speed_loss;
+          }
+
+          if(object.type == "regen_sniper"){
+            object.regen_loss = values.regen_loss;
           }
 
           if(object.type == "gravity"){
@@ -393,6 +411,12 @@ class World {
             object.projectile_speed = values.projectile_speed;
             object.precise_movement = values.precise_movement;
           }
+
+          if(object.type == "radiating_bullets"){
+            object.release_interval = values.release_interval;
+            object.release_time = values.release_time;
+          }
+
           if (values.move_clockwise!==undefined) {
             object.move_clockwise = values.move_clockwise;
           }
@@ -487,27 +511,28 @@ class Area {
     //update entities
     for (var i in this.entities) {
       for (var j in this.entities[i]) {
-        this.entities[i][j].update(time);
-        this.entities[i][j].colide(boundary);
-        if(this.entities[i][j].defended){
-          if(!this.entities[i][j].curDefend){
-            this.entities[i][j].defended = false;
-            this.entities[i][j].imune = false;
+        const entity = this.entities[i][j];
+        entity.update(time);
+        entity.colide(boundary);
+        if(entity.defended){
+          if(!entity.curDefend){
+            entity.defended = false;
+            entity.imune = false;
           }
-          this.entities[i][j].curDefend = false;
+          entity.curDefend = false;
         }
         for (var v in this.assets) {
           if (this.assets[v].type==1) {
             var rect = {x:this.assets[v].pos.x,y:this.assets[v].pos.y,w:this.assets[v].size.x,h:this.assets[v].size.y,t:false,wall:true}
-            this.entities[i][j].colide(rect);
+            entity.colide(rect);
           }}
         if(this.eng == 3){for(var v in this.zones){
           if(this.zones[v].type==1){
             var rect = {x:this.zones[v].pos.x,y:this.zones[v].pos.y,w:this.zones[v].size.x,h:this.zones[v].size.y,t:false,wall:true}
-            this.entities[i][j].colide(rect);
+            entity.colide(rect);
           }
         }}
-        this.entities[i][j].behavior(time, this, {
+        entity.behavior(time, this, {
           x: this.pos.x + worldPos.x,
           y: this.pos.y + worldPos.y
         }, players)
@@ -802,6 +827,8 @@ class Area {
         }
 
         for (var j = 0; j < count; j++) {
+          var rand = Math.floor(Math.random() * this.preset[i].type.length);
+          if(!radius || radius<0){radius = 0;}
           var posX = Math.random() * (boundary.w-radius / 16) + boundary.x + radius / 32;
           var posY = Math.random() * (boundary.h-radius / 16) + boundary.y + radius / 32;
           if (x!==undefined) {
@@ -820,9 +847,6 @@ class Area {
               var posY = y/32;
             }
           }
-
-          if(radius<0){radius = 0;}
-          var rand = Math.floor(Math.random() * this.preset[i].type.length);
           var enemy = new Unknown(new Vector(posX, posY), radius / 32, speed,angle)
           if (this.preset[i].type[rand] == "normal") {
             enemy = new Normal(new Vector(posX, posY), radius / 32, speed, angle)
@@ -846,7 +870,7 @@ class Area {
             enemy = new Oscillating(new Vector(posX, posY), radius / 32, speed, angle)
           }
           if (this.preset[i].type[rand] == "turning") {
-            enemy = new Turning(new Vector(posX, posY), radius / 32, speed, angle)
+            enemy = new Turning(new Vector(posX, posY), radius / 32, speed, angle,this.preset[i].circle_size)
           }
           if (this.preset[i].type[rand] == "liquid") {
             enemy = new Liquid(new Vector(posX, posY), radius / 32, speed, angle)
@@ -915,16 +939,16 @@ class Area {
             enemy = new Zoning(new Vector(posX, posY), radius / 32, speed, angle)
           }
           if (this.preset[i].type[rand] == "radiating_bullets") {
-            enemy = new Radiating(new Vector(posX, posY), radius / 32, speed, angle)
+            enemy = new Radiating(new Vector(posX, posY), radius / 32, speed, angle, this.preset[i].release_interval, this.preset[i].release_time)
           }
           if (this.preset[i].type[rand] == "frost_giant") {
             enemy = new FrostGiant(new Vector(posX, posY), radius / 32, (speed) ? speed : 0, angle,this.preset[i].direction,this.preset[i].turn_speed,this.preset[i].shot_interval,this.preset[i].cone_angle,this.preset[i].pause_interval,this.preset[i].pause_duration,this.preset[i].turn_acceleration,this.preset[i].shot_acceleration,this.preset[i].pattern,this.preset[i].immune,this.preset[i].projectile_duration,this.preset[i].projectile_radius,this.preset[i].projectile_speed,this.preset[i].precise_movement)
           }
           if (this.preset[i].type[rand] == "speed_sniper") {
-            enemy = new SpeedSniper(new Vector(posX, posY), radius / 32, speed, angle)
+            enemy = new SpeedSniper(new Vector(posX, posY), radius / 32, speed, angle, this.preset[i].speed_loss)
           }
           if (this.preset[i].type[rand] == "regen_sniper") {
-            enemy = new RegenSniper(new Vector(posX, posY), radius / 32, speed, angle)
+            enemy = new RegenSniper(new Vector(posX, posY), radius / 32, speed, angle, this.preset[i].regen_loss)
           }
           if (this.preset[i].type[rand] == "snowman") {
             enemy = new Snowman(new Vector(posX, posY), radius / 32, speed, angle)
@@ -1020,7 +1044,7 @@ class Area {
             enemy = new Barrier(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
           }
           if (this.preset[i].type[rand] == "quicksand") {
-            enemy = new Quicksand(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, this.preset[i].push_direction)
+            enemy = new Quicksand(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, this.preset[i].push_direction, this.preset[i].quicksand_strength)
           }
           if (this.preset[i].type[rand] == "radar") {
             enemy = new Radar(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
@@ -1064,12 +1088,12 @@ class Area {
       } while ((pattern_amount[this.preset[i].pattern_id])>0);
     }
     this.entities["pellet"] = []
-    var pelletsAtZone = this.pellet_count;
-    if(boundary.t){pelletsAtZone = 200}
+    const pelletsAtZone = (boundary.t) ? 200 : this.pellet_count;
+    const pelletMultiplayer = this.pellet_multiplier;
     for (var i = 0; i < pelletsAtZone; i++) {
       var posX = Math.random() * boundary.w + boundary.x;
       var posY = Math.random() * boundary.h + boundary.y;
-      var pellet = new Pellet(new Vector(posX, posY))
+      var pellet = new Pellet(new Vector(posX, posY),pelletMultiplayer)
       this.entities["pellet"].push(pellet)
     }
   }
@@ -1107,14 +1131,14 @@ class Area {
         if (!this.entities["SpeedProjectile"]) {
           this.entities["SpeedProjectile"] = [];
         }
-        var bullet = new SpeedSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
+        var bullet = new SpeedSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed, duration);
         this.entities["SpeedProjectile"].push(bullet);
         break;
       case 4:
         if (!this.entities["RegenProjectile"]) {
           this.entities["RegenProjectile"] = [];
         }
-        var bullet = new RegenSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
+        var bullet = new RegenSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed, duration);
         this.entities["RegenProjectile"].push(bullet);
         break;
       case 5:
