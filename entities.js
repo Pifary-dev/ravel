@@ -88,16 +88,10 @@ class Pellet extends Entity {
         const posX = Math.random() * boundary.w + boundary.x;
         const posY = Math.random() * boundary.h + boundary.y;
         this.pos = new Vector(posX, posY)
-        player.updateExperience(Math.ceil((parseInt(player.area)+1)/3)*this.multiplier);
-        if(player.usesPellets){
-          if(player.usesPellets == 1 || player.usesPellets == 3){
-            player.firstPellet-=this.multiplier;
-            if(player.firstPellet<0) player.firstPellet=0;
-          }
-          if(player.usesPellets == 2 || player.usesPellets == 3){
-            player.secondPellet-=this.multiplier;
-            if(player.secondPellet<0) player.secondPellet=0;
-          }
+        players[i].updateExperience(Math.ceil((parseInt(players[i].area)+1)/3)*this.multiplier);
+        if(players[i].usesPellets){
+          if(players[i].usesPellets == 1 || players[i].usesPellets == 3)if(players[i].firstPellet>0)players[i].firstPellet--;
+          if(players[i].usesPellets == 2 || players[i].usesPellets == 3)if(players[i].secondPellet>0)players[i].secondPellet--;
         }
       }
     }

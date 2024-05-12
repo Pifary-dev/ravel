@@ -20,11 +20,3 @@ var enter = function() {
   }
   console.log((code==result));
 }
-
-document.addEventListener("keydown", keydown, false);
-
-function keydown(e) {
-  if (e.keyCode == 222) {
-
-  }
-}
