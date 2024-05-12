@@ -69,6 +69,7 @@ const flashlight = new Image();
 const abilityOne = new Image();
 const abilityTwo = new Image();
 const sweet_tooth_item = new Image();
+const vengeance_projectile = new Image();
 const gate = new Image();
 const lantern = new Image();
 const tick_time = 1000 / 30; let tick_speed = 1;
