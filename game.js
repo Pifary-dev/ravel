@@ -272,7 +272,7 @@ class World {
       area.name = areaName;
       area.background_color = this.background_color;
       area.title_stroke_color = this.title_stroke_color;
-      area.text = areas[i].text;
+      area.text = curArea.text;
       area.lighting = this.lighting;
       area.pellet_count = this.pellet_count;
       area.pellet_multiplier = this.pellet_multiplier;

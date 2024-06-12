@@ -2739,6 +2739,8 @@ class Ice extends Enemy {
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
         player.frozen = true;
+        player.frozenTimeLeft = 150*player.effectImmune/player.effectReplayer;
+        player.frozenTime = 0
     }
   }
 }
@@ -2751,7 +2753,7 @@ class PositiveMagneticGhost extends Enemy {
   }
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
-        player.magnetDirection = "Up"
+        player.magnetDirection = "Up";
     }
   }
 }
@@ -2764,7 +2766,7 @@ class NegativeMagneticGhost extends Enemy {
   }
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
-        player.magnetDirection = "Down"
+        player.magnetDirection = "Down";
     }
   }
 }
@@ -2882,7 +2884,9 @@ class Icicle extends Enemy {
     super(pos, entityTypes.indexOf("icicle") - 1, radius, speed, angle, "#adf8ff");
     this.clock = 0
     this.wallHit = false;
-    if (horizontal) {
+    if(angle !== undefined){
+      this.angle = angle;
+    } else if (horizontal) {
       this.vel.x = (Math.floor(Math.random() * 2) * 2 - 1) * speed;
       this.vel.y = 0
     } else {
@@ -4060,7 +4064,7 @@ class Poison_Ghost extends Enemy {
     if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
       player.poison = true;
       player.poisonTime = 0;
-      player.poisonTimeLeft = 100*player.effectImmune/player.effectReplayer;
+      player.poisonTimeLeft = 150*player.effectImmune/player.effectReplayer;
     }
   }
 }
