@@ -113,6 +113,7 @@ class Player {
     this.ab1 = abilityOne;
     this.ab2 = abilityTwo;
     this.previousPos = this.pos;
+    this.previousAngle = 0;
     this.oldPos = this.pos;
     this.radius = 15 / 32;
     this.fixedRadius = 15 / 32;
@@ -776,6 +777,11 @@ class Player {
     }
     this.distance_moved_previously = [this.d_x,this.d_y]
     this.vel = new Vector(this.d_x,this.d_y)
+
+    if (Math.atan2(this.vel.y,this.vel.x)!= 0 || this.moving) {
+      this.previousAngle = Math.atan2(this.vel.y,this.vel.x);
+    }
+
     this.slowing = false;
     this.freezing = false;
     this.web = false;
@@ -1057,7 +1063,7 @@ class Shade extends Player {
     super(pos, 3, speed, "#826565", "Shade");
     this.firstTime=0;
     this.secondTime=0;
-    this.hasAB = true; this.ab1L = 5; this.ab2L = 0; this.firstTotalCooldown = 7000; this.secondTotalCooldown = 1000;
+    this.hasAB = true; this.ab1L = 5; this.ab2L = 5; this.firstTotalCooldown = 7000; this.secondTotalCooldown = 1000;
   }
   abilities(time, area, offset) {
     if (this.firstAbility) {
@@ -1069,19 +1075,197 @@ class Shade extends Player {
         this.shadeNight = 7000;
       }
     }
-    if (this.secondAbility) {
-      this.secondAbilityActivated = !this.secondAbilityActivated;
-    }
     if(this.night){
       this.speedAdditioner+=5;
     }
-    if (this.secondAbilityActivated) {    }
     if(this.night && this.shadeNight > 0){
       this.shadeNight-=time;
     } else if(this.shadeNight <= 0 && this.night){
       this.night = false;
       this.speedAdditioner=0;
     } else {this.shadeNight = 0}
+
+    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 5) {
+      this.secondAbilityActivated = !this.secondAbilityActivated;
+      this.secondAbilityCooldown+=1000;
+      this.energy-=5;
+
+      area.addEntity(0, new shadeVengeance(new Vector(this.pos.x - offset.x, this.pos.y - offset.y),this.mouseActive ? this.mouse_angle : this.previousAngle, 1.3, 58, this.id))
+    }
+  }
+}
+
+class shadeVengeance extends Entity {
+  constructor(pos,angle,radius,speed,owner) {
+    super(pos, radius, "brown");
+    this.speed=speed;
+    this.owner = owner;
+    this.collide = true;
+    this.isEnemy = false;
+    this.acceleration = 2;
+    this.weak = false; //affects if destroyed outside of map bounds
+    this.toRemove = false;
+    this.no_collide = true; //(false - maybe makes a ball bounce off the walls inside area
+    this.isSpawned = false;
+    this.returning = false;
+    this.vel.x = Math.cos(angle+10e-8) * speed;
+    this.vel.y = Math.sin(angle+10e-8) * speed;
+    this.oldAngle = this.angle;
+    this.targetAngle = this.angle;
+    this.texture = "vengeance_projectile";
+    this.clock=0
+  }
+  compute_speed(){
+    if(this.returning && this.speed<70) {
+      this.speed += this.acceleration*(this.clock*(60/1000));
+    } else if(!this.returning) {
+      this.speed -= this.acceleration*(this.clock*(60/1000))
+      if ((this.speed - this.acceleration)<0) {
+        this.angle = Math.atan2(this.vel.y, this.vel.x);
+        this.speed==0
+        this.returning=true;
+        this.angle = this.angle + Math.PI;
+      }
+    }
+    this.angleToVel();
+    this.oldAngle = this.angle;
+  }
+  behavior(time, area, offset, players) {
+    this.clock=time
+    if (this.returning) {
+      let index;
+      for (var i in players) {
+          index = i;
+        }
+      this.velToAngle();
+      if (index != undefined) {
+        let dX = (players[index].pos.x - offset.x) - this.pos.x;
+        let dY = (players[index].pos.y - offset.y) - this.pos.y;
+        this.targetAngle = Math.atan2(dY, dX);
+        this.angle = this.targetAngle
+      }
+      this.angleToVel();
+    }
+    this.compute_speed();
+    for (let j in area.entities) {
+      for (let k in area.entities[j]) {
+        if ((area.entities[j][k].isEnemy||area.entities[j][k].weak)&&!area.entities[j][k].imune) {
+          if (distance(area.entities[j][k].pos, new Vector(this.pos.x, this.pos.y)) < this.radius+area.entities[j][k].radius) {
+            if(this.returning) {
+              area.entities[j][k].freeze = 6000;
+            } else if(!this.returning) {
+              area.entities[j][k].freeze = 0;
+              area.entities[j][k].slowdown_amount = 0.25;
+              area.entities[j][k].slowdown_time = 6000;
+            }
+          }
+        }
+      }
+    }
+  }
+  colide() {
+    let local_area = game.worlds[game.players[0].world].areas[game.players[0].area]
+    let local_boundary = local_area.getBoundary()
+    let local_assets = local_area.assets
+    for (let i in local_assets) {
+      if (local_assets[i].type==1) {
+        let rectHalfSizeX_1 = local_assets[i].size.x / 2;
+        let rectHalfSizeY_1 = local_assets[i].size.y / 2;
+        let rectCenterX_1 = local_assets[i].pos.x + rectHalfSizeX_1;
+        let rectCenterY_1 = local_assets[i].pos.y + rectHalfSizeY_1;
+        let distX_1 = Math.abs(this.pos.x - rectCenterX_1);
+        let distY_1 = Math.abs(this.pos.y - rectCenterY_1);
+        if ((distX_1 < rectHalfSizeX_1 + this.radius) && (distY_1 < rectHalfSizeY_1 + this.radius)) {
+          // Collision
+          let relX_1 = (this.pos.x - rectCenterX_1) / rectHalfSizeX_1;
+          let relY_1 = (this.pos.y - rectCenterY_1) / rectHalfSizeY_1;
+          if (Math.abs(relX_1) > Math.abs(relY_1)) {
+            // Horizontal collision.
+            if (relX_1 > 0) {
+              // Right collision
+              this.pos.x = rectCenterX_1 + rectHalfSizeX_1 + this.radius;
+              this.vel.x = Math.abs(this.vel.x);
+              this.velToAngle();
+              this.targetAngle = this.angle;
+            } else {
+              // Left collision
+              this.pos.x = rectCenterX_1 - rectHalfSizeX_1 - this.radius;
+              this.vel.x = -Math.abs(this.vel.x);
+              this.velToAngle();
+              this.targetAngle = this.angle;
+            }
+          } else {
+            // Vertical collision
+            if (relY_1 < 0) {
+              // Up collision
+              this.pos.y = rectCenterY_1 - rectHalfSizeY_1 - this.radius;
+              this.vel.y =-Math.abs(this.vel.y);
+              this.velToAngle();
+              this.targetAngle = this.angle;
+            } else {
+              // Bottom collision
+              this.pos.y = rectCenterY_1 + rectHalfSizeY_1 + this.radius;
+              this.vel.y = Math.abs(this.vel.y);
+              this.velToAngle();
+              this.targetAngle = this.angle;
+            }
+          }
+        }
+      }
+    }
+    if(this.returning) {
+      if (this.pos.x - this.radius < 0) {
+        this.pos.x = this.radius;
+        this.vel.x = Math.abs(this.vel.x);
+        this.velToAngle();
+        this.targetAngle = this.angle;
+      }
+      if (this.pos.x + this.radius > local_boundary.w) {
+        this.pos.x = local_boundary.w - this.radius;
+        this.vel.x = -Math.abs(this.vel.x);
+        this.velToAngle();
+        this.targetAngle = this.angle;
+      }
+      if (this.pos.y - this.radius < 0) {
+        this.pos.y = this.radius;
+        this.vel.y = Math.abs(this.vel.y);
+        this.velToAngle();
+        this.targetAngle = this.angle;
+      }
+      if (this.pos.y + this.radius > local_boundary.h) {
+        this.pos.y = local_boundary.h - this.radius;
+        this.vel.y = -Math.abs(this.vel.y);
+        this.velToAngle();
+        this.targetAngle = this.angle;
+      }
+    }
+    if (!this.returning) {
+      if (this.pos.x - this.radius < 0) {
+        this.pos.x = this.radius;
+        this.vel.x = Math.abs(this.vel.x);
+        this.velToAngle();
+      }
+      if (this.pos.x + this.radius > local_boundary.w) {
+        this.pos.x = local_boundary.w - this.radius;
+        this.vel.x = -Math.abs(this.vel.x);
+        this.velToAngle();
+      }
+      if (this.pos.y - this.radius < 0) {
+        this.pos.y = this.radius;
+        this.vel.y = Math.abs(this.vel.y);
+        this.velToAngle();
+      }
+      if (this.pos.y + this.radius > local_boundary.h) {
+        this.pos.y = local_boundary.h - this.radius;
+        this.vel.y = -Math.abs(this.vel.y);
+        this.velToAngle();
+      }
+    }
+  }
+  interact(player, worldPos) {
+    if (this.returning && distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < this.radius) {
+      this.toRemove = true;
+    }
   }
 }
 
@@ -1284,7 +1468,7 @@ class Magmax extends Player {
     super(pos, 6, speed, "#FF0000", "Magmax");
     this.harden = false;
     this.flow = false;
-    this.hasAB = true; this.ab1L = 5; this.ab2L = 5; this.firstTotalCooldown = 0; this.secondTotalCooldown = 500;
+    this.hasAB = true; this.ab1L = 5; this.ab2L = 5; this.firstTotalCooldown = 0; this.secondTotalCooldown = 250;
   }
   abilities(time, area, offset) {
     if (this.firstAbility) {
@@ -1687,7 +1871,6 @@ class Candy extends Player {
     if(this.sugar_rush){
       this.aura = true;
       this.auraType = 0;
-      this.speedAdditioner = 5;
       for (var i in area.entities) {
         for (var j in area.entities[i]) {
           var entity = area.entities[i][j];
@@ -1892,6 +2075,15 @@ class Enemy extends Entity {
     this.radius *= this.radiusMultiplier;
     this.auraSize = this.auraStaticSize * this.radiusMultiplier;
     this.radiusMultiplier = 1;
+
+    if (this.slowdown_time>0) {
+      this.slowdown_time -= time;
+      this.speedMultiplier *= this.slowdown_amount;
+    }
+    if (this.slowdown_time<0) {
+      this.slowdown_time=0
+    }
+
     if(this.sugar_rush>0){
       this.speedMultiplier*=0.05;
       this.sugar_rush-=time;

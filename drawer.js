@@ -247,6 +247,8 @@ function renderFirstEntities(area, players, focus) {
               case "pumpkinOff": Texture = pumpkinOff;
               break;
               case "sweet_tooth_item": Texture = sweet_tooth_item;
+              break;
+              case "vengeance_projectile": Texture = vengeance_projectile;
             }
             if(Texture){
               context.imageSmoothingEnabled = true;

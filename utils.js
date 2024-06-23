@@ -708,6 +708,7 @@ function loadImages(character){
     case "Shade":
       abilityOne.src = "texture/night.png";
       abilityTwo.src = "texture/vengeance.png";
+      vengeance_projectile.src = "texture/vengeance_projectile.png";
       break;
     case "Cent":
       abilityOne.src = "texture/fusion.png";
