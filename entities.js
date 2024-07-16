@@ -205,6 +205,7 @@ class Player {
     this.collides = false;
     this.effectImmune = 1;
     this.effectReplayer = 1;
+    this.leadTime = 0;
     this.burningTimer = 0;
     this.stickness = 0;
     this.stickyTrailTimer = 0;
@@ -343,7 +344,7 @@ class Player {
           this.regenAdditioner=5;
         }
         if(this.minimum_speed>this.speed+this.speedAdditioner){this.speed=this.minimum_speed}
-        if (this.className!="Cent"&&this.shift == 2) {
+        if (!this.shouldCentMove() && this.shift == 2) {
           this.speedMultiplier *= 0.5;
           this.speedAdditioner *= 0.5;
         }
@@ -376,9 +377,9 @@ class Player {
             this.mouseActive = true;
             if(this.slippery){this.mouse_distance_full_strength = 1;}
 
-            if(this.className!="Cent" || (this.className=="Cent" && this.cent_input_ready)){
+            if(!this.shouldCentMove() || (this.shouldCentMove() && this.cent_input_ready)){
 
-              if(this.className=="Cent"){
+              if(this.shouldCentMove()){
                 this.cent_input_ready = false;
                 this.cent_is_moving = true;
                 this.cent_accelerating = true; 
@@ -399,7 +400,7 @@ class Player {
               this.mouse_distance = Math.min(this.mouse_distance_full_strength,Math.sqrt(this.dirX**2+this.dirY**2))
               this.distance_movement*=this.mouse_distance/this.mouse_distance_full_strength;
 
-              if(this.className == "Cent" && this.cent_input_ready){
+              if(this.shouldCentMove() && this.cent_input_ready){
                 this.cent_saved_angle = this.input_angle;
                 this.cent_input_ready = false;
                 this.cent_is_moving = true;
@@ -409,7 +410,7 @@ class Player {
               this.d_y = this.distance_movement*Math.sin(this.mouse_angle)
             }
 
-            if(this.className!="Cent"){this.vel.x = this.dirX * this.speed / this.mouse_distance_full_strength;
+            if(!this.shouldCentMove()){this.vel.x = this.dirX * this.speed / this.mouse_distance_full_strength;
             this.addX = this.dirX * this.speedAdditioner/this.mouse_distance_full_strength;
             this.addY = this.dirY * this.speedAdditioner/this.mouse_distance_full_strength;
             if(!this.magnet||this.magnet&&this.safeZone){if(this.vertSpeed==-1){this.vel.y = this.dirY * this.speed / this.mouse_distance_full_strength;}else{this.vel.y = this.dirY * this.vertSpeed / this.mouse_distance_full_strength;}} 
@@ -418,7 +419,7 @@ class Player {
             this.dirY = 0; this.dirX = 0;
             this.moving = false;
             if(this.isMovementKeyPressed(input)){
-              if(this.className == "Cent" && this.cent_input_ready) this.cent_is_moving = true;
+              if(this.shouldCentMove() && this.cent_input_ready) this.cent_is_moving = true;
               this.moving=true;
               input.isMouse = false;
               this.cent_input_ready = false;
@@ -440,7 +441,7 @@ class Player {
 
         this.input_angle = Math.atan2(this.dirY,this.dirX)
 
-        if(this.className == "Cent" && this.cent_input_ready){
+        if(this.shouldCentMove() && this.cent_input_ready){
           this.cent_saved_angle = this.input_angle;
           this.cent_input_ready = false;
           this.cent_is_moving = true;
@@ -450,7 +451,7 @@ class Player {
           this.d_x = this.dirX * this.cent_distance;
           this.d_y = this.dirY * this.cent_distance;
         }
-        else if(this.moving&&!input.isMouse&&this.className!="Cent") {
+        else if(this.moving&&!input.isMouse&&!this.shouldCentMove()) {
           this.d_x = this.distance_movement * this.dirX;
           this.d_y = this.distance_movement * this.dirY;
         }
@@ -458,6 +459,11 @@ class Player {
         this.speed=this.statSpeed;
       }
     }
+  }
+  //returns true if the player should be using cent's movement system.
+  //returns true if player is cent with specifically no lead effect or non-cent with lead effect
+  shouldCentMove(){
+    return (this.className == "Cent" && this.leadTime <= 0) || (this.className != "Cent" && this.leadTime > 0);
   }
   isMovementKeyPressed(input){
     return (input.keys[87] || input.keys[38] || input.keys[65] || input.keys[37] || input.keys[83] || input.keys[40] || input.keys[68] || input.keys[39]);
@@ -543,7 +549,7 @@ class Player {
       if (this.fusion) {
         this.speedMultiplier *= 0.7;
       }
-      if (this.className!="Cent"&&this.shift == 2) {
+      if (!this.shouldCentMove()&&this.shift == 2) {
         this.speedMultiplier *= 0.5;
         this.speedAdditioner *= 0.5;
       }
@@ -590,7 +596,7 @@ class Player {
 
       if(this.mortarTime>0){this.speedMultiplier = 0;}
       if(this.minimum_speed>this.speed + this.speedAdditioner){this.speed=this.minimum_speed}
-        if(this.className == "Cent"){
+        if(this.shouldCentMove()){
           this.distance_movement = (this.speed*this.speedMultiplier)+this.speedAdditioner;
           this.cent_max_distance = this.distance_movement * 2;
           if(this.cent_is_moving){
@@ -752,7 +758,7 @@ class Player {
     this.abs_d_x = Math.abs(this.d_x);
     this.abs_d_y = Math.abs(this.d_y);
 
-    if(this.className == "Cent"){
+    if(this.shouldCentMove()){
       if(this.abs_d_x > this.cent_max_distance && !this.slippery){
         this.d_x *= this.cent_max_distance / this.abs_d_x;
       }
@@ -766,6 +772,14 @@ class Player {
       if(this.abs_d_y>this.distance_movement&&!this.slippery){
         this.d_y *= this.distance_movement / this.abs_d_y;
       }
+    }
+
+    let prvLead = this.leadTime;
+    this.leadTime = Math.max(0,this.leadTime-time);
+    if (this.leadTime !== prvLead && this.leadTime === 0){
+      this.cent_input_ready = this.className === "Cent";
+      this.cent_accelerating = false;
+      this.cent_is_moving = false;
     }
     
     this.prevSlippery = this.slippery;
@@ -4662,6 +4676,58 @@ class Cactus extends Enemy {
   }
 }
 
+class LeadSniper extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("lead_sniper") - 1, radius, speed, angle, "#788898");
+    this.releaseTime = 3000;
+    this.clock = Math.random() * this.releaseTime;
+  }
+  behavior(time, area, offset, players) {
+    this.clock += time;
+    if (this.clock > this.releaseTime) {
+      var min = 18.75;
+      var index;
+      var boundary = area.getActiveBoundary();
+      for (var i in players) {
+        if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < min && pointInRectangle(new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y), new Vector(boundary.x, boundary.y), new Vector(boundary.w, boundary.h))) {
+          min = distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y));
+          index = i;
+        }
+      }
+      if (index != undefined&&!players[0].night&&!players[0].god&&!players[0].isDead) {
+        var dX = (players[index].pos.x - offset.x) - this.pos.x;
+        var dY = (players[index].pos.y - offset.y) - this.pos.y;
+        area.addSniperBullet(16, this.pos, Math.atan2(dY, dX), this.radius / 2, 10)
+        this.clock = 0;
+      }
+    }
+  }
+}
+
+class LeadSniperBullet extends Entity {
+  constructor(pos, angle, radius, speed) {
+    super(pos, radius, "#788898");
+    this.vel.x = Math.cos(angle) * speed;
+    this.vel.y = Math.sin(angle) * speed;
+    this.clock = 0;
+    this.weak = true;
+  }
+  behavior(time, area, offset, players) {
+    this.clock += time;
+  }
+  interact(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
+      //lead effect goes here
+      if (player.leadTime <= 0){
+        player.cent_input_ready = true;
+        player.cent_accelerating = false;
+        player.cent_is_moving = false;
+      }
+      player.leadTime = 3500/player.effectReplayer
+      this.toRemove = true;
+    }
+  }
+}
 // custom
 
 class StickySniper extends Enemy {
