@@ -463,6 +463,8 @@ class Player {
   //returns true if the player should be using cent's movement system.
   //returns true if player is cent with specifically no lead effect or non-cent with lead effect
   shouldCentMove(){
+    //special case for harden
+    if (this.harden) return false;
     return (this.className == "Cent" && this.leadTime <= 0) || (this.className != "Cent" && this.leadTime > 0);
   }
   isMovementKeyPressed(input){
