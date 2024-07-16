@@ -422,7 +422,7 @@ class Player {
               if(this.shouldCentMove() && this.cent_input_ready) this.cent_is_moving = true;
               this.moving=true;
               input.isMouse = false;
-              this.cent_input_ready = false;
+              if (this.shouldCentMove()) this.cent_input_ready = false;
               this.cent_accelerating = true;
             }
             if (input.keys[83] || input.keys[40]) {
@@ -777,7 +777,7 @@ class Player {
     let prvLead = this.leadTime;
     this.leadTime = Math.max(0,this.leadTime-time);
     if (this.leadTime !== prvLead && this.leadTime === 0){
-      this.cent_input_ready = this.className === "Cent";
+      this.cent_input_ready = true;
       this.cent_accelerating = false;
       this.cent_is_moving = false;
     }
