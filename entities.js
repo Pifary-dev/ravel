@@ -447,7 +447,7 @@ class Player {
           this.cent_is_moving = true;
         }
 
-        if(this.cent_distance){
+        if(this.shouldCentMove() && this.cent_distance){
           this.d_x = this.dirX * this.cent_distance;
           this.d_y = this.dirY * this.cent_distance;
         }
