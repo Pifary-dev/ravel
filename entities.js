@@ -4662,6 +4662,61 @@ class Cactus extends Enemy {
   }
 }
 
+class Charging extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("charging") - 1, radius, speed, angle, "#374037");
+    this.realVel = new Vector(this.vel.x, this.vel.y);
+    this.collision = false;
+    this.friction = 1;
+    this.useRealVel = true;
+    this.speed = speed;
+
+    this.provoked = false;
+    this.provokedTime = 0;
+  }
+  behavior(time, area, offset, players) {
+    this.friction += 0.05 * time/(1e3/30);
+    if(this.friction > 2.5){
+      this.friction = 2.5;
+    }
+    if(this.provoked){
+      this.provokedTime -= time;
+    }
+    if(this.provokedTime <= 0){
+      this.provoked = false;
+    }
+    if(this.collision){
+      this.collision = false;
+      this.friction = 0;
+      this.retarget(offset, players);
+    }
+    this.vel = new Vector(this.realVel.x * this.friction, this.realVel.y * this.friction);
+  }
+  colide(boundary) {
+    if(collisionEnemy(this,boundary,this.realVel,this.pos,this.radius).col) {
+      this.collision=true;
+    }
+  }
+  retarget(offset, players){
+    let min = 250 / 32;
+    for (let i in players) {
+      if(!players[i].safeZone && !players[i].night && !players[i].god && !players[i].isDead) if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < min) {
+        //found player
+        console.log("bam")
+        this.provoked = true;
+        this.friction = 1;
+        this.provokedTime = 1500;
+        //redirect
+        this.velToAngle();
+        let dy = players[i].pos.y - offset.y - this.pos.y;
+        let dx = players[i].pos.x - offset.x - this.pos.x;
+        this.angle = Math.atan2(dy, dx);
+        this.angleToVel();
+      }
+    }
+  }
+}
+
 // custom
 
 class StickySniper extends Enemy {
