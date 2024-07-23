@@ -4702,7 +4702,6 @@ class Charging extends Enemy {
     for (let i in players) {
       if(!players[i].safeZone && !players[i].night && !players[i].god && !players[i].isDead) if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < min) {
         //found player
-        console.log("bam")
         this.provoked = true;
         this.friction = 1;
         this.provokedTime = 1500;
