@@ -528,6 +528,17 @@ function renderSecondEntities(area, players, focus) {
             }
           }
         }
+        if (entities[i][j].provoked){
+          //draw exclamation mark for charging enemies
+          context.fillStyle = `rgba(161, 167, 172, 1)`;
+          context.font = 24 + "px Tahoma, Verdana, Segoe, sans-serif";
+          let x = width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov;
+          let y = height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov;
+          y -= entities[i][j].radius * fov;
+          y -= 0.2 * fov;
+          context.fillText("!", x, y);
+          console.log("filling?!?!")
+        }
       }
     }
   }
