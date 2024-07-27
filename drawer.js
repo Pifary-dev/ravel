@@ -537,7 +537,6 @@ function renderSecondEntities(area, players, focus) {
           y -= entities[i][j].radius * fov;
           y -= 0.2 * fov;
           context.fillText("!", x, y);
-          console.log("filling?!?!")
         }
       }
     }
