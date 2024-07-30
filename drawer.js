@@ -194,7 +194,7 @@ function renderTiles(area, players, focus) {
 	ctx.scale(fov/32,fov/32);
   for (var i in area.zones) {
     var zone = area.zones[i];
-    var textureType = zone.type;
+    var textureType = (zone.type == 6) ? 0 : zone.type;
     if(zone.type == 4){textureType = 2;}
     else if(zone.type == 5){textureType = 4;}
 		zoneCTX.drawImage(tile_image,textureType*128,area.texture*128,128,128,0,0,128,128);
@@ -581,8 +581,8 @@ function renderMinimap(area, players, focus) {
     context.beginPath();
     var zoneType=area.zones[i].type;
     switch(zoneType){
-      case 0:context.fillStyle = "rgb(255, 255, 255)";break;
-      case 1:case 6:context.fillStyle = "rgb(195, 195, 195)";break;
+      case 0:case 6:context.fillStyle = "rgb(255, 255, 255)";break;
+      case 1:context.fillStyle = "rgb(195, 195, 195)";break;
       case 2:case 4:context.fillStyle = "rgb(255, 244, 108)";break;
       case 3:context.fillStyle = "rgb(106, 208, 222)";break;
       case 5:context.fillStyle = "rgb(255, 249, 186)";break;

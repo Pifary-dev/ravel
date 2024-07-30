@@ -426,7 +426,7 @@ function collisionEnemy(enemy,boundary,vel,pos,radius,inject = ""){
   } else {
     isSpawned(boundary,enemy);
       const circle = {x:enemy.pos.x,y:enemy.pos.y,r:radius,angle:enemy.angle,vel:vel}
-      if(enemy.isEnemy){
+      if(enemy.isEnemy||enemy.weak){
         const intersect = intersects(circle,boundary);
         if(intersect.collision&&enemy.weak){enemy.toRemove = true}
         else if (intersect.collision){

@@ -660,12 +660,6 @@ class Player {
         area.entities["sticky_trail"].push(trail);
       }
     }
-    if (this.draining) {
-      this.energy -= (16 * time / 1000)*this.effectImmune/this.effectReplayer;
-      if (this.energy < 0) {
-        this.energy = 0;
-      }
-    }
     if(this.experienceDraining){
       this.experience-=(2*this.level*time/1e3)*this.effectImmune/this.effectReplayer;
       this.experience=Math.max(0,this.experience);
@@ -706,7 +700,12 @@ class Player {
         this.energy = this.maxEnergy;
       }
     }
-
+    if (this.draining) {
+      this.energy -= (16 * time / 1000)*this.effectImmune/this.effectReplayer;
+      if (this.energy < 0) {
+        this.energy = 0;
+      }
+    }
     if(this.burning) {
       this.burningTimer+=time*this.effectImmune/this.effectReplayer;
       if(this.burningTimer>1000){
@@ -4293,8 +4292,6 @@ class Burning extends Enemy {
 class Lava extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
     super(pos, entityTypes.indexOf("lava") - 1, radius, speed, angle, "#f78306", true, "rgba(247, 131, 6, 0.3)", auraRadius / 32);
-    this.isLight = true;
-    this.lightCount = auraRadius+60;
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -4732,60 +4729,6 @@ class Charging extends Enemy {
   }
 }
 
-class Charging extends Enemy {
-  constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("charging") - 1, radius, speed, angle, "#374037");
-    this.realVel = new Vector(this.vel.x, this.vel.y);
-    this.collision = false;
-    this.friction = 1;
-    this.useRealVel = true;
-    this.speed = speed;
-
-    this.provoked = false;
-    this.provokedTime = 0;
-  }
-  behavior(time, area, offset, players) {
-    this.friction += 0.05 * time/(1e3/30);
-    if(this.friction > 2.5){
-      this.friction = 2.5;
-    }
-    if(this.provoked){
-      this.provokedTime -= time;
-    }
-    if(this.provokedTime <= 0){
-      this.provoked = false;
-    }
-    if(this.collision){
-      this.collision = false;
-      this.friction = 0;
-      this.retarget(offset, players);
-    }
-    this.vel = new Vector(this.realVel.x * this.friction, this.realVel.y * this.friction);
-  }
-  colide(boundary) {
-    if(collisionEnemy(this,boundary,this.realVel,this.pos,this.radius).col) {
-      this.collision=true;
-    }
-  }
-  retarget(offset, players){
-    let min = 250 / 32;
-    for (let i in players) {
-      if(!players[i].safeZone && !players[i].night && !players[i].god && !players[i].isDead) if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < min) {
-        //found player
-        this.provoked = true;
-        this.friction = 1;
-        this.provokedTime = 1500;
-        //redirect
-        this.velToAngle();
-        let dy = players[i].pos.y - offset.y - this.pos.y;
-        let dx = players[i].pos.x - offset.x - this.pos.x;
-        this.angle = Math.atan2(dy, dx);
-        this.angleToVel();
-      }
-    }
-  }
-}
-
 class LeadSniper extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("lead_sniper") - 1, radius, speed, angle, "#788898");
@@ -4833,7 +4776,7 @@ class LeadSniperBullet extends Entity {
         player.cent_accelerating = false;
         player.cent_is_moving = false;
       }
-      player.leadTime = 3500/player.effectReplayer
+      player.leadTime = 3500*player.effectImmune/player.effectReplayer
       this.toRemove = true;
     }
   }
@@ -4881,7 +4824,7 @@ class StickySniperBullet extends Entity {
   }
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
-      player.stickness = 1000/player.effectReplayer;
+      player.stickness = 1000*player.effectImmune/player.effectReplayer;
       this.toRemove = true;
     }
   }

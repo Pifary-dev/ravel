@@ -36,17 +36,20 @@ const ping = {
 for(const i in settings){
   const setting = settings[i];
   const localSetting = document.getElementById(i);
+  const localStored = localStorage[i];
   if(localSetting){
-    const canParse = (localStorage[i] && typeof setting != "string") ? true : false;
-    const previousSetting = (canParse) ? JSON.parse(localStorage[i]) : setting;
+    const canParse = (localStored && typeof setting != "string" && localStored != 'NaN') ? true : false;
+    const previousSetting = (canParse) ? JSON.parse(localStored) : setting;
+    if(localStored == 'NaN') console.warn(`Invalid value for ${i}`);
     if(previousSetting != localSetting.checked){
       localSetting.checked = previousSetting;
     }
-    if(localStorage[i]){
+    if(localStored){
       if(typeof setting == "string"){
-        localSetting.value = localStorage[i];
+        localSetting.value = localStored;
       } else if (typeof setting == "number") {
-        localSetting.value = Number(localStorage[i]);
+        const localNumber = Number(localStored);
+        localSetting.value = (isNaN(localNumber)) ? setting : localNumber;
       }
     }
   }
