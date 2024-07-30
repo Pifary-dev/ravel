@@ -69,6 +69,7 @@ var entityTypes = [
   "regen_ghost",
   "speed_ghost",
   "charging",
+  "lead_sniper",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",
@@ -557,7 +558,7 @@ function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive
       dead = false;
     }
     if(dead){
-      if(player.className=="Cent" && !player.invicible){
+      if(player.className == "Cent" && !player.invicible){
         if(player.energy >= 20 && player.secondAbilityCooldown==0 && player.mortarTime<=0){
           player.onDeathSecondAb=true;
           player.invicible=true;

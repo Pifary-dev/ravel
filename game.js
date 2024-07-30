@@ -1110,6 +1110,9 @@ class Area {
           if (this.preset[i].type[rand] == "charging") {
             enemy = new Charging(new Vector(posX, posY), radius / 32, speed, angle)
           }
+          if (this.preset[i].type[rand] == "lead_sniper") {
+            enemy = new LeadSniper(new Vector(posX, posY), radius / 32, speed, angle)
+          }
           enemy.isSpawned = true;
           this.entities[this.preset[i].type].push(enemy)
         }
@@ -1245,6 +1248,13 @@ class Area {
         }
         var bullet = new StalactiteProjectile(new Vector(pos.x,pos.y), radius);
         this.entities["stalactite_projectile"].push(bullet);
+        break;
+      case 16:
+        if (!this.entities["LeadSniperProjectile"]) {
+          this.entities["LeadSniperProjectile"] = [];
+        }
+        var bullet = new LeadSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
+        this.entities["LeadSniperProjectile"].push(bullet);
         break;
     }
   }
