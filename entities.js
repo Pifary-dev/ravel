@@ -3107,12 +3107,13 @@ class Icicle extends Enemy {
   behavior(time, area, offset, players) {
     if (this.wallHit) {
       this.clock += time
-      this.speedMultiplier = 0
       if (this.clock > 1000) {
         this.wallHit = false;
         this.clock = 0;
+      } else {
+        this.speedMultiplier = 0;
       }
-    }
+    } 
   }
 }
 class Spiral extends Enemy {
