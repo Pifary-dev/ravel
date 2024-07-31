@@ -205,7 +205,9 @@ class Player {
     this.collides = false;
     this.effectImmune = 1;
     this.effectReplayer = 1;
+    this.leadTimeLeft = 0;
     this.leadTime = 0;
+    this.reducingPower = 0;
     this.burningTimer = 0;
     this.stickness = 0;
     this.stickyTrailTimer = 0;
@@ -465,7 +467,7 @@ class Player {
   shouldCentMove(){
     //special case for harden
     if (this.harden) return false;
-    return (this.className == "Cent" && this.leadTime <= 0) || (this.className != "Cent" && this.leadTime > 0);
+    return (this.className == "Cent" && this.leadTimeLeft <= 0) || (this.className != "Cent" && this.leadTimeLeft > 0);
   }
   isMovementKeyPressed(input){
     return (input.keys[87] || input.keys[38] || input.keys[65] || input.keys[37] || input.keys[83] || input.keys[40] || input.keys[68] || input.keys[39]);
@@ -630,8 +632,12 @@ class Player {
       this.vel.y = 0;
     }
     this.magnet = magnet;
-    this.radius = this.fixedRadius;
+    this.radius = (this.reducingPower) ? this.fixedRadius-Math.floor(this.reducingPower)/32 : this.fixedRadius;
     this.radius *= this.radiusMultiplier;
+    if(this.radius < 0) {
+      this.radius = 0;
+      death(this);
+    }
     this.radiusMultiplier = 1;
     this.stickness = Math.max(0,this.stickness-time)
     this.stickyTrailTimer = Math.max(0,this.stickyTrailTimer-time)
@@ -714,6 +720,14 @@ class Player {
     } else {
       this.burningTimer = Math.max(0,this.burningTimer-time)
     }
+
+    if(this.reducing){  
+      this.reducingPower += time*this.effectImmune/this.effectReplayer/100;
+    } else if (this.reducingPower>0) {
+      this.reducingPower -= time/100;
+      if(this.reducingPower<0) this.reducingPower = 0;
+    }
+    
     if(this.disabling) {
       this.firstAbilityPressed = false;
       this.secondAbilityPressed = false;
@@ -775,9 +789,9 @@ class Player {
       }
     }
 
-    let prvLead = this.leadTime;
-    this.leadTime = Math.max(0,this.leadTime-time);
-    if (this.leadTime !== prvLead && this.leadTime === 0){
+    let prvLead = this.leadTimeLeft;
+    this.leadTimeLeft = Math.max(0,this.leadTimeLeft-time);
+    if (this.leadTimeLeft !== prvLead && this.leadTimeLeft === 0){
       this.cent_input_ready = true;
       this.cent_accelerating = false;
       this.cent_is_moving = false;
@@ -797,6 +811,7 @@ class Player {
       this.previousAngle = Math.atan2(this.vel.y,this.vel.x);
     }
 
+    this.reducing = false;
     this.slowing = false;
     this.freezing = false;
     this.web = false;
@@ -2373,6 +2388,17 @@ class Slowing extends Enemy {
   }
 }
 
+class Reducing extends Enemy {
+  constructor(pos, radius, speed, angle, auraRadius = 140) {
+    super(pos, entityTypes.indexOf("reducing") - 1, radius, speed, angle, "rgb(45, 50, 55)", true, "rgba(45, 50, 55, 0.15)", auraRadius / 32);
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      player.reducing = true;
+    }
+  }
+}
+
 class Quicksand extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150, push_direction, strength = 5) {
     super(pos, entityTypes.indexOf("quicksand") - 1, radius, speed, angle, "#6c541e", true, "rgba(108, 84, 30, 0.3)", auraRadius / 32);
@@ -2566,6 +2592,7 @@ class Stalactite extends Enemy {
     this.pos = pos;
     this.radius = radius;
     this.clock = 0;
+    this.imune = true;
   }
   behavior(time, area, offset, players) {
     if (this.collision){
@@ -4751,7 +4778,7 @@ class LeadSniper extends Enemy {
       if (index != undefined&&!players[0].night&&!players[0].god&&!players[0].isDead) {
         var dX = (players[index].pos.x - offset.x) - this.pos.x;
         var dY = (players[index].pos.y - offset.y) - this.pos.y;
-        area.addSniperBullet(16, this.pos, Math.atan2(dY, dX), this.radius / 2, 10)
+        area.addSniperBullet(16, this.pos, Math.atan2(dY, dX), Math.floor(this.radius / 1.5), 10)
         this.clock = 0;
       }
     }
@@ -4765,6 +4792,7 @@ class LeadSniperBullet extends Entity {
     this.vel.y = Math.sin(angle) * speed;
     this.clock = 0;
     this.weak = true;
+    this.power = 3500;
   }
   behavior(time, area, offset, players) {
     this.clock += time;
@@ -4772,12 +4800,12 @@ class LeadSniperBullet extends Entity {
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
       //lead effect goes here
-      if (player.leadTime <= 0){
+      if (player.leadTimeLeft <= 0){
         player.cent_input_ready = true;
         player.cent_accelerating = false;
         player.cent_is_moving = false;
       }
-      player.leadTime = 3500*player.effectImmune/player.effectReplayer
+      player.leadTimeLeft = player.leadTime = this.power*player.effectImmune/player.effectReplayer;
       this.toRemove = true;
     }
   }

@@ -70,6 +70,7 @@ var entityTypes = [
   "speed_ghost",
   "charging",
   "lead_sniper",
+  "reducing",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",
@@ -302,6 +303,7 @@ function death(player,enemy){
   }
   player.teleportPosition = [];
   player.deathCounter++;
+  player.reducingPower = 0;
   if(!settings.deathcd){
     player.firstAbilityCooldown = 0; 
     player.secondAbilityCooldown = 0;

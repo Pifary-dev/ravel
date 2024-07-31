@@ -1113,6 +1113,9 @@ class Area {
           if (this.preset[i].type[rand] == "lead_sniper") {
             enemy = new LeadSniper(new Vector(posX, posY), radius / 32, speed, angle)
           }
+          if (this.preset[i].type[rand] == "reducing") {
+            enemy = new Reducing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
+          }
           enemy.isSpawned = true;
           this.entities[this.preset[i].type].push(enemy)
         }
