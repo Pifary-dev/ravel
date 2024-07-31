@@ -1119,6 +1119,12 @@ class Area {
           if (this.preset[i].type[rand] == "blocking") {
             enemy = new Blocking(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
           }
+          if (this.preset[i].type[rand] == "force_sniper_a") {
+            enemy = new ForceSniperA(new Vector(posX, posY), radius / 32, speed, angle)
+          }
+          if (this.preset[i].type[rand] == "force_sniper_b") {
+            enemy = new ForceSniperB(new Vector(posX, posY), radius / 32, speed, angle)
+          }
           enemy.isSpawned = true;
           this.entities[this.preset[i].type].push(enemy)
         }
@@ -1261,6 +1267,20 @@ class Area {
         }
         var bullet = new LeadSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
         this.entities["LeadSniperProjectile"].push(bullet);
+        break;
+      case 17:
+        if (!this.entities["ForceSniperAProjectile"]) {
+          this.entities["ForceSniperAProjectile"] = [];
+        }
+        var bullet = new ForceSniperABullet(new Vector(pos.x,pos.y), angle, radius, speed);
+        this.entities["ForceSniperAProjectile"].push(bullet);
+        break;
+      case 18:
+        if (!this.entities["ForceSniperBProjectile"]) {
+          this.entities["ForceSniperBProjectile"] = [];
+        }
+        var bullet = new ForceSniperBBullet(new Vector(pos.x,pos.y), angle, radius, speed);
+        this.entities["ForceSniperBProjectile"].push(bullet);
         break;
     }
   }

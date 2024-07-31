@@ -388,7 +388,6 @@ function renderPlayers(area, players, focus) {
       context.fill();
     }
     if(player.leadTimeLeft>0){
-      console.log(player.leadTime)
       var leadEffect = 1-Math.min((player.leadTime-player.leadTimeLeft)/player.leadTime,0.75);
       context.beginPath();
       context.fillStyle = "rgb(33, 33, 39,"+leadEffect+")";

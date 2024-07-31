@@ -714,6 +714,10 @@ class Player {
       if (this.energy > this.maxEnergy) {
         this.energy = this.maxEnergy;
       }
+      if(this.energy>=this.maxEnergy && !this.draining){
+        this.energy = 0;
+        death(this);
+      }
     }
     if (this.draining) {
       this.energy -= (16 * time / 1000)*this.effectImmune/this.effectReplayer;
@@ -2670,9 +2674,107 @@ class StalactiteProjectile extends Entity {
   }
 }
 
+class ForceSniperA extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("force_sniper_a") - 1, radius, speed, angle, "#0a5557");
+    this.releaseTime = 3000;
+    this.clock = Math.random() * this.releaseTime;
+  }
+  behavior(time, area, offset, players) {
+    this.clock += time;
+    if (this.clock > this.releaseTime) {
+      var min = 18.75;
+      var index;
+      var boundary = area.getActiveBoundary();
+      for (var i in players) {
+        if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < min && pointInRectangle(new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y), new Vector(boundary.x, boundary.y), new Vector(boundary.w, boundary.h))) {
+          min = distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y));
+          index = i;
+        }
+      }
+      if (index != undefined&&!players[index].night&&!players[index].god&&!players[index].isDead) {
+        var dX = (players[index].pos.x - offset.x) - this.pos.x;
+        var dY = (players[index].pos.y - offset.y) - this.pos.y;
+        area.addSniperBullet(17, this.pos, Math.atan2(dY, dX), this.radius / 2, 12)
+        this.clock = 0;
+      }
+    }
+  }
+}
+class ForceSniperABullet extends Entity {
+  constructor(pos, angle, radius, speed) {
+    super(pos, radius, "#0a5557");
+    this.vel.x = Math.cos(angle) * speed;
+    this.vel.y = Math.sin(angle) * speed;
+    this.clock = 0;
+    this.weak = true;
+    this.imune = true;
+  }
+  behavior(time, area, offset, players) {
+    this.clock += time;
+  }
+  interact(player,worldPos,time){
+    if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+      const world = game.worlds[player.world];
+      const area = world.areas[player.area];
+      player.firstAbility = true;
+      player.abilities(time,area,{x: area.pos.x + worldPos.x,y: area.pos.y + worldPos.y})
+    }
+  }
+}
+
+class ForceSniperB extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("force_sniper_b") - 1, radius, speed, angle, "#914d83");
+    this.releaseTime = 3000;
+    this.clock = Math.random() * this.releaseTime;
+  }
+  behavior(time, area, offset, players) {
+    this.clock += time;
+    if (this.clock > this.releaseTime) {
+      var min = 18.75;
+      var index;
+      var boundary = area.getActiveBoundary();
+      for (var i in players) {
+        if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < min && pointInRectangle(new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y), new Vector(boundary.x, boundary.y), new Vector(boundary.w, boundary.h))) {
+          min = distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y));
+          index = i;
+        }
+      }
+      if (index != undefined&&!players[index].night&&!players[index].god&&!players[index].isDead) {
+        var dX = (players[index].pos.x - offset.x) - this.pos.x;
+        var dY = (players[index].pos.y - offset.y) - this.pos.y;
+        area.addSniperBullet(18, this.pos, Math.atan2(dY, dX), this.radius / 2, 12)
+        this.clock = 0;
+      }
+    }
+  }
+}
+class ForceSniperBBullet extends Entity {
+  constructor(pos, angle, radius, speed) {
+    super(pos, radius, "#914d83");
+    this.vel.x = Math.cos(angle) * speed;
+    this.vel.y = Math.sin(angle) * speed;
+    this.clock = 0;
+    this.weak = true;
+    this.imune = true;
+  }
+  behavior(time, area, offset, players) {
+    this.clock += time;
+  }
+  interact(player,worldPos,time){
+    if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+      const world = game.worlds[player.world];
+      const area = world.areas[player.area];
+      player.secondAbility = true;
+      player.abilities(time,area,{x: area.pos.x + worldPos.x,y: area.pos.y + worldPos.y})
+    }
+  }
+}
+
 class WindSniper extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("windsniper") - 1, radius, speed, angle, "#9de3c6");
+    super(pos, entityTypes.indexOf("wind_sniper") - 1, radius, speed, angle, "#9de3c6");
     this.releaseTime = 1000;
     this.clock = Math.random() * this.releaseTime;
   }
@@ -4347,10 +4449,6 @@ class Lava extends Enemy {
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
       player.charging = true;
-      if(player.energy>=player.maxEnergy){
-        player.energy = 0;
-        death(player);
-      }
     }
   }
 }
@@ -4785,6 +4883,7 @@ class LeadSniper extends Enemy {
     super(pos, entityTypes.indexOf("lead_sniper") - 1, radius, speed, angle, "#788898");
     this.releaseTime = 3000;
     this.clock = Math.random() * this.releaseTime;
+    this.radius = radius;
   }
   behavior(time, area, offset, players) {
     this.clock += time;
@@ -4798,10 +4897,11 @@ class LeadSniper extends Enemy {
           index = i;
         }
       }
-      if (index != undefined&&!players[0].night&&!players[0].god&&!players[0].isDead) {
+      if (index != undefined&&!players[index].night&&!players[index].god&&!players[index].isDead) {
         var dX = (players[index].pos.x - offset.x) - this.pos.x;
         var dY = (players[index].pos.y - offset.y) - this.pos.y;
-        area.addSniperBullet(16, this.pos, Math.atan2(dY, dX), Math.floor(this.radius / 1.5), 10)
+        var bulletRadius = Math.floor(this.radius / 1.5 * 32) / 32;
+        area.addSniperBullet(16, this.pos, Math.atan2(dY, dX), bulletRadius, 10)
         this.clock = 0;
       }
     }
@@ -4811,6 +4911,7 @@ class LeadSniper extends Enemy {
 class LeadSniperBullet extends Entity {
   constructor(pos, angle, radius, speed) {
     super(pos, radius, "#788898");
+    this.radius = radius;
     this.vel.x = Math.cos(angle) * speed;
     this.vel.y = Math.sin(angle) * speed;
     this.clock = 0;
