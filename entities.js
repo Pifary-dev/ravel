@@ -41,8 +41,10 @@ class Entity {
   }
   update(time) {
     this.radius = this.fixedRadius;
-    this.velToAngle();
-    this.angleToVel();
+    if(!this.noAngleUpdate){ //temporary
+      this.velToAngle();
+      this.angleToVel();
+    }
     var timeFix = time / (1000 / 30);
     var vel = new Vector(this.vel.x * this.speedMultiplier, this.vel.y * this.speedMultiplier)
     this.speedMultiplier = 1;
@@ -2136,8 +2138,8 @@ class Enemy extends Entity {
       this.sugar_rush-=time;
     }
     if(!this.freeze>0){
-    this.pos.x += vel.x / 32 * timeFix;
-    this.pos.y += vel.y / 32 * timeFix;
+      this.pos.x += vel.x / 32 * timeFix;
+      this.pos.y += vel.y / 32 * timeFix;
     }
     else {this.freeze -= time;}
     if(this.freeze < 0){this.freeze = 0;}
@@ -2709,16 +2711,21 @@ class ForceSniperABullet extends Entity {
     this.clock = 0;
     this.weak = true;
     this.imune = true;
+    this.touched = false;
   }
   behavior(time, area, offset, players) {
     this.clock += time;
+    if(this.clock>3000){
+      this.toRemove = true;
+    }
   }
   interact(player,worldPos,time){
-    if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+    if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !this.touched) {
       const world = game.worlds[player.world];
       const area = world.areas[player.area];
       player.firstAbility = true;
-      player.abilities(time,area,{x: area.pos.x + worldPos.x,y: area.pos.y + worldPos.y})
+      player.abilities(time,area,{x: area.pos.x + worldPos.x,y: area.pos.y + worldPos.y});
+      this.touched = true;
     }
   }
 }
@@ -2758,16 +2765,21 @@ class ForceSniperBBullet extends Entity {
     this.clock = 0;
     this.weak = true;
     this.imune = true;
+    this.touched = false;
   }
   behavior(time, area, offset, players) {
     this.clock += time;
+    if(this.clock>3000){
+      this.toRemove = true;
+    }
   }
   interact(player,worldPos,time){
-    if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+    if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !this.touched) {
       const world = game.worlds[player.world];
       const area = world.areas[player.area];
       player.secondAbility = true;
-      player.abilities(time,area,{x: area.pos.x + worldPos.x,y: area.pos.y + worldPos.y})
+      player.abilities(time,area,{x: area.pos.x + worldPos.x,y: area.pos.y + worldPos.y});
+      this.touched = true;
     }
   }
 }
@@ -4773,30 +4785,29 @@ class SeedlingProjectile extends Entity {
   constructor(pos, radius, speed, spawner) {
     super(pos, radius, "#259c55");
     this.spawner = spawner;
-    this.speed = 5;
     this.no_collide = true;
     this.outline = true;
     this.renderFirst = false;
     this.imune = true;
-    this.angle = 0//spawner.angle;
-    this.angleToVel();
-    this.dir = this.speed/30;
-    this.seedOffset = new Vector(0,-this.radius*1.5*32);
+    this.angle = Math.random()*360;
+    this.dir = 10;
+    this.radius = radius;
+    this.noAngleUpdate = true;
   }
   behavior(time, area, offset, players) {
-    this.pos = new Vector(this.spawner.pos.x,this.spawner.pos.y)
-    this.velToAngle();
-    this.angle += this.dir * (time / 30);
-    this.angleToVel();
-    this.seedOffset.x+=this.vel.x;
-    this.seedOffset.y+=this.vel.y;
-    this.pos = this.newPosition(this.seedOffset.x,this.seedOffset.y)
+    const timeFix = time / (1000 / 30);
+    this.angle += this.dir * timeFix;
+    const combinedRadius = this.radius + this.spawner.radius / 2;
+    const xPos = combinedRadius*Math.cos(this.angle/180*Math.PI);
+    const yPos = combinedRadius*Math.sin(this.angle/180*Math.PI);
+    this.pos = this.newPosition(xPos,yPos);
+    this.speedMultiplier = 0;
   }
   interact(player, worldPos) {
     interactionWithEnemy(player,this,worldPos,true,this.corrosive,this.imune,false,true)
   }
   newPosition(x,y){
-    return new Vector(this.spawner.pos.x+x/32,this.spawner.pos.y+y/32)
+    return new Vector(this.spawner.pos.x+x,this.spawner.pos.y+y)
   }
 }
 
