@@ -634,11 +634,22 @@ class Player {
     this.magnet = magnet;
     this.radius = (this.reducingPower) ? this.fixedRadius-Math.floor(this.reducingPower)/32 : this.fixedRadius;
     this.radius *= this.radiusMultiplier;
+    this.radiusMultiplier = 1;
+    if(this.enlarging){
+      const strength = 10 * this.effectImmune / this.effectReplayer;
+      this.radiusAdditioner += strength;
+    }
+    if(this.radiusAdditioner!=0){
+      this.radius += this.radiusAdditioner / 32;
+      this.radiusAdditioner = 0;
+    }
     if(this.radius < 0) {
       this.radius = 0;
-      death(this);
+      if(this.reducing){
+        death(this);
+      }
     }
-    this.radiusMultiplier = 1;
+    this.radiusAdditioner = 0;
     this.stickness = Math.max(0,this.stickness-time)
     this.stickyTrailTimer = Math.max(0,this.stickyTrailTimer-time)
     if(this.magnet&&!this.safeZone){
@@ -646,8 +657,6 @@ class Player {
       if(this.magnetDirection == "Down"){this.d_y = magneticSpeed;}
       else if(this.magnetDirection == "Up"){this.d_y = -magneticSpeed;}
     }
-    if(this.radiusAdditioner!=0){this.radius=this.radiusAdditioner}
-    this.radiusAdditioner = 0;
     this.wasFrozen = this.frozen;
     if (this.frozen) {
       this.frozenTime += time;
@@ -727,7 +736,7 @@ class Player {
       this.reducingPower -= time/100;
       if(this.reducingPower<0) this.reducingPower = 0;
     }
-    
+
     if(this.disabling) {
       this.firstAbilityPressed = false;
       this.secondAbilityPressed = false;
@@ -811,20 +820,24 @@ class Player {
       this.previousAngle = Math.atan2(this.vel.y,this.vel.x);
     }
 
-    this.reducing = false;
-    this.slowing = false;
-    this.freezing = false;
-    this.web = false;
-    this.cobweb = false;
-    this.sticky = false;
-    this.draining = false;
-    this.experienceDraining = false;
-    this.speedghost = false;
-    this.regenghost = false;
-    this.inEnemyBarrier = false;
-    this.charging = false;
-    this.burning = false;
-    this.slippery = false;
+    if(!this.blocking){
+      this.reducing = false;
+      this.slowing = false;
+      this.freezing = false;
+      this.web = false;
+      this.cobweb = false;
+      this.sticky = false;
+      this.draining = false;
+      this.experienceDraining = false;
+      this.speedghost = false;
+      this.regenghost = false;
+      this.inEnemyBarrier = false;
+      this.charging = false;
+      this.burning = false;
+      this.slippery = false;
+      this.enlarging = false;
+    }
+    this.blocking = false;
     this.firstAbilityCooldown -= time;
     this.secondAbilityCooldown -= time;
     this.firstAbilityCooldown += (Math.abs(this.firstAbilityCooldown) - this.firstAbilityCooldown) / 2;
@@ -2399,6 +2412,17 @@ class Reducing extends Enemy {
   }
 }
 
+class Blocking extends Enemy {
+  constructor(pos, radius, speed, angle, auraRadius = 150) {
+    super(pos, entityTypes.indexOf("blocking") - 1, radius, speed, angle, "#bf5213", true, "rgba(191, 82, 19, 0.3)", auraRadius / 32);
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      player.blocking = true;
+    }
+  }
+}
+
 class Quicksand extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150, push_direction, strength = 5) {
     super(pos, entityTypes.indexOf("quicksand") - 1, radius, speed, angle, "#6c541e", true, "rgba(108, 84, 30, 0.3)", auraRadius / 32);
@@ -3107,8 +3131,7 @@ class Enlarging extends Enemy {
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
-      const strength = 10 * player.effectImmune / player.effectReplayer;
-      player.radiusAdditioner = (player.staticRadius + strength) / 32;
+      player.enlarging = true;
     }
   }
 }

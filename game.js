@@ -1116,6 +1116,9 @@ class Area {
           if (this.preset[i].type[rand] == "reducing") {
             enemy = new Reducing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
           }
+          if (this.preset[i].type[rand] == "blocking") {
+            enemy = new Blocking(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
+          }
           enemy.isSpawned = true;
           this.entities[this.preset[i].type].push(enemy)
         }
