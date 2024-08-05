@@ -209,7 +209,7 @@ class Player {
     this.effectReplayer = 1;
     this.leadTimeLeft = 0;
     this.leadTime = 0;
-    this.reducingPower = 0;
+    this.reducingEffect = 0;
     this.burningTimer = 0;
     this.stickness = 0;
     this.stickyTrailTimer = 0;
@@ -634,7 +634,7 @@ class Player {
       this.vel.y = 0;
     }
     this.magnet = magnet;
-    this.radius = (this.reducingPower) ? this.fixedRadius-Math.floor(this.reducingPower)/32 : this.fixedRadius;
+    this.radius = (this.reducingEffect) ? this.fixedRadius-Math.floor(this.reducingEffect)/32 : this.fixedRadius;
     this.radius *= this.radiusMultiplier;
     this.radiusMultiplier = 1;
     if(this.enlarging){
@@ -737,10 +737,10 @@ class Player {
     }
 
     if(this.reducing){  
-      this.reducingPower += time*this.effectImmune/this.effectReplayer/100;
-    } else if (this.reducingPower>0) {
-      this.reducingPower -= time/100;
-      if(this.reducingPower<0) this.reducingPower = 0;
+      this.reducingEffect += time*this.effectImmune/this.effectReplayer/100;
+    } else if (this.reducingEffect>0) {
+      this.reducingEffect -= time/100;
+      if(this.reducingEffect<0) this.reducingEffect = 0;
     }
 
     if(this.disabling) {
@@ -2554,7 +2554,7 @@ class Switch extends Enemy {
     if (index >= count / 2) {
       this.disabled = true;
     }
-    this.clock = 0;
+    this.clock = 2800;
   }
   behavior(time, area, offset, players) {
     this.clock += time;
@@ -3754,55 +3754,32 @@ class Trail extends Enemy {
 class Tree extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("tree") - 1, radius, speed, angle, "#4e2700");
-    this.staticSpeed = speed+0;
+    this.originalSpeed = speed;
     this.totalReleaseTime = 4000;
-    this.clock = Math.random() * 3500;
-    this.clock2 = Math.random() * 500;
-    this.clock3 = 0;
+    this.shotTimer = Math.random() * this.totalReleaseTime;
+    this.movementTimer = Math.random() * 500;
     this.waiting = true;
-    this.shake = false;
-    this.currentVel = {x:this.vel.x+0, y:this.vel.y+0};
-    this.beforeShakeVel = {x:this.vel.x+0, y:this.vel.y+0};
   }
   behavior(time, area, offset, players) {
-    this.clock += time;
-    this.clock2 += time;
-    this.clock3 += time;
-    if (this.clock > this.totalReleaseTime) {
+    this.shotTimer += time;
+    this.movementTimer += time;
+    if (this.shotTimer > this.totalReleaseTime) {
       var count = Math.floor(Math.random()*6)+2
       for (var i = 0; i < count; i++) {
         area.addSniperBullet(10, this.pos, i * Math.PI / (count/2), 12 / 32, 6)
       }
-      this.clock = 0;
-      this.vel.x = this.beforeShakeVel.x
-      this.vel.y = this.beforeShakeVel.y
-      this.shake = false;
+      this.shotTimer = 0;
     }
-    if(this.vel.x!==0&&this.vel.y!==0){this.currentVel.x = this.vel.x;this.currentVel.y=this.vel.y}
-    if(this.clock2>500){
+    if(this.movementTimer>500){
       this.waiting=!this.waiting;
-      this.clock2 = 0;
+      this.movementTimer = 0;
     }
-    if(this.clock>3500){
-      if(!this.shake){this.beforeShakeVel.x = this.currentVel.x;this.beforeShakeVel.y=this.currentVel.y}
-      this.shake = true;
-      if(this.clock3>50){
-        this.vel.x = -this.currentVel.x
-        this.vel.y = -this.currentVel.y
-        this.clock3=0;
-      }
+    if(this.shotTimer>3500){
+      this.speedMultiplier = Math.sin(this.movementTimer / 20)
     } else if(this.waiting){
-      this.vel.x = 0;
-      this.vel.y = 0;
+      this.speedMultiplier = 0;
     } else {
-      this.vel.x = this.currentVel.x
-      this.vel.y = this.currentVel.y
-      var deg = (this.clock2/5+90) * Math.PI / 180;
-      this.speedMultiplier = (Math.abs(Math.sin(deg)))
-      if(this.speedMultiplier>1.5){this.speedMultiplier=1.5}
-    }
-    if(this.waiting){
-      this.speedMultiplier *= 1;
+      this.speedMultiplier = Math.max(Math.sin(this.movementTimer / 200),0)
     }
   }
 }

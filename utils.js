@@ -796,27 +796,31 @@ function interval(duration, fn){
   
   this.run = function(){
     if(_this.baseline === undefined){
-      _this.baseline = new Date().getTime()
-    }
-    fn()
-    var end = new Date().getTime()
-    _this.baseline += duration
- 
-    var nextTick = duration - (end - _this.baseline);
-    if(nextTick < -10000){
       _this.baseline = new Date().getTime();
-    } 
+    }
+    fn();
+    var end = new Date().getTime();
+    _this.baseline += duration;
+    var nextTick = duration - (end - _this.baseline);
+    var progressToBeDone = end - _this.baseline; // make progress while afk
+    if(progressToBeDone>100){
+      _this.baseline = new Date().getTime();
+    }
+    while (progressToBeDone>100 && progressToBeDone<5000){
+      fn();
+      progressToBeDone-=duration;
+    }
     if (nextTick<0){
       nextTick = 0;
     }
     
     _this.timer = setTimeout(function(){
-      _this.run(end)
+      _this.run(end);
     }, nextTick)
   }
 
   this.stop = function(){
-    clearTimeout(_this.timer)
+    clearTimeout(_this.timer);
   }
 }
 
