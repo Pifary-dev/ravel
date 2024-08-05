@@ -329,19 +329,18 @@ function renderPlayers(area, players, focus) {
       if(settings.outline)context.stroke();
       context.closePath();
     }
-    let rgb;
     if(player.wallGod){
-      context.fillStyle = "rgba(139,0,0,.5)"
+      context.fillStyle = "rgba(139,0,0,.5)";
     } else if (player.god&&!player.reaperShade) {
       context.fillStyle = "purple";
     } else {
       context.fillStyle = player.tempColor;
-      rgb = hexToRgb(player.tempColor);
+      let rgb = hexToRgb(player.tempColor);
       if(player.night){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.6)`}
       if(player.mortarTime>0&&player.mortarTime<1000){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},${1-player.mortarTime/1000})`}
       if(player.fusion){context.fillStyle="rgba(60, 60, 75)"}
+      if(player.isDead){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.4)`}
     }
-    if(player.isDead && !player.god)context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.4)`;
     context.beginPath();
     if (player.type==7) {
       if (player.shape>0) {
