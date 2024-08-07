@@ -2554,7 +2554,7 @@ class Switch extends Enemy {
     if (index >= count / 2) {
       this.disabled = true;
     }
-    this.clock = 2800;
+   this.clock = (count == 1) ? 2800 : 0;
   }
   behavior(time, area, offset, players) {
     this.clock += time;
