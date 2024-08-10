@@ -3770,10 +3770,10 @@ class Tree extends Enemy {
       }
       this.release_time %= this.release_interval;
     }
-    if(this.shotTimer>this.release_interval*0.9){
-      this.speedMultiplier = Math.sin(this.movementTimer/20)
+    if(this.release_time>this.release_interval*0.9){
+      this.speedMultiplier *= Math.sin(this.clock/20)
     } else {
-      this.speedMultiplier = Math.max(Math.sin(this.movementTimer/200),0)
+      this.speedMultiplier *= Math.max(Math.sin(this.clock/200),0)
     }
   }
 }
