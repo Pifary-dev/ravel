@@ -3754,32 +3754,26 @@ class Trail extends Enemy {
 class Tree extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("tree") - 1, radius, speed, angle, "#4e2700");
-    this.originalSpeed = speed;
-    this.totalReleaseTime = 4000;
-    this.shotTimer = Math.random() * this.totalReleaseTime;
-    this.movementTimer = Math.random() * 500;
-    this.waiting = true;
+    this.release_interval = 4400;
+    this.release_time = Math.random() * this.release_interval;
+    this.clock = 0;
   }
   behavior(time, area, offset, players) {
-    this.shotTimer += time;
-    this.movementTimer += time;
-    if (this.shotTimer > this.totalReleaseTime) {
+    if(!this.freeze){
+      this.release_time += time;
+      this.clock += time;
+    }
+    if (this.release_time > this.release_interval) {
       var count = Math.floor(Math.random()*6)+2
       for (var i = 0; i < count; i++) {
         area.addSniperBullet(10, this.pos, i * Math.PI / (count/2), 12 / 32, 6)
       }
-      this.shotTimer = 0;
+      this.release_time %= this.release_interval;
     }
-    if(this.movementTimer>500){
-      this.waiting=!this.waiting;
-      this.movementTimer = 0;
-    }
-    if(this.shotTimer>3500){
-      this.speedMultiplier = Math.sin(this.movementTimer / 20)
-    } else if(this.waiting){
-      this.speedMultiplier = 0;
+    if(this.shotTimer>this.release_interval*0.9){
+      this.speedMultiplier = Math.sin(this.movementTimer/20)
     } else {
-      this.speedMultiplier = Math.max(Math.sin(this.movementTimer / 200),0)
+      this.speedMultiplier = Math.max(Math.sin(this.movementTimer/200),0)
     }
   }
 }
