@@ -3764,7 +3764,7 @@ class Tree extends Enemy {
       this.clock += time;
     }
     if (this.release_time > this.release_interval) {
-      var count = Math.floor(Math.random()*6)+2
+      var count = min_max(2,8)
       for (var i = 0; i < count; i++) {
         area.addSniperBullet(10, this.pos, i * Math.PI / (count/2), 12 / 32, 6)
       }
