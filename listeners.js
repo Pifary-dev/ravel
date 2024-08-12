@@ -176,7 +176,7 @@ function keydownKeys(e) {
       }
       if (e.keyCode == 78) {
         player.hasCheated = true;
-        player.wallGod = !player.wallGod;
+        player.ghost = !player.ghost;
       }
       if (e.keyCode == 66) {
         player.hasCheated = true;

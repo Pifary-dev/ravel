@@ -218,7 +218,7 @@ class Player {
     this.maxSpeed = 17;
     this.maxUpgradableEnergy = 300;
     this.maxRegen = 7;
-    this.wallGod = false;
+    this.ghost = false;
     this.timer = 0;
     this.victoryTimer = 0;
     this.webstickness = 0;
@@ -2047,23 +2047,23 @@ class Clown extends Player {
     this.maxUpgradableEnergy = 60;
     this.maxRegen = 2;
     this.prevColor = 0;
-    this.clownBall = false;
-    this.clownBallSize = 1;
+    this.heavyBallon = false;
+    this.heavyBallonSize = 1;
     this.rejoicing = false;
-    this.maxClownBallSize = 92;
+    this.maxHeavyBallonSize = 92;
   }
   abilities(time, area, offset) {
     const timeFix = time / (1000 / 30);
-    const clownBallCost = 5;
+    const heavyBallonCost = 5;
     const colors = ["rgb(2, 135, 4, .8)","rgb(228, 122, 42, .8)","rgb(255, 219, 118, .8)","rgb(4, 70, 255, .8)", "rgb(216, 48, 162, .8)"]
-    if (this.firstAbility && this.firstAbilityCooldown == 0 && (this.energy >= clownBallCost || this.clownBall) && this.ab1L) {
+    if (this.firstAbility && this.firstAbilityCooldown == 0 && (this.energy >= heavyBallonCost || this.heavyBallon) && this.ab1L) {
       const world = game.worlds[this.world];
-      if(this.clownBall){
-        this.spawnClownBall(world, colors, area);
+      if(this.heavyBallon){
+        this.spawnHeavyBallon(world, colors, area);
       } else {
-        this.clownBall=true;
-        this.clownBallSize = 20;
-        this.energy-=clownBallCost;
+        this.heavyBallon=true;
+        this.heavyBallonSize = 20;
+        this.energy-=heavyBallonCost;
         let color = this.prevColor;
         while(color == this.prevColor){
           color = Math.floor(Math.random()*5);
@@ -2083,18 +2083,18 @@ class Clown extends Player {
         this.radiusAdditioner += 5;
       }
     }
-    if(this.clownBall){
-      this.clownBallSize += 1 * timeFix;
+    if(this.heavyBallon){
+      this.heavyBallonSize += 1 * timeFix;
       this.energy -= 5 * time / 1000;
       if(this.energy<=0){
         const world = game.worlds[this.world];
-        this.spawnClownBall(world, colors, area);
+        this.spawnHeavyBallon(world, colors, area);
       }
 
-      if(this.clownBallSize>this.maxClownBallSize){
+      if(this.heavyBallonSize>this.maxHeavyBallonSize){
         death(this);
-        this.clownBallSize = 20;
-        this.clownBall = false;
+        this.heavyBallonSize = 20;
+        this.heavyBallon = false;
       }
     }
 
@@ -2103,13 +2103,13 @@ class Clown extends Player {
     this.firstTotalCooldown = 9000-1000*this.ab1L;
     this.firstAbilityCooldown = this.firstTotalCooldown;
   }
-  spawnClownBall(world, colors, area){
+  spawnHeavyBallon(world, colors, area){
     const angle = (this.mouseActive) ? this.mouse_angle : this.previousAngle;
-    const ball = new ClownTrail(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),this.clownBallSize/32,angle,colors[this.prevColor]);
+    const ball = new ClownTrail(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),this.heavyBallonSize/32,angle,colors[this.prevColor]);
     if(!area.entities["clown_trail"]){area.entities["clown_trail"] = []}
     area.entities["clown_trail"].push(ball);
-    this.clownBall = false
-    this.clownBallSize = 20;
+    this.heavyBallon = false
+    this.heavyBallonSize = 20;
     this.updateFirstAbilityCooldown();
   }
 }
@@ -4817,6 +4817,7 @@ class FlowerProjectile extends Entity {
     this.radiusRatio = 1;
     this.growthMultiplayer = growthMultiplayer;
     this.imune = true;
+    this.Harmless = false;
   }
   behavior(time, area, offset, players) {
     const timeFix = time / (1000 / 30);
@@ -4838,8 +4839,6 @@ class FlowerProjectile extends Entity {
         this.pos = this.newPosition(-0.6,0.9);
         break;
     }
-    if(this.spawner.Harmless){this.Harmless = true;}
-    else{this.Harmless = false;}
     if (distance(players[0].pos, new Vector(this.spawner.pos.x + offset.x, this.spawner.pos.y + offset.y)) < players[0].radius + this.triggerZone && !players[0].safeZone && !players[0].night) {
       this.radiusRatio -= growth / 2 * timeFix;
     } else {
@@ -4851,10 +4850,18 @@ class FlowerProjectile extends Entity {
     this.radius *= this.radiusRatio;
   }
   interact(player, worldPos) {
-    interactionWithEnemy(player,this,worldPos,true,this.corrosive,this.imune,false,true)
+    this.updateHarmlessState();
+    interactionWithEnemy(player,this,worldPos,true,this.corrosive,this.imune,this.Harmless,true)
   }
   newPosition(x,y){
     return new Vector(this.spawner.pos.x+x*this.radius,this.spawner.pos.y+y*this.radius)
+  }
+  updateHarmlessState(){
+    if(this.spawner.Harmless){
+      this.Harmless = true;
+    } else {
+      this.Harmless = false;
+    }
   }
 }
 
@@ -5126,7 +5133,9 @@ class ClownTrail extends Enemy {
     this.clown = true;
   }
   behavior(time, area, offset, players) {
-    this.radius = this.radius - (this.clock/1000)/5;
+    const timeFix = time / (1000 / 30);
+    this.radius -= (this.clock/1000)/4;
+    console.log(this.radius)
     this.clock += time;
     this.alpha -= time/1500;
     if(this.alpha<=0){this.alpha=0.001}

@@ -231,6 +231,7 @@ function renderFirstEntities(area, players, focus) {
         }else {
           context.beginPath();
           context.fillStyle = entities[i][j].color;
+          context.globalAlpha = 1;
           if ((entities[i][j].Harmless || entities[i][j].healing>0)&&!entities[i][j].texture) {
             context.globalAlpha = 0.4;
             if(entities[i][j].healing>0){
@@ -323,18 +324,20 @@ function renderPlayers(area, players, focus) {
       }
     }
 
-    if(player.clownBall){
+    if(player.heavyBallon){
       const colors = ["rgb(2, 135, 4, .8)","rgb(228, 122, 42, .8)","rgb(255, 219, 118, .8)","rgb(4, 70, 255, .8)", "rgb(216, 48, 162, .8)"]
       context.beginPath();
       context.fillStyle = colors[player.prevColor]
       context.strokeStyle = "black"
       context.lineWidth = 2/(32/fov);
-      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.clownBallSize/32 * fov, 0, Math.PI * 2, true);
+      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.heavyBallonSize/32 * fov, 0, Math.PI * 2, true);
       context.fill();
       if(settings.outline)context.stroke();
       context.closePath();
     }
-    if(player.wallGod){
+    if(player.ghost && player.god){
+      context.fillStyle = "rgba(132,0,85,.5)"
+    } else if(player.ghost){
       context.fillStyle = "rgba(139,0,0,.5)";
     } else if (player.god&&!player.reaperShade) {
       context.fillStyle = "purple";

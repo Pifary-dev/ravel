@@ -14,8 +14,8 @@ class Game {
     }
     for (var i in this.players) {
       this.players[i].update(time, this.worlds[this.players[i].world].friction);
-      if(!this.players[i].wallGod)this.teleport(this.players[i]);
-      if(!this.players[i].wallGod)this.worlds[this.players[i].world].collisionPlayer(this.players[i].area, this.players[i]);
+      if(!this.players[i].ghost)this.teleport(this.players[i]);
+      if(!this.players[i].ghost)this.worlds[this.players[i].world].collisionPlayer(this.players[i].area, this.players[i]);
       loaded[this.players[i].world][this.players[i].area] = true;
     }
     for (var i in loaded) {
