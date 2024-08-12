@@ -305,7 +305,7 @@ function death(player,enemy){
   player.teleportPosition = [];
   player.deathCounter++;
   player.reducingPower = 0;
-  if(!settings.deathcd){
+  if(!settings.death_cooldown){
     player.firstAbilityCooldown = 0; 
     player.secondAbilityCooldown = 0;
     if(player.className=="Rameses"){player.bandage=true;}
@@ -346,55 +346,6 @@ function collides(enemy,enemy2,offset){
   if (distance < radius_sum) {
       return true;
   } else {return false}
-}
-
-function renderBackground(t,e){
-  if(null!==this.areaCanvas){
-    var i={x:e.left+e.width/2,y:e.top+e.height/2};
-    this.drawNearbyMinimap(i);
-    t.beginPath();
-    t.rect(this.left,this.top,this.minimapWidth,this.minimapHeight);
-    t.clip();
-    t.drawImage(this.areaCanvas,(e.left-this.x-this.areaCanvasOffset.x)*this.canvasScale,(e.top-this.y-this.areaCanvasOffset.y)*this.canvasScale,e.width*this.canvasScale,e.height*this.canvasScale,this.left,this.top,this.minimapWidth,this.minimapHeight),t.fillStyle="rgba(80, 80, 80, 0.6)",t.fillRect(this.left,this.top,this.minimapWidth,this.minimapHeight)}
-  }
-
-function drawNearbyMinimap(t,ctx,canvas,zones,areaPos){
-  t = {x:t.x*32,y:t.y*32}
-  var areaCanvasOffset = {x:10000,y:10000};
-  var nearbySize = 10000;
-  var canvasScale = scale;
-  var e=roundTo(t.x,nearbySize);
-  var i=roundTo(t.y,nearbySize);
-  var a=e-nearbySize;
-  var n=i-nearbySize;
-  var r=e+nearbySize;
-  var s=i+nearbySize;
-  if(null===areaCanvasOffset||areaCanvasOffset.x!==a||areaCanvasOffset.y!==n){
-    areaCanvasOffset={x:a,y:n};
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    var o={};
-    o[0]=[255,255,255,255];
-    o[1]=[195,195,195,255];
-    o[2]=[255,244,108,255];
-    o[3]=[106,208,222,255];
-    o[4]=[255,244,108,255];
-    o[5]=[255,249,186,255];
-    var l=!0,u=!1,f=void 0;
-    try{
-      for(var c in zones){
-        var y=zones[c];
-        if(!(y.pos.x>r||y.pos.x+y.width<a||y.pos.y>s||y.pos.y+y.height<n)){
-          var m=[y.backgroundColor>>24&255,y.backgroundColor>>16&255,y.backgroundColor>>8&255,255&y.backgroundColor];
-          var p=mixColors(o[y.type],m);
-          ctx.fillStyle="rgba(".concat(p[0],", ").concat(p[1],", ").concat(p[2],", ").concat(p[3]);
-          var v=(y.pos.x-areaPos.x-areaCanvasOffset.x)*canvasScale;
-          var g=(y.pos.y-areaPos.y-areaCanvasOffset.y)*canvasScale;
-          ctx.fillRect(v,g,y.width*canvasScale,y.height*canvasScale)}
-        }
-      }catch(b){u=!0,f=b}
-      finally{try{l||null==d.return||d.return()}finally{if(u)throw f}
-    }
-  }
 }
 
 function collisionEnemy(enemy,boundary,vel,pos,radius,inject = ""){
@@ -585,16 +536,25 @@ function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive
   return {dead: dead, inDistance: inDistance}
 }
 
-function mixColors(t,e){
-  var i=t[3]/255;
-  var a=e[3]/255;
-  var n=[];
-  var r=1-(1-a)*(1-i);
-  return n[0]=Math.round(e[0]*a/r+t[0]*i*(1-a)/r),n[1]=Math.round(e[1]*a/r+t[1]*i*(1-a)/r),n[2]=Math.round(e[2]*a/r+t[2]*i*(1-a)/r),n[3]=r,n
+const toRGBArray = rgbStr => {
+  const match = rgbStr.match(/\d+(?:\.\d+)?(?:e[-+]\d+)?/g);
+  return match.map(Number);
+};
+const arrayToInt32=(s)=>s[0]<<24|s[1]<<16|s[2]<<8|s[3]<<0
+const arrayToRGBStr = array => `rgb(${array[0]},${array[1]},${array[2]})`;
+function mixColors(e,a){
+  const t = e[3] / 255
+		  , r = a[3] / 255
+		  , c = []
+		  , o = 1 - (1 - r) * (1 - t);
+		return c[0] = Math.round(a[0] * r / o + e[0] * t * (1 - r) / o),
+		c[1] = Math.round(a[1] * r / o + e[1] * t * (1 - r) / o),
+		c[2] = Math.round(a[2] * r / o + e[2] * t * (1 - r) / o),
+		c[3] = o,
+		c
 }
-
 function roundTo(t,e){
-  return Math.round(t/e)*e
+  return Math.round(t/e)*e;
 }
 
 function createOffscreenCanvas (width,height){
@@ -938,3 +898,52 @@ const hexToRgb = hex =>
              ,(m, r, g, b) => '#' + r + r + g + g + b + b)
     .substring(1).match(/.{2}/g)
     .map(x => parseInt(x, 16))
+
+const KEYS = {
+  LEFT: 37,
+  UP: 38,
+  RIGHT: 39,
+  DOWN: 40,
+  W: 87,
+  A: 65,
+  S: 83,
+  D: 68,
+  J: 74,
+  K: 75,
+  L: 76,
+  Z: 90,
+  X: 88,
+  C: 67,
+  SHIFT: 16,
+  1: 49,
+  2: 50,
+  3: 51,
+  4: 52,
+  5: 53
+}
+
+class Pulsation {
+  constructor(min,max,increment,increasing = true){
+    this.value = min;
+    this.min = min;
+    this.max = max;
+    this.increment = increment;
+    this.increasing = increasing;
+  }
+  update(time){
+    const timeFix = time / (1000 / 30);
+    if(this.increasing){
+      this.value += this.increment * timeFix;
+      if(this.value >= this.max){
+        this.value = this.max;
+        this.increasing = false
+      }
+    } else {
+      this.value -= this.increment * timeFix;
+      if(this.value <= this.min){
+        this.value = this.min;
+        this.increasing = true;
+      }
+    }
+  } 
+}

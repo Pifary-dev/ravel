@@ -77,7 +77,7 @@ class Entity {
   }
 }
 class Pellet extends Entity {
-  constructor(pos,power) {
+  constructor(pos,power = 1) {
     const p = ["#b84dd4", "#a32dd8", "#3b96fd", "#43c59b", "#f98f6b"];
     super(pos, 0.29, p[Math.floor(Math.random() * p.length)]);
     this.multiplier = power;
@@ -89,7 +89,7 @@ class Pellet extends Entity {
         const boundary = area.getActiveBoundary();
         const posX = Math.random() * boundary.w + boundary.x;
         const posY = Math.random() * boundary.h + boundary.y;
-        this.pos = new Vector(posX, posY)
+        this.pos = new Vector(posX, posY);
         player.updateExperience(Math.ceil((parseInt(player.area)+1)/3)*this.multiplier);
         if(player.usesPellets){
           if(player.usesPellets == 1 || player.usesPellets == 3){
@@ -114,6 +114,8 @@ class Player {
     this.className = className;
     this.ab1 = abilityOne;
     this.ab2 = abilityTwo;
+    this.ab1ML = 5;
+    this.ab2ML = 5;
     this.previousPos = this.pos;
     this.previousAngle = 0;
     this.oldPos = this.pos;
@@ -148,6 +150,7 @@ class Player {
     this.radiusMultiplier = 1;
     this.radiusAdditioner = 0;
     this.regenAdditioner = 0;
+    this.verticalSpeedMultiplayer = 0;
     this.addX=0;
     this.addY=0;
     this.dirX=0;
@@ -162,7 +165,6 @@ class Player {
     this.lastAng = 90;
     this.inputAng = 0;
     this.frozen = true;
-    this.wasFrozen = false;
     this.frozenTime = 0;
     this.frozenTimeLeft = 0;
     this.poison = false;
@@ -180,7 +182,8 @@ class Player {
     this.prevSlippery = false;
     this.dyingPos = new Vector(0, 0);
     this.level = 1;
-    this.points = (settings.no_points)? 0 : 150;
+    this.points = (settings.no_points) ? 0 : 150;
+    this.upgradeBrightness = new Pulsation(175,255,5);
     this.experience = 0;
     this.deathCounter = 0;
     this.hasCheated = false;
@@ -191,22 +194,20 @@ class Player {
     this.abs_d_y = 0;
     this.d_x = 0;
     this.d_y = 0;
-    this.cent_max_distance = 10;
-    this.cent_distance = 0;
     this.previousLevelExperience = 0;
     this.nextLevelExperience = 4;
+    this.cent_max_distance = 10;
+    this.cent_distance = 0;
     this.cent_input_ready = true;
     this.cent_deceleration = 0.666;
     this.cent_acceleration = 0.333;
     this.cent_accelerating = false;
     this.cent_is_moving = false;
-    this.mortarTime = 0;
     this.distance_moved_previously = [0,0];
     this.aura = false;
     this.auraType = -1;
     this.collides = false;
     this.effectImmune = 1;
-    this.effectReplayer = 1;
     this.leadTimeLeft = 0;
     this.leadTime = 0;
     this.reducingEffect = 0;
@@ -217,8 +218,6 @@ class Player {
     this.maxSpeed = 17;
     this.maxUpgradableEnergy = 300;
     this.maxRegen = 7;
-    this.clownBall = false;
-    this.clownBallSize = 1;
     this.wallGod = false;
     this.timer = 0;
     this.victoryTimer = 0;
@@ -245,90 +244,93 @@ class Player {
         }
         const pingTime = new Date().getTime() - ping.mouseTimer[index];
         ping.array.push(pingTime);
-        //console.log("avgPing: " + ping.array.reduce((e,t)=>e+t)/ping.array.length,"ping: " + pingTime)
-      } /*else if(input.keys.length){
-        const inputKeys = getInputKeys(input.keys);
-        if(inputKeys.length){
-          ping.keys = [...inputKeys];
-          let index = findEqualKeys(ping.keysArray,inputKeys);
-          if(index !== null){
-            const pingTime = new Date().getTime() - ping.keysArray[index].timestamp;
-            console.log(pingTime)
-            ping.array.push(pingTime)
-            ping.keysArray.splice(index,1)
-          }
-        }
-      }*/else if (input.keys[68] && !ping.previous){
+      } else if (input.keys[68] && !ping.previous){
         const pingTime = new Date().getTime()-ping.activationTime;
         ping.previous = true;
         ping.array.push(pingTime)
-        //console.log("avgPing: " + ping.array.reduce((e,t)=>e+t)/ping.array.length,"ping: " + pingTime)
       } else if (!input.keys[68]){ping.previous = false}
 
       if(ping.array.length > 25){
         ping.array.shift();
       }
     }
-
+    this.mouseActive = false;
+    this.distance_movement = 1;
     this.firstAbility = false;
     this.secondAbility = false;
+    this.shift = false;
     if(this.isDead) {
+      this.distance_movement = 0;
       if( (this.className == "Necro" || this.className == "Chrono") && input.keys){
-        if ((input.keys[74] || input.keys[90]) && !this.firstAbilityPressed) {
+        if ((input.keys[KEYS.J] || input.keys[KEYS.Z]) && !this.firstAbilityPressed) {
           this.firstAbility = true;
           this.firstAbilityPressed = true;
         }
-        if (!(input.keys[74] || input.keys[90])) {
+        if (!(input.keys[KEYS.J] || input.keys[KEYS.Z])) {
           this.firstAbilityPressed = false;
         }
       }
-      input = [];
+      return;
     }
     if (input.keys) {
-      if ((input.keys[74] || input.keys[90]) && !this.firstAbilityPressed && !this.disabling) {
+      if ((input.keys[KEYS.J] || input.keys[KEYS.Z]) && !this.firstAbilityPressed && !this.disabling) {
         this.firstAbility = true;
         this.firstAbilityPressed = true;
       }
-      if ((input.keys[75] || input.keys[88]) && !this.secondAbilityPressed && !this.disabling) {
+      if ((input.keys[KEYS.K] || input.keys[KEYS.X]) && !this.secondAbilityPressed && !this.disabling) {
         this.secondAbility = true;
         this.secondAbilityPressed = true;
       }
-      if (!(input.keys[74] || input.keys[90])) {
+      if (!(input.keys[KEYS.J] || input.keys[KEYS.Z])) {
         this.firstAbilityPressed = false;
       }
-      if (!(input.keys[75] || input.keys[88])) {
+      if (!(input.keys[KEYS.K] || input.keys[KEYS.X])) {
         this.secondAbilityPressed = false;
       }
       if (!this.prevSlippery||this.collides||(this.d_x == 0 && this.d_y == 0)) {
         if (this.slippery&&!this.prevSlippery) {
-          if (!(input.keys[87] || input.keys[38]||input.keys[65] || input.keys[37]||input.keys[83] || input.keys[40]||input.keys[68] || input.keys[39])) {
+          if (!this.isMovementKeyPressed(input)) {
             this.vel = new Vector(0,0);
           }
         }
-        if (input.keys[16]&&!this.slippery) {
-          this.shift = 2;
-        } else {this.shift = 1;}
-        if(!this.reaperShade)if(input.keys[49]) {
-          if (this.speed < this.maxSpeed && this.points > 0) {
-            this.speed += 0.5;
+        if (input.keys[KEYS.SHIFT]&&!this.slippery) {
+          this.shift = true;
+        }
+        if(this.points > 0){
+          if(input.keys[KEYS[1]]) {
+            if (this.speed < this.maxSpeed) {
+              this.speed += 0.5;
+              this.points--;
+              if(this.speed > this.maxSpeed){
+                this.speed = this.maxSpeed;
+              }
+            }
+          }
+          if (input.keys[KEYS[2]]) {
+            if (this.maxEnergy < this.maxUpgradableEnergy) {
+              this.maxEnergy += 5;
+              this.points--;
+            }
+          }
+          if (input.keys[KEYS[3]]) {
+            if (parseFloat(this.regen.toFixed(3)) < this.maxRegen) {
+              this.regen += 0.2;
+              this.points--;
+              if(this.regen > this.maxRegen){
+                this.regen = this.maxRegen;
+              }
+            }
+          }
+          if (input.keys[KEYS[4]] && this.ab1L < this.ab1ML && this.firstAbilityUnlocked) {
+            this.ab1L++;
             this.points--;
-            if(this.speed > this.maxSpeed){this.speed = this.maxSpeed;}
+          }
+          if (input.keys[KEYS[5]] && this.ab2L < this.ab2ML && this.secondAbilityUnlocked) {
+            this.ab2L++;
+            this.points--;
           }
         }
-        if (input.keys[50]) {
-          if (this.maxEnergy < this.maxUpgradableEnergy && this.points > 0) {
-            this.maxEnergy += 5;
-            this.points--;
-          }
-        }
-        if (input.keys[51]) {
-          if (parseFloat(this.regen.toFixed(3)) < this.maxRegen && this.points > 0) {
-            this.regen += 0.2;
-            this.points--;
-            if(this.regen > this.maxRegen){this.regen = this.maxRegen;}
-          }
-        }
-        if (this.energy-1>0 && !this.disabling && !this.magnetAbilityPressed && (this.magnet||this.flashlight||this.lantern) && (input.keys[76] || input.keys[67])) {
+        if (this.energy-1>0 && !this.disabling && !this.magnetAbilityPressed && (this.magnet||this.flashlight||this.lantern) && (input.keys[KEYS.C] || input.keys[KEYS.L])) {
           if(this.magnetDirection=="Down"){this.magnetDirection = "Up"}
           else if(this.magnetDirection=="Up"){this.magnetDirection = "Down"}
           this.magnetAbilityPressed = true;
@@ -337,46 +339,11 @@ class Player {
           if(this.magnet)this.energy -= 1;
         }
 
-        if (!(input.keys[76] || input.keys[67])) {
+        if (!(input.keys[KEYS.C] || input.keys[KEYS.L])) {
           this.magnetAbilityPressed = false;
         }
-        this.statSpeed = this.speed+0;
-        this.addX = 0; this.addY =0;
-        this.d_x=0; this.d_y=0;
-        if(this.sweetToothConsumed){
-          this.speedAdditioner=5;
-          this.regenAdditioner=5;
-        }
-        if(this.minimum_speed>this.speed+this.speedAdditioner){this.speed=this.minimum_speed}
-        if (!this.shouldCentMove() && this.shift == 2) {
-          this.speedMultiplier *= 0.5;
-          this.speedAdditioner *= 0.5;
-        }
-        if (this.poison) {
-          this.speedMultiplier *= 3;
-        }
-        if (this.fusion) {
-          this.speedMultiplier *= 0.7;
-        }
-        if (this.slowing) {
-          this.speedMultiplier *= (1-this.effectImmune*(1-0.7))*this.effectReplayer;
-        }
-        if (this.freezing) {
-          this.speedMultiplier *= (1-this.effectImmune*(1-0.2))*this.effectReplayer;
-        }
-        if (this.cobweb && this.web){
-          this.speedMultiplier *= Math.min(1-(this.webstickness),(1-this.effectImmune*(this.webstickness))*this.effectReplayer)
-        } else if (this.cobweb) {
-          this.speedMultiplier *= 1-(this.webstickness)
-        } else if (this.web) {
-          this.speedMultiplier *= (1-this.effectImmune*(this.webstickness))*this.effectReplayer;
-        }
-        if(this.sticky || this.stickness>0){
-          this.speedMultiplier *= (1-this.effectImmune*(1-0.2))*this.effectReplayer;
-        }
-        this.distance_movement = (this.speed*this.speedMultiplier)+this.speedAdditioner;
-        this.mouseActive = false;
-          if (input.isMouse&&!this.cent_is_moving&&!(input.keys[87] || input.keys[38]||input.keys[65] || input.keys[37]||input.keys[83] || input.keys[40]||input.keys[68] || input.keys[39])) {
+
+          if (input.isMouse&&!this.cent_is_moving&&!this.isMovementKeyPressed(input)) {
             this.mouse_distance_full_strength = 150*settings.scale;
             this.mouseActive = true;
             if(this.slippery){this.mouse_distance_full_strength = 1;}
@@ -402,25 +369,17 @@ class Player {
               this.mouse_angle = Math.atan2(this.dirY,this.dirX);
               this.input_angle = this.mouse_angle;
               this.mouse_distance = Math.min(this.mouse_distance_full_strength,Math.sqrt(this.dirX**2+this.dirY**2))
-              this.distance_movement*=this.mouse_distance/this.mouse_distance_full_strength;
+              this.distance_movement = this.mouse_distance/this.mouse_distance_full_strength;
 
               if(this.shouldCentMove() && this.cent_input_ready){
                 this.cent_saved_angle = this.input_angle;
                 this.cent_input_ready = false;
                 this.cent_is_moving = true;
               }
-
-              this.d_x = this.distance_movement*Math.cos(this.mouse_angle)
-              this.d_y = this.distance_movement*Math.sin(this.mouse_angle)
-            }
-
-            if(!this.shouldCentMove()){this.vel.x = this.dirX * this.speed / this.mouse_distance_full_strength;
-            this.addX = this.dirX * this.speedAdditioner/this.mouse_distance_full_strength;
-            this.addY = this.dirY * this.speedAdditioner/this.mouse_distance_full_strength;
-            if(!this.magnet||this.magnet&&this.safeZone){if(this.vertSpeed==-1){this.vel.y = this.dirY * this.speed / this.mouse_distance_full_strength;}else{this.vel.y = this.dirY * this.vertSpeed / this.mouse_distance_full_strength;}} 
             }
         } else if (!this.cent_is_moving){
-            this.dirY = 0; this.dirX = 0;
+            this.dirY = 0; 
+            this.dirX = 0;
             this.moving = false;
             if(this.isMovementKeyPressed(input)){
               if(this.shouldCentMove() && this.cent_input_ready) this.cent_is_moving = true;
@@ -450,17 +409,6 @@ class Player {
           this.cent_input_ready = false;
           this.cent_is_moving = true;
         }
-
-        if(this.shouldCentMove() && this.cent_distance){
-          this.d_x = this.dirX * this.cent_distance;
-          this.d_y = this.dirY * this.cent_distance;
-        }
-        else if(this.moving&&!input.isMouse&&!this.shouldCentMove()) {
-          this.d_x = this.distance_movement * this.dirX;
-          this.d_y = this.distance_movement * this.dirY;
-        }
-        //this.speed-=this.speedAdditioner;
-        this.speed=this.statSpeed;
       }
     }
   }
@@ -479,298 +427,147 @@ class Player {
   }
   updateExperience(toAdd){
     this.experience += toAdd;
+    console.log(toAdd)
     while (this.experience >= this.nextLevelExperience) {
       this.experience-=this.tempPrevExperience-this.previousLevelExperience;
       this.level++;
-        this.tempPrevExperience=this.calculateExperience(this.level-1)
-        this.tempNextExperience=this.calculateExperience(this.level)
-        this.nextLevelExperience=this.tempNextExperience;
-        this.previousLevelExperience=this.tempPrevExperience;
+      this.tempPrevExperience=this.calculateExperience(this.level-1)
+      this.tempNextExperience=this.calculateExperience(this.level)
+      this.nextLevelExperience=this.tempNextExperience;
+      this.previousLevelExperience=this.tempPrevExperience;
       this.points++;
     }
   }
-  update(time, friction, magnet) {
+  upgradeToMaxStats(){
+    this.maxEnergy = this.maxUpgradableEnergy;
+    this.speed = this.maxSpeed;
+    this.regen = this.maxRegen;
+  }
+  calculateAreaZones(area){
+    let minimum_speed = 0;
+    let safeZone = true;
+    for(var i in area.zones){
+      var zone = area.zones[i];
+      if(zone.type == 0||zone.minimum_speed){
+        var rect1 = {x:this.pos.x-game.worlds[this.world].pos.x-game.worlds[this.world].areas[this.area].pos.x,y:this.pos.y-game.worlds[this.world].pos.y-game.worlds[this.world].areas[this.area].pos.y,width:this.radius, height:this.radius};
+        var rect2 = {x:zone.pos.x, y:zone.pos.y, width:zone.size.x+0.5, height:zone.size.y+0.5}
+        if (rect1.x < rect2.x + rect2.width &&
+          rect1.x + rect1.width > rect2.x &&
+          rect1.y < rect2.y + rect2.height &&
+          rect1.y + rect1.height > rect2.y) {
+            if(zone.type==0)safeZone=false;
+            if(zone.minimum_speed){
+              const zoneMinSpeed = (this.shift) ? zone.minimum_speed * 0.5 : zone.minimum_speed;
+              const speed = (settings.convert_to_legacy_speed) ? zoneMinSpeed / 30 : zoneMinSpeed;
+              minimum_speed=Math.max(speed,minimum_speed);
+            }
+        }
+      }
+    }
+    return {safeZone:safeZone,minimum_speed:minimum_speed};
+  }
+  calculateSpeed(minimum_speed){
+    return Math.max(minimum_speed,(this.speed * this.speedMultiplier) + this.speedAdditioner);
+  }
+  update(time, friction) {
     this.update_knockback(time);
+    this.upgradeBrightness.update(time);
     const timeFix = time / (1000 / 30);
-    this.inBarrier = false;
+    const world = game.worlds[this.world];
+    const area = world.areas[this.area];
+    const areaZones = this.calculateAreaZones(area);
+    this.safeZone = areaZones.safeZone;
+    this.calculateEffects(time);
+    const speed = this.calculateSpeed(areaZones.minimum_speed);
+    const magnetism = (area.magnetism || world.magnetism) ? true : false;
+    const partial_magnetism = (area.partial_magnetism || world.partial_magnetism) ? true : false;
+    const vertical_speed = ((partial_magnetism) ? this.speed / 2 : 10) * this.verticalSpeedMultiplayer;
+    this.magnet = (magnetism || partial_magnetism) ? true : false;
 
     if(this.flashlight_active || this.lantern_active){
       this.energy -= 1 * time / 1000;
     }
 
-    if(this.sweetToothConsumed){
-      this.speedAdditioner=5;
-      this.regenAdditioner=5;
-    }
-    if(this.victoryTimer<=0){
-      this.timer += time;
-    } else {
-      this.victoryTimer -= time;
-      if(this.victoryTimer<=0){this.timer = 0;}
-    }
-    const world = game.worlds[this.world];
-    const area = world.areas[this.area];
-    if(!magnet){
-      if(area.magnetism || world.magnetism){this.magnet = true; magnet = true;}
-    }
-    if(area.applies_lantern || world.applies_lantern){
-      this.lantern = true;
-    } else if(this.lantern){
-      this.lantern = false;
-    }
-    if(!area.matched && this.area != 0){
-      area.matched = true; 
-      this.updateExperience(12*(parseInt(this.area)));
-    }
-      this.safeZone = true;
-      this.minimum_speed = 1;
-      for(var i in area.zones){
-        var zone = area.zones[i];
-        if(zone.type == 0||(zone.type==1&&zone.minimum_speed)){
-          var rect1 = {x:this.pos.x-game.worlds[this.world].pos.x-game.worlds[this.world].areas[this.area].pos.x,y:this.pos.y-game.worlds[this.world].pos.y-game.worlds[this.world].areas[this.area].pos.y,width:this.radius, height:this.radius};
-          var rect2 = {x:zone.pos.x, y:zone.pos.y, width:zone.size.x+0.5, height:zone.size.y+0.5}
-          if (rect1.x < rect2.x + rect2.width &&
-            rect1.x + rect1.width > rect2.x &&
-            rect1.y < rect2.y + rect2.height &&
-            rect1.y + rect1.height > rect2.y) {
-              if(zone.type==0)this.safeZone=false;
-              this.minimum_speed=zone.minimum_speed;
-          }
-        }
-      }
-      this.speedMultiplier = 1;
-      if(this.collides&&this.slippery){
-        this.d_x*=2;
-        this.d_y*=2;
-        this.collidedPrev = true;
-      } else if (this.collidedPrev) {
-        this.d_x/=2;
-        this.d_y/=2;
-        this.collidedPrev = false;
-      }
-      if (this.poison) {
-        this.poisonTime += time;
-        this.speedMultiplier *= 3;
-      }
-      if (this.fusion) {
-        this.speedMultiplier *= 0.7;
-      }
-      if (!this.shouldCentMove()&&this.shift == 2) {
-        this.speedMultiplier *= 0.5;
-        this.speedAdditioner *= 0.5;
-      }
-      if (this.poisonTime >= this.poisonTimeLeft) {
-        this.poison = false;
-        this.poisonTimeLeft = 0;
-      }
-      if (this.slowing) {
-        this.speedMultiplier *= (1-this.effectImmune*(1-0.7))*this.effectReplayer;
-      }
-      if (this.freezing) {
-        this.speedMultiplier *= (1-this.effectImmune*(1-0.2))*this.effectReplayer;
-      }
-      if (this.web || this.cobweb) {
-        if(this.webstickness <= 0){
-          this.webstickness = 0.1;
-        } else {
-          this.webstickness += (Math.pow(0.85-this.webstickness,2) * 0.2) * (time / (1000 / 30))
-        }
-        if (this.cobweb && this.web){
-          this.speedMultiplier *= Math.min(1-(this.webstickness),(1-this.effectImmune*(this.webstickness))*this.effectReplayer)
-        } else if (this.cobweb) {
-          this.speedMultiplier *= 1-(this.webstickness)
-        } else if (this.web) {
-          this.speedMultiplier *= (1-this.effectImmune*(this.webstickness))*this.effectReplayer;
-        }
-      } else if (this.webstickness > 0) {this.webstickness = 0;}
-
-      if(this.sticky || this.stickness>0){
-        this.speedMultiplier *= (1-this.effectImmune*(this.stickness))*this.effectReplayer;
-      }
-      if(this.className == "Brute"){
-        if(this.energy == this.maxEnergy){
-          this.effectImmune = 0;
-        } else {this.effectImmune = 0.2}
-      }
-
-      if (this.shadowed_time_left>0){
-        this.shadowed_time_left-=time;
-      } else {
-        this.knockback_limit_count = 0;
-        this.shadowed_invulnerability = false;
-      }
-
-      if(this.mortarTime>0){this.speedMultiplier = 0;}
-      if(this.minimum_speed>this.speed + this.speedAdditioner){this.speed=this.minimum_speed}
-        if(this.shouldCentMove()){
-          this.distance_movement = (this.speed*this.speedMultiplier)+this.speedAdditioner;
-          this.cent_max_distance = this.distance_movement * 2;
-          if(this.cent_is_moving){
-            if(this.cent_accelerating){
-              if(this.cent_distance < this.cent_max_distance){
-                this.cent_distance += this.cent_acceleration * this.distance_movement * timeFix;
-              } else {
-                this.cent_distance = this.cent_max_distance;
-                this.cent_accelerating = false;
-              }
-            } else {
-              if(this.cent_distance > 0){
-                this.cent_distance -= this.cent_deceleration * this.distance_movement * timeFix;
-              } else {
-                this.cent_distance = 0;
-                this.cent_accelerating = true;
-                this.cent_is_moving = false;
-                this.cent_input_ready = true;
-              }
-            }
-            if(this.cent_distance<0){this.cent_distance = 0;}
-          }
-          this.distance_movement = this.cent_distance;
-        }
-    if (Math.abs(this.vel.x)<0.001) {
-      this.vel.x = 0;
-    }
-    if (Math.abs(this.vel.y)<0.001) {
-      this.vel.y = 0;
-    }
-    this.magnet = magnet;
-    this.radius = (this.reducingEffect) ? this.fixedRadius-Math.floor(this.reducingEffect)/32 : this.fixedRadius;
-    this.radius *= this.radiusMultiplier;
-    this.radiusMultiplier = 1;
-    if(this.enlarging){
-      const strength = 10 * this.effectImmune / this.effectReplayer;
-      this.radiusAdditioner += strength;
-    }
-    if(this.radiusAdditioner!=0){
-      this.radius += this.radiusAdditioner / 32;
-      this.radiusAdditioner = 0;
-    }
-    if(this.radius < 0) {
-      this.radius = 0;
-      if(this.reducing){
-        death(this);
-      }
-    }
-    this.radiusAdditioner = 0;
-    this.stickness = Math.max(0,this.stickness-time)
-    this.stickyTrailTimer = Math.max(0,this.stickyTrailTimer-time)
-    if(this.magnet&&!this.safeZone){
-      var magneticSpeed = (this.vertSpeed == -1) ? 10 : this.vertSpeed
-      if(this.magnetDirection == "Down"){this.d_y = magneticSpeed;}
-      else if(this.magnetDirection == "Up"){this.d_y = -magneticSpeed;}
-    }
-    this.wasFrozen = this.frozen;
-    if (this.frozen) {
-      this.frozenTime += time;
-    }
-    if (this.frozenTime >= this.frozenTimeLeft) {
-      this.frozen = false;
-      this.frozenTimeLeft = 0;
-    }
-    if(this.stickness>0){
-      if(this.stickyTrailTimer==0&&!this.safeZone){
-        this.stickyTrailTimer = 250;
-        const world = game.worlds[this.world]
-        const area = world.areas[this.area];
-        const trail = new StickyTrail(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y));
-        if(!area.entities["sticky_trail"]){area.entities["sticky_trail"] = []}
-        area.entities["sticky_trail"].push(trail);
-      }
-    }
-    if(this.experienceDraining){
-      this.experience-=(2*this.level*time/1e3)*this.effectImmune/this.effectReplayer;
-      this.experience=Math.max(0,this.experience);
-      if(this.experience<this.previousLevelExperience){
-        var diff=this.previousLevelExperience-this.experience;
-        this.previousLevelExperience-=diff;
-        this.nextLevelExperience+=diff;
-        this.previousLevelExperience=Number(this.previousLevelExperience.toFixed(5));
-        this.nextLevelExperience=Number(this.nextLevelExperience.toFixed(5));
-      }
-    }
-    if(this.speedghost && this.speed - (0.1*this.effectImmune)/this.effectReplayer*timeFix >= 5){
-      if(!settings.no_points && parseFloat(this.speed.toFixed(1))%0.5 == 0)this.points++
-      this.speed-=(0.1*this.effectImmune)/this.effectReplayer*timeFix;
-      this.statSpeed-=(0.1*this.effectImmune)/this.effectReplayer*timeFix;
-      if(this.statSpeed < 5){this.statSpeed = 5;}
-    }
-
-    if(this.regenghost && this.regen - (0.04*this.effectImmune)/this.effectReplayer*timeFix >= 1){
-      if(!settings.no_points && (false || Number((parseFloat(this.regen.toFixed(1))%0.2).toFixed(1)) == 0.2) )this.points++
-      this.regen-=(0.04*this.effectImmune)/this.effectReplayer*timeFix;
-      if(this.regen < 1){this.regen = 1;}
-    }
-
-    if (this.inEnemyBarrier){
-      this.inBarrier = true;
-    }
-
-    if((this.quicksand.angle || this.quicksand.angle === 0) && !(this.god||this.inBarrier||(this.invicible&&this.className=="Magmax"))){
-      this.pos.x += Math.cos(this.quicksand.angle * (Math.PI/180)) * (this.quicksand.strength/32) * timeFix;
-      this.pos.y += Math.sin(this.quicksand.angle * (Math.PI/180)) * (this.quicksand.strength/32) * timeFix;  
-      this.quicksand.angle = undefined;
-    }
-
-    if (this.charging) {
-      this.energy += (16 * time / 1000)*this.effectImmune/this.effectReplayer;
-      if (this.energy > this.maxEnergy) {
-        this.energy = this.maxEnergy;
-      }
-      if(this.energy>=this.maxEnergy && !this.draining){
-        this.energy = 0;
-        death(this);
-      }
-    }
-    if (this.draining) {
-      this.energy -= (16 * time / 1000)*this.effectImmune/this.effectReplayer;
-      if (this.energy < 0) {
-        this.energy = 0;
-      }
-    }
-    if(this.burning) {
-      this.burningTimer+=time*this.effectImmune/this.effectReplayer;
-      if(this.burningTimer>1000){
-        death(this);
-      }
-    } else {
-      this.burningTimer = Math.max(0,this.burningTimer-time)
-    }
-
-    if(this.reducing){  
-      this.reducingEffect += time*this.effectImmune/this.effectReplayer/100;
-    } else if (this.reducingEffect>0) {
-      this.reducingEffect -= time/100;
-      if(this.reducingEffect<0) this.reducingEffect = 0;
-    }
-
-    if(this.disabling) {
-      this.firstAbilityPressed = false;
-      this.secondAbilityPressed = false;
-      this.firstAbility = false;
-      this.secondAbility = false;
-      this.firstAbilityActivated = false;
-      this.secondAbilityActivated = false;
-      this.flashlight_active = false;
-      this.lantern_active = false;
-      this.flow = false;
-      this.harden = false;
-      this.paralysis = false;
-      this.stomp = false;
-      this.distort = false;
-      this.aura = false;
-      this.sugar_rush = false;
-    }
     this.energy += (this.regen+this.regenAdditioner) * time / 1000;
     if (this.energy > this.maxEnergy) {
       this.energy = this.maxEnergy;
     }
+
+    if(this.victoryTimer<=0){
+      this.timer += time;
+    } else {
+      this.victoryTimer -= time;
+      if(this.victoryTimer<=0){
+        this.timer = 0;
+      }
+    }
+    if(!area.matched && this.area != 0){
+      area.matched = true;
+      this.updateExperience(12*(parseInt(this.area)));
+    }
+    if(this.shouldCentMove()){
+      this.distance_movement = speed;
+      this.cent_max_distance = this.distance_movement * 2;
+      if(this.cent_is_moving){
+        if(this.cent_accelerating){
+          if(this.cent_distance < this.cent_max_distance){
+            this.cent_distance += this.cent_acceleration * this.distance_movement * timeFix;
+          } else {
+            this.cent_distance = this.cent_max_distance;
+            this.cent_accelerating = false;
+          }
+        } else {
+          if(this.cent_distance > 0){
+            this.cent_distance -= this.cent_deceleration * this.distance_movement * timeFix;
+          } else {
+            this.cent_distance = 0;
+            this.cent_accelerating = true;
+            this.cent_is_moving = false;
+            this.cent_input_ready = true;
+          }
+        }
+        if(this.cent_distance<0){this.cent_distance = 0;}
+      }
+      this.distance_movement = this.cent_distance;
+    }
+    this.distance_movement *= speed;
+    if(this.mouseActive){
+      this.d_x = this.distance_movement * Math.cos(this.mouse_angle);
+      this.d_y = this.distance_movement * Math.sin(this.mouse_angle);
+    } else if (!this.shouldCentMove()){
+      this.d_x = this.distance_movement * this.dirX;
+      this.d_y = this.distance_movement * this.dirY;
+    }
+    
+    if(!this.safeZone && (magnetism || partial_magnetism)){
+      if(!partial_magnetism){
+        this.d_y = 0;
+      }
+      if(this.magnetDirection == "Down"){
+        this.pos.y += vertical_speed / 32 * timeFix;
+      }
+      else if(this.magnetDirection == "Up"){
+        this.pos.y += -vertical_speed / 32 * timeFix;
+      }
+    }
+
+    if(this.collides&&this.slippery){
+      this.d_x*=2;
+      this.d_y*=2;
+      this.collidedPrev = true;
+    } else if (this.collidedPrev) {
+      this.d_x/=2;
+      this.d_y/=2;
+      this.collidedPrev = false;
+    }
     this.oldPos = (this.previousPos.x == this.pos.x && this.previousPos.y == this.pos.y) ? this.oldPos : new Vector(this.previousPos.x,this.previousPos.y)  
     this.previousPos = new Vector(this.pos.x, this.pos.y);
     var dim = (1 - friction);
+
     if (this.slippery) {
       dim = 0;
     }
-    //dim = 0;
+
     var friction_factor = dim;
 
     this.slide_x = this.distance_moved_previously[0];
@@ -820,12 +617,228 @@ class Player {
       this.d_y = 0;
     }
     this.distance_moved_previously = [this.d_x,this.d_y]
-    this.vel = new Vector(this.d_x,this.d_y)
 
-    if (Math.atan2(this.vel.y,this.vel.x)!= 0 || this.moving) {
-      this.previousAngle = Math.atan2(this.vel.y,this.vel.x);
+    if (this.mouseActive || this.moving) {
+      this.previousAngle = (this.mouseActive) ? this.mouse_angle : Math.atan2(this.d_y,this.d_x);
+    }
+    this.firstAbilityCooldown = Math.max(this.firstAbilityCooldown-time,0);
+    this.secondAbilityCooldown = Math.max(this.secondAbilityCooldown-time,0);
+    if (!settings.cooldown) {
+      this.energy = this.maxEnergy;
+      this.firstAbilityCooldown = 0;
+      this.secondAbilityCooldown = 0;
+      this.firstPellet = 0;
+      this.secondPellet = 0;
+    }
+    this.tempColor=this.color;
+    this.pos.x += this.d_x / 32 * timeFix;
+    this.pos.y += this.d_y / 32 * timeFix;
+    if(this.god&&this.isDead){this.isDead=false;}
+    else if(this.deathTimer<=0&&this.isDead){death(this);}
+    else if(this.isDead)this.deathTimer-=time;
+    if(this.invicible_time>=0){
+      this.invicible_time-=time;
+      if(this.invicible_time<=0){
+        this.invicible = false;
+      }
+    }
+    this.clearEffects();
+  }
+  abilities(time, area, bound) {
+
+  }
+  calculateEffects(time){
+    const timeFix = time / (1000 / 30);
+    this.inBarrier = false;
+    this.verticalSpeedMultiplayer = 1;
+    this.radius = (this.reducingEffect) ? this.fixedRadius-Math.floor(this.reducingEffect)/32 : this.fixedRadius;
+    this.radius *= this.radiusMultiplier;
+
+    if(this.magnetic_reduction){
+      this.verticalSpeedMultiplayer = 0.5 * this.effectImmune;
+    }
+    if(this.magnetic_nullification){
+      this.verticalSpeedMultiplayer = 0;
     }
 
+    if(this.enlarging){
+      const strength = 10 * this.effectImmune;
+      this.radiusAdditioner += strength;
+    }
+    if(this.radiusAdditioner){
+      this.radius += this.radiusAdditioner / 32;
+      this.radiusAdditioner = 0;
+    }
+    if(this.radius < 0) {
+      this.radius = 0;
+      if(this.reducing){
+        death(this);
+      }
+    }
+    if (this.poison) {
+      this.poisonTime += time;
+      this.speedMultiplier *= 3;
+    }
+    if (this.fusion) {
+      this.speedMultiplier *= 0.7;
+    }
+    if (!this.shouldCentMove() && this.shift) {
+      this.speedMultiplier *= 0.5;
+      this.speedAdditioner *= 0.5;
+    }
+    if (this.poisonTime >= this.poisonTimeLeft) {
+      this.poison = false;
+      this.poisonTimeLeft = 0;
+    }
+    if (this.slowing) {
+      this.applySlowness(0.7);
+    }
+    if (this.freezing) {
+      this.applySlowness(0.15);
+    }
+    if (this.web || this.cobweb) {
+      if(this.webstickness <= 0){
+        this.webstickness = 0.1;
+      } else {
+        this.webstickness += (Math.pow(0.85-this.webstickness,2) * 0.2) * timeFix;
+      }
+      if (this.cobweb && this.web){
+        this.applySlowness(this.webstickness,1-(this.webstickness),true);
+      } else if (this.cobweb) {
+        this.applySlowness(this.webstickness,1-(this.webstickness),false);
+      } else if (this.web) {
+        this.applySlowness(this.webstickness)
+      }
+    } else if (this.webstickness > 0) {this.webstickness = 0;}
+
+    if(this.sticky || this.stickness>0){
+      this.applySlowness(0.3);
+    }
+
+    if (this.shadowed_time_left>0){
+      this.shadowed_time_left-=time;
+    } else {
+      this.knockback_limit_count = 0;
+      this.shadowed_invulnerability = false;
+    }
+    if(this.stickness>0){
+      if(this.stickyTrailTimer==0&&!this.safeZone){
+        this.stickyTrailTimer = 250;
+        const world = game.worlds[this.world]
+        const area = world.areas[this.area];
+        const trail = new StickyTrail(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y));
+        if(!area.entities["sticky_trail"]){area.entities["sticky_trail"] = []}
+        area.entities["sticky_trail"].push(trail);
+      }
+      this.stickness = Math.max(0,this.stickness-time);
+      this.stickyTrailTimer = Math.max(0,this.stickyTrailTimer-time);
+    }
+
+    if(this.experienceDraining){
+      this.experience-=(2*this.level*time/1e3)*this.effectImmune;
+      this.experience=Math.max(0,this.experience);
+      if(this.experience<this.previousLevelExperience){
+        var diff=this.previousLevelExperience-this.experience;
+        this.previousLevelExperience-=diff;
+        this.nextLevelExperience+=diff;
+        this.previousLevelExperience=Number(this.previousLevelExperience.toFixed(5));
+        this.nextLevelExperience=Number(this.nextLevelExperience.toFixed(5));
+      }
+    }
+    if(this.speedghost && this.speed - (0.1*this.effectImmune)*timeFix >= 5){
+      if(!settings.no_points && parseFloat(this.speed.toFixed(1))%0.5 == 0)this.points++
+      this.speed-=(0.1*this.effectImmune)*timeFix;
+    }
+
+    if(this.regenghost && this.regen - (0.04*this.effectImmune)*timeFix >= 1){
+      if(!settings.no_points && (false || Number((parseFloat(this.regen.toFixed(1))%0.2).toFixed(1)) == 0.2) )this.points++
+      this.regen-=(0.04*this.effectImmune)*timeFix;
+      if(this.regen < 1){this.regen = 1;}
+    }
+
+    if (this.inEnemyBarrier){
+      this.inBarrier = true;
+    }
+
+    if((this.quicksand.angle || this.quicksand.angle === 0) && !(this.god||this.inBarrier||this.harden)){
+      this.pos.x += Math.cos(this.quicksand.angle * (Math.PI/180)) * (this.quicksand.strength/32) * timeFix;
+      this.pos.y += Math.sin(this.quicksand.angle * (Math.PI/180)) * (this.quicksand.strength/32) * timeFix;  
+      this.quicksand.angle = undefined;
+    }
+
+    if (this.charging) {
+      this.energy += (16 * time / 1000)*this.effectImmune;
+      if (this.energy > this.maxEnergy) {
+        this.energy = this.maxEnergy;
+      }
+      if(this.energy>=this.maxEnergy && !this.draining){
+        this.energy = 0;
+        death(this);
+      }
+    }
+    if (this.draining) {
+      this.energy -= (16 * time / 1000)*this.effectImmune;
+      if (this.energy < 0) {
+        this.energy = 0;
+      }
+    }
+    if(this.burning) {
+      this.burningTimer+=time*this.effectImmune;
+      if(this.burningTimer>1000){
+        death(this);
+      }
+    } else {
+      this.burningTimer = Math.max(0,this.burningTimer-time)
+    }
+
+    if(this.reducing){  
+      this.reducingEffect += time*this.effectImmune/100;
+    } else if (this.reducingEffect>0) {
+      this.reducingEffect -= time/100;
+      if(this.reducingEffect<0) this.reducingEffect = 0;
+    }
+
+    if (this.frozen) {
+      this.speedMultiplier = 0;
+      this.speedAdditioner = 0;
+      this.frozenTime += time;
+    }
+    if (this.frozenTime >= this.frozenTimeLeft) {
+      this.frozen = false;
+      this.frozenTimeLeft = 0;
+    }
+
+    if(this.disabling) {
+      this.firstAbilityPressed = false;
+      this.secondAbilityPressed = false;
+      this.firstAbility = false;
+      this.secondAbility = false;
+      this.firstAbilityActivated = false;
+      this.secondAbilityActivated = false;
+      this.flashlight_active = false;
+      this.lantern_active = false;
+      this.flow = false;
+      this.harden = false;
+      this.paralysis = false;
+      this.stomp = false;
+      this.distort = false;
+      this.aura = false;
+      this.sugar_rush = false;
+    }
+  }
+  applySlowness(slowness, argument, min){
+    const slowdown = (this.effectImmune > 1) ? (1-(1-slowness**this.effectImmune)) : (1-this.effectImmune*(1-slowness));
+    if(argument === undefined) {
+      this.speedMultiplier *= slowdown;
+    } else {
+      if(min) {
+        this.speedMultiplier *= Math.min(argument,slowdown);
+      } else {
+        this.speedMultiplier *= argument;
+      }
+    }
+  }
+  clearEffects(){
     if(!this.blocking){
       this.reducing = false;
       this.slowing = false;
@@ -842,66 +855,16 @@ class Player {
       this.burning = false;
       this.slippery = false;
       this.enlarging = false;
+      this.disabling = false;
+      this.magnetic_reduction = false;
+      this.magnetic_nullification = false;
     }
     this.blocking = false;
-    this.firstAbilityCooldown -= time;
-    this.secondAbilityCooldown -= time;
-    this.firstAbilityCooldown += (Math.abs(this.firstAbilityCooldown) - this.firstAbilityCooldown) / 2;
-    this.secondAbilityCooldown += (Math.abs(this.secondAbilityCooldown) - this.secondAbilityCooldown) / 2;
-    if (!settings.cooldown) {
-      this.energy = this.maxEnergy;
-      this.firstAbilityCooldown = 0;
-      this.secondAbilityCooldown = 0;
-      this.firstPellet = 0;
-      this.secondPellet = 0;
-    }
-    this.tempColor=this.color;
-    this.disabling = false;
-    var vel;
-    var magneticSpeed = (this.vertSpeed == -1) ? 10 : this.vertSpeed;
-    var yaxis = (this.vel.y>=0)?1:-1;
-    if(!this.magnet){magneticSpeed*=yaxis;}
-    if(this.magnetDirection == "Up"){magneticSpeed=-magneticSpeed}
-    if((this.magnet||this.vertSpeed != -1)&&!this.safeZone){vel = new Vector(this.vel.x, magneticSpeed);}
-    else{vel = new Vector(this.vel.x, this.vel.y);}
-    this.vertSpeed = -1;
-    if (!this.wasFrozen) {
-      this.pos.x += vel.x / 32 * timeFix;
-      this.pos.y += vel.y / 32 * timeFix;
-    }
-    if(this.frozen&&this.magnet){this.pos.y += vel.y / 32 * timeFix;}
-    //this.vel.x*=friction_factor;//(this.vel.x+this.vel.x*friction_factor)/2;
-    //this.vel.y*=friction_factor//(this.vel.y+this.vel.y*friction_factor)/2;
+    this.radiusAdditioner = 0;
+    this.radiusMultiplier = 1;
+    this.regenAdditioner = 0;
     this.speedMultiplier = 1;
     this.speedAdditioner = 0;
-    this.regenAdditioner = 0;
-    this.speed = this.statSpeed;
-
-    if(this.sweetToothTimer==15000){
-      this.energy += this.maxEnergy/2;
-      if(this.energy>this.maxEnergy){this.energy = this.maxEnergy}
-    }
-    if(this.sweetToothConsumed){
-      this.speedAdditioner=5;
-      this.regenAdditioner=5;
-      this.sweetToothTimer-=time;
-    }
-    if(this.sweetToothTimer <= 0){
-      this.sweetToothTimer = 0;
-      this.sweetToothConsumed = false;
-    }
-    if(this.god&&this.isDead){this.isDead=false;}
-    else if(this.deathTimer<=0&&this.isDead){death(this);}
-    else if(this.isDead)this.deathTimer-=time;
-    if(this.invicible_time>=0){
-      this.invicible_time-=time;
-      if(this.invicible_time<=0){
-        this.invicible = false;
-      }
-    }
-  }
-  abilities(time, area, bound) {
-
   }
   knockback_player(time,enemy,push_time,radius,offset){
     const timeFix = time / (1000 / 30);
@@ -909,7 +872,7 @@ class Player {
     this.knockback_push_time = push_time;
     this.knockback_enemy_pos = new Vector(enemy.pos.x+offset.x,enemy.pos.y+offset.y);
     this.knockback_enemy_radius = radius;
-    this.knockback_multiplayer = this.effectImmune / this.effectReplayer;
+    this.knockback_multiplayer = this.effectImmune;
     this.knockback_limit_count += 1;
 
     const ePos = this.knockback_enemy_pos;
@@ -960,38 +923,54 @@ class Player {
 class Basic extends Player {
   constructor(pos, speed) {
     super(pos, 0, speed, "#FF0000", "Basic");
-    this.hasAB = true; this.ab1L = 0; this.ab2L = 0; this.firstTotalCooldown = 0; this.secondTotalCooldown = 6000;
+    this.hasAB = true; 
+    this.ab1L = 0; 
+    this.ab2L = 0; 
   }
 }
 class Jotunn extends Player {
   constructor(pos, speed) {
     super(pos, 1, speed, "#5cacff", "Jötunn");
-    this.hasAB = true; this.ab1L = 5; this.ab2L = 5; this.firstTotalCooldown = 0; this.secondTotalCooldown = 6000;
+    this.hasAB = true; 
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0; 
+    this.firstTotalCooldown = 0; 
+    this.secondTotalCooldown = 6000;
   }
   abilities(time, area, offset) {
-    for (var i in area.entities) {
-      for (var j in area.entities[i]) {
-        var entity = area.entities[i][j];
-        if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < (170 / 32) + entity.radius) {
-          if (!area.entities[i][j].imune) {
-            area.entities[i][j].speedMultiplier *= 0.6;
-            area.entities[i][j].decayed = true;
+    const secondAbilityCost = 30;
+    const shatterTime = 4000;
+    const decayRadius = 170 / 32;
+    if(this.ab1L)for (const i in area.entities) {
+      for (const j in area.entities[i]) {
+        const entity = area.entities[i][j];
+        if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < decayRadius + entity.radius) {
+          if (!entity.imune) {
+            entity.speedMultiplier *= this.getDecaySlowdown();
+            entity.decayed = true;
           }
         }
       }
     }
-    if (this.secondAbility && this.energy >= 30 && this.secondAbilityCooldown == 0) {
-      this.energy -= 30;
-      this.secondAbilityCooldown = 6000;
-      for (var i in area.entities) {
-        for (var j in area.entities[i]) {
-          var entity = area.entities[i][j];
-          if (area.entities[i][j].decayed) {
-            area.entities[i][j].shatterTime = 4000;
+    if (this.secondAbility && this.energy >= secondAbilityCost && this.secondAbilityCooldown == 0 && this.ab2L) {
+      this.energy -= secondAbilityCost;
+      this.updateSecondAbilityCooldown();
+      for (const i in area.entities) {
+        for (const j in area.entities[i]) {
+          const entity = area.entities[i][j];
+          if (entity.decayed) {
+            entity.shatterTime = shatterTime;
           }
         }
       }
     }
+  }
+  updateSecondAbilityCooldown(){
+    this.secondTotalCooldown = 9000 - (this.ab2L-1) * 1000;
+    this.secondAbilityCooldown = this.secondTotalCooldown;
+  }
+  getDecaySlowdown(){
+    return 1 - ((this.ab1L-1) * 0.1);
   }
 }
 class Burst extends Player {
@@ -1020,13 +999,14 @@ class Burst extends Player {
         if (area.entities["dynamites"][i].owner == this.id) {
           for (var j in area.entities) {
             for (var k in area.entities[j]) {
-              if (distance(area.entities["dynamites"][i].pos, area.entities[j][k].pos) < 9 && !area.entities[j][k].imune && area.entities[j][k].isEnemy) {
-                var bfvelX = area.entities[j][k].vel.x;
-                var bfvelY = area.entities[j][k].vel.y;
-                var dirX = area.entities[j][k].pos.x - area.entities["dynamites"][i].pos.x;
-                var dirY = area.entities[j][k].pos.y - area.entities["dynamites"][i].pos.y;
-                area.entities[j][k].vel.x = Math.sqrt(bfvelX * bfvelX + bfvelY * bfvelY) * dirX / Math.sqrt(dirX * dirX + dirY * dirY);
-                area.entities[j][k].vel.y = Math.sqrt(bfvelX * bfvelX + bfvelY * bfvelY) * dirY / Math.sqrt(dirX * dirX + dirY * dirY)
+              const entity = area.entities[j][k];
+              if (distance(area.entities["dynamites"][i].pos, entity.pos) < 9 && !entity.imune && entity.isEnemy) {
+                var bfvelX = entity.vel.x;
+                var bfvelY = entity.vel.y;
+                var dirX = entity.pos.x - area.entities["dynamites"][i].pos.x;
+                var dirY = entity.pos.y - area.entities["dynamites"][i].pos.y;
+                entity.vel.x = Math.sqrt(bfvelX * bfvelX + bfvelY * bfvelY) * dirX / Math.sqrt(dirX * dirX + dirY * dirY);
+                entity.vel.y = Math.sqrt(bfvelX * bfvelX + bfvelY * bfvelY) * dirY / Math.sqrt(dirX * dirX + dirY * dirY)
               }
             }
           }
@@ -1112,20 +1092,35 @@ class Shade extends Player {
     super(pos, 3, speed, "#826565", "Shade");
     this.firstTime=0;
     this.secondTime=0;
-    this.hasAB = true; this.ab1L = 5; this.ab2L = 5; this.firstTotalCooldown = 7000; this.secondTotalCooldown = 1000;
+    this.hasAB = true; 
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
+    this.firstTotalCooldown = 7000; 
+    this.secondTotalCooldown = 1000;
+    this.shadeSpeed = 0;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility) {
-      this.firstAbilityActivated = !this.firstAbilityActivated;
-      if(this.energy>=30&&this.firstAbilityCooldown==0){
-        this.energy-=30;
+    const firstAbilityCost = 30;
+    const secondAbilityCost = 5;
+    if (this.firstAbility && this.ab1L) {
+      if(this.energy>=firstAbilityCost&&this.firstAbilityCooldown==0){
+        this.energy-=firstAbilityCost;
         this.firstAbilityCooldown+=7000;
-        this.night = true;
         this.shadeNight = 7000;
+        this.shadeSpeed = 1.25*(this.ab1L-1);
+        this.night = true;
       }
     }
+    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= secondAbilityCost && this.ab2L) {
+      this.secondAbilityActivated = !this.secondAbilityActivated;
+      this.updateSecondAbilityCooldown();
+      this.energy -= secondAbilityCost;
+      area.addEntity(0, new shadeVengeance(new Vector(this.pos.x - offset.x, this.pos.y - offset.y),this.mouseActive ? this.mouse_angle : this.previousAngle, 1.3, 58, this.id))
+    }
     if(this.night){
-      this.speedAdditioner+=5;
+      this.speedAdditioner += this.shadeSpeed;
     }
     if(this.night && this.shadeNight > 0){
       this.shadeNight-=time;
@@ -1133,14 +1128,10 @@ class Shade extends Player {
       this.night = false;
       this.speedAdditioner=0;
     } else {this.shadeNight = 0}
-
-    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 5) {
-      this.secondAbilityActivated = !this.secondAbilityActivated;
-      this.secondAbilityCooldown+=1000;
-      this.energy-=5;
-
-      area.addEntity(0, new shadeVengeance(new Vector(this.pos.x - offset.x, this.pos.y - offset.y),this.mouseActive ? this.mouse_angle : this.previousAngle, 1.3, 58, this.id))
-    }
+  }
+  updateSecondAbilityCooldown(){
+    this.secondTotalCooldown = 3000 - 500*(this.ab2L-1);
+    this.secondAbilityCooldown = this.secondTotalCooldown;
   }
 }
 
@@ -1325,19 +1316,35 @@ class Reaper extends Player {
     this.secondTime=0;
     this.hasAB = true;
     this.ab1L = 0;
-    this.ab2L = 5;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
+    this.secondAbilityUnlocked = true;
     this.firstTotalCooldown = 4000;
     this.secondTotalCooldown = 10000;
   }
   abilities(time, area, offset) {
-    if(this.reaperShade){this.speed = 11;}
+    const invisibilityTime = 3500;
     if (this.secondAbility) {
       this.secondAbilityActivated = !this.secondAbilityActivated;
       if(this.energy>=30&&this.secondAbilityCooldown==0){
-        this.energy-=30; this.secondAbilityCooldown+=10000; var oldSpeed = this.speed+0;
-        this.speed = 11; this.reaperShade=true; this.god = true; setTimeout(()=>{this.reaperShade=false;this.god=false;this.speed=oldSpeed},3500)
+        this.energy-=30; 
+        this.secondAbilityCooldown=this.secondTotalCooldown;
+        this.reaperShadeTimer = invisibilityTime; 
+        this.reaperShade=true; 
+        this.god = true; 
       }
     }
+    if(this.reaperShade){
+      this.reaperShadeTimer -= time;
+      if(this.reaperShadeTimer <= 0) {
+        this.reaperShade = false;
+        this.god = false;
+      }
+    }
+  }
+  calculateSpeed(minimum_speed){
+    const reaperSpeed = 8.5 + 0.5*this.ab2L;
+    const speed  = (this.reaperShade) ? reaperSpeed : this.speed;
+    return Math.max(minimum_speed,(speed * this.speedMultiplier) + this.speedAdditioner);
   }
 }
 class Cent extends Player {
@@ -1345,26 +1352,39 @@ class Cent extends Player {
     super(pos, 3, speed, "#727272", "Cent");
     this.firstTime=0;
     this.secondTime=0;
-    this.hasAB = true; this.ab1L = 5; this.ab2L = 5; this.firstTotalCooldown = 1000; this.secondTotalCooldown = 10000;
+    this.hasAB = true; 
+    this.ab1L = 5; 
+    this.ab2L = 5; 
+    this.firstTotalCooldown = 1000;
+    this.secondTotalCooldown = 10000;
+    this.mortarTime = 0;
   }
   abilities(time, area, offset) {
     if(this.fusion){this.invicible = true; this.speedMultiplier*=0.7}
-    if(this.mortarTime)if(this.mortarTime>0){this.mortarTime-=time; this.speedMultiplier*=0; this.invicible = true;}
+    if(this.mortarTime)if(this.mortarTime>0){
+      this.mortarTime-=time; 
+      this.speedMultiplier=0; 
+      this.invicible = true;
+      if(this.mortarTime<=0){
+        this.mortar = false;
+      }
+    }
     if(this.firstAbility){
       if(this.energy>=5&&this.firstAbilityCooldown==0){
         this.energy-=5;
         this.fusion = true;
         this.fusionTime = 700;
-        this.firstAbilityCooldown=1000;
+        this.firstAbilityCooldown = this.firstTotalCooldown;
         this.mortarTime = 0;
       }
     }
     if (this.secondAbility||this.onDeathSecondAb) {
       if(this.energy>=20&&this.secondAbilityCooldown==0){
         this.onDeathSecondAb = false;
-        this.secondAbilityCooldown=10000;
+        this.secondAbilityCooldown = this.secondTotalCooldown;
         this.energy-=20;
         this.mortarTime = 4000;
+        this.mortar = true;
       }
     }
     if(this.god) this.mortarTime = 0;
@@ -1495,21 +1515,32 @@ class Rameses extends Player {
     super(pos, 5, speed, "#989b4a", "Rameses");
     this.bandage = false;
     this.stand = false;
-    this.hasAB = true; this.ab1L = 5; this.ab2L = 0; this.firstTotalCooldown = 8000; this.secondTotalCooldown = 6000;
+    this.hasAB = true; 
+    this.ab1L = (settings.max_abilities) ? 5 : 0; 
+    this.ab2L = 0; 
+    this.firstAbilityUnlocked = true;
+    this.firstTotalCooldown = 8000; 
+    this.secondTotalCooldown = 6000;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.energy >= 50 && this.firstAbilityCooldown == 0 && !this.bandage) {
-      this.energy -= 50;
-      this.firstAbilityCooldown = (this.safeZone) ? 4000 : 8000;
+    const firstAbilityCost = 50;
+    if (this.firstAbility && this.energy >= firstAbilityCost && this.firstAbilityCooldown == 0 && !this.bandage && this.ab1L) {
+      this.energy -= firstAbilityCost;
       this.stand = true;
+      this.updateFirstAbilityCooldown();
     }
     if (this.firstAbilityCooldown<=0&&this.stand) {
       this.stand = false;
       this.bandage = true;
     }
     if (this.stand) {
-      this.speedMultiplier/=2;
+      this.speedMultiplier*=0.5;
     }
+  }
+  updateFirstAbilityCooldown(){
+    const firstCooldown = 12000 - (this.ab1L-1) * 1000;
+    this.firstTotalCooldown = (this.safeZone) ? firstCooldown/3 : firstCooldown;
+    this.firstAbilityCooldown = this.firstTotalCooldown;
   }
 }
 class Magmax extends Player {
@@ -1517,46 +1548,63 @@ class Magmax extends Player {
     super(pos, 6, speed, "#FF0000", "Magmax");
     this.harden = false;
     this.flow = false;
-    this.hasAB = true; this.ab1L = 5; this.ab2L = 5; this.firstTotalCooldown = 0; this.secondTotalCooldown = 250;
+    this.hasAB = true; 
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
+    this.firstTotalCooldown = 0; 
+    this.secondTotalCooldown = 250;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility) {
+    const firstAbilityCost = 2;
+    const secondAbilityCost = 12;
+    if (this.firstAbility && this.ab1L) {
       this.firstAbilityActivated = !this.firstAbilityActivated;
       this.flow = !this.flow;
       if (this.flow && this.harden) {
         this.harden = false;
-        this.secondAbilityCooldown = this.secondTotalCooldown;
+        this.updateHardenCooldown();
       }
     }
-    if (this.secondAbility && this.secondAbilityCooldown == 0) {
+    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.ab2L) {
       this.secondAbilityActivated = !this.secondAbilityActivated;
       this.harden = !this.harden;
-      if(this.harden == false){this.secondAbilityCooldown = this.secondTotalCooldown;}
+      if(!this.harden){
+        this.updateHardenCooldown();
+      }
       if (this.harden) {
         this.flow = false;
       }
     }
 
     if(this.harden){
-      this.tempColor = "rgb(200, 70, 0)"
+      this.tempColor = "rgb(200, 70, 0)";
       this.invicible = true;
       this.speedMultiplier = 0;
       this.d_x = 0;
       this.d_y = 0;
-      this.energy -= 12 * time / 1000;
+      this.energy -= secondAbilityCost * time / 1000;
     } else {
       this.invicible = false;
     }
     if(this.flow){
-      this.tempColor = "rgb(255, 80, 10)"
-      this.speedAdditioner+=6;
-      this.energy -= 2 * time / 1000;
+      this.tempColor = "rgb(255, 80, 10)";
+      this.speedAdditioner += this.getFlowSpeed();;
+      this.energy -= firstAbilityCost * time / 1000;
     }
     if (this.energy <= 0) {
       this.harden = false;
       this.flow = false;
       this.energy = 0;
     }
+  }
+  getFlowSpeed(){
+    return (this.ab1L == this.ab1ML) ? 2 + this.ab1L : 1 + this.ab1L;
+  }
+  updateHardenCooldown(){
+    this.secondTotalCooldown = 250*(this.ab2ML-this.ab2L+1);
+    this.secondAbilityCooldown = this.secondTotalCooldown;
   }
 }
 
@@ -1565,49 +1613,52 @@ class Rime extends Player {
     super(pos, 6, speed, "#3333ff", "Rime");
     this.paralysis = false;
     this.hasAB = true;
-    this.ab1L = 5;
-    this.ab2L = 5;
-    this.firstTotalCooldown = 300;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
+    this.firstTotalCooldown = 500;
     this.secondTotalCooldown = 0;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 5) {
+    const firstAbilityCost = 2;
+    const secondAbilityCost = 15;
+    const paralysisRadius = this.getParalysisRadius();
+    const paralysisDuration = 2000;
+    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= firstAbilityCost && this.ab1L>0) {
+      const warpDistance = this.getWarpDistance();
+      const angle = (this.mouseActive) ? this.mouse_angle : this.previousAngle;
       this.firstAbilityActivated = !this.firstAbilityActivated;
-      this.firstAbilityCooldown = 300;
-      if(this.mouseActive){
-        this.pos.x += 160/32*Math.cos(this.mouse_angle)
-        this.pos.y += 160/32*Math.sin(this.mouse_angle)
-      } else {
-        var directionX = 0;
-        var directionY = 0;
-        if(this.oldPos.x-this.pos.x<0){directionX = 1;}
-        else if(this.oldPos.x-this.pos.x>0){directionX = -1;}
-        if(this.oldPos.y-this.pos.y<0){directionY = 1;}
-        else if(this.oldPos.y-this.pos.y>0){directionY = -1;}
-        this.pos.x += 160/32*directionX;
-        this.pos.y += 160/32*directionY;
-      }
-      this.energy -= 5;
-      game.worlds[game.players[0].world].collisionPlayer(game.players[0].area, game.players[0]);
+      this.firstAbilityCooldown = this.firstTotalCooldown;
+      this.pos.x += warpDistance*Math.cos(angle);
+      this.pos.y += warpDistance*Math.sin(angle);
+      this.energy -= firstAbilityCost;
+      game.worlds[this.world].collisionPlayer(this.area, this);
     }
-    if (this.secondAbility) {
+    if (this.secondAbility && this.ab2L>0) {
       this.secondAbilityActivated = !this.secondAbilityActivated;
-      if(this.aura&&this.energy>=15){
+      if(this.aura&&this.energy>=secondAbilityCost){
         for (var i in area.entities) {
           for (var j in area.entities[i]) {
             var entity = area.entities[i][j];
-            if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < (210 / 32) + entity.radius) {
-              if (!area.entities[i][j].imune) {
-                area.entities[i][j].freeze = 2000;
+            if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < (paralysisRadius) + entity.radius) {
+              if (!entity.imune) {
+                entity.freeze = paralysisDuration;
               }
             }
           }
         }
         this.aura = false;
         this.auraType = -1;
-        this.energy -= 15;
+        this.energy -= secondAbilityCost;
       } else {this.aura = true; this.auraType = 1;}
     }
+  }
+  getWarpDistance(){
+    return (60 + this.ab1L * 20) / 32;
+  }
+  getParalysisRadius(){
+    return (110 + this.ab1 * 20) / 32
   }
 }
 
@@ -1616,13 +1667,14 @@ class Aurora extends Player {
     super(pos, 6, speed, "#ff7f00", "Aurora");
     this.distort = false;
     this.hasAB = true;
-    this.ab1L = 5;
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
     this.ab2L = 0;
     this.firstTotalCooldown = 0;
     this.secondTotalCooldown = 0;
+    this.firstAbilityUnlocked = true;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.energy >= 1) {
+    if (this.firstAbility && this.energy >= 1 && ab1L) {
       this.firstAbilityActivated = !this.firstAbilityActivated;
       this.distort = !this.distort;
       if(!this.distort){this.aura = false;}
@@ -1637,18 +1689,24 @@ class Aurora extends Player {
       else{
         this.aura = true;
         this.auraType = 2;
-        for (var i in area.entities) {
-          for (var j in area.entities[i]) {
-            var entity = area.entities[i][j];
-            if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < (230 / 32) + entity.radius) {
-              if (!area.entities[i][j].imune) {
-                area.entities[i][j].speedMultiplier *= 0.45;
+        for (const i in area.entities) {
+          for (const j in area.entities[i]) {
+            const entity = area.entities[i][j];
+            if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < (this.getDistortRadius()) + entity.radius) {
+              if (!entity.imune) {
+                entity.speedMultiplier *= this.getDistortSlowdown();
               }
             }
           }
         }
       }
     }
+  }
+  getDistortSlowdown(){
+    return 0.25 + 0.05*this.ab1L;
+  }
+  getDistortRadius(){
+    return (150 + 30*this.ab1L) / 32;
   }
 }
 
@@ -1657,10 +1715,12 @@ class Chrono extends Player {
     super(pos, 6, speed, "#00b270", "Chrono");
     this.rewind = false;
     this.hasAB = true;
-    this.ab1L = 5;
-    this.ab2L = 5;
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
     this.firstTotalCooldown = 5500;
     this.secondTotalCooldown = 5000;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
     this.teleportPosition = [];
   }
   abilities(time, area, offset) {
@@ -1668,9 +1728,9 @@ class Chrono extends Player {
     this.teleportPosition.push(new Vector(this.pos.x,this.pos.y));
     if(this.teleportPosition.length>Math.round(75/timeFix)){this.teleportPosition.shift();}
 
-    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 30) {
+    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 30 && this.ab1L) {
       this.firstAbilityActivated = !this.firstAbilityActivated;
-      this.firstAbilityCooldown = this.firstTotalCooldown;
+      this.updateFirstAbilityCooldown();
       this.pos = this.teleportPosition[0];
       this.energy -= 30;
       if(this.isDead){
@@ -1680,16 +1740,18 @@ class Chrono extends Player {
         } else {this.deathTimer = 200}
       }
     }
-    if (this.secondAbility && this.secondAbilityCooldown == 0) {
+    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.ab2L) {
       if(this.aura && this.energy>=20){
         for (var i in area.entities) {
           for (var j in area.entities[i]) {
-            var entity = area.entities[i][j];
+            const entity = area.entities[i][j];
             if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < (150 / 32) + entity.radius) {
-              if (!area.entities[i][j].imune) {
-                area.entities[i][j].HarmlessEffect = 3000;
-                area.entities[i][j].Harmless = true;
-                if(area.entities[i][j].teleportPosition.length > 0)area.entities[i][j].pos = area.entities[i][j].teleportPosition[0];
+              if (!entity.imune) {
+                entity.HarmlessEffect = 3000;
+                entity.Harmless = true;
+                if(entity.teleportPosition.length > 0){
+                  entity.pos = entity.teleportPosition[0];
+                }
               }
             }
           }
@@ -1697,9 +1759,17 @@ class Chrono extends Player {
         this.aura = false;
         this.auraType = -1;
         this.energy -= 20;
-        this.secondAbilityCooldown = this.secondTotalCooldown;
+        this.updateSecondAbilityCooldown();
       } else {this.aura = true; this.auraType = 4;}
     }
+  }
+  updateFirstAbilityCooldown() {
+    this.firstTotalCooldown = 7500 - 500 * this.ab1L;
+    this.firstAbilityCooldown = this.firstTotalCooldown;
+  }
+  updateSecondAbilityCooldown() {
+    this.secondTotalCooldown = 7500 - 500 * this.ab2L;
+    this.secondAbilityCooldown = this.secondTotalCooldown;
   }
 }
 
@@ -1708,49 +1778,55 @@ class Brute extends Player {
     super(pos, 6, speed, "#9b5800", "Brute");
     this.stomp = false;
     this.hasAB = true;
-    this.ab1L = 5;
-    this.ab2L = 5;
-    this.staticRadius = 18;
-    this.fixedRadius = 18/32;
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
     this.firstTotalCooldown = 1000;
     this.secondTotalCooldown = 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
   }
   abilities(time, area, offset) {
+    const firstAbilityCost = 10;
     if (this.firstAbility && this.firstAbilityCooldown == 0) {
       this.firstAbilityActivated = !this.firstAbilityActivated;
-      if(this.stomp&&this.energy>=10){
-        for (var i in area.entities) {
-          for (var j in area.entities[i]) {
-            var entity = area.entities[i][j];
-            if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < (190 / 32) + entity.radius) {
-              if (!area.entities[i][j].imune) {
-                area.entities[i][j].freeze = 4000;
-                var timeFix = time / (1000 / 30);
-                var enemy = area.entities[i][j];
-                var bfvelX = area.entities[i][j].vel.x;
-                var bfvelY = area.entities[i][j].vel.y;
-                var prevVel = {x:enemy.vel.x,y:enemy.vel.y}
-                var dirX = area.entities[i][j].pos.x - (this.pos.x-game.worlds[this.world].pos.x-game.worlds[this.world].areas[this.area].pos.x);
-                var dirY = area.entities[i][j].pos.y - (this.pos.y-game.worlds[this.world].pos.y-game.worlds[this.world].areas[this.area].pos.y);
-                area.entities[i][j].vel.x = Math.sqrt(bfvelX * bfvelX + bfvelY * bfvelY) * dirX / Math.sqrt(dirX * dirX + dirY * dirY);
-                area.entities[i][j].vel.y = Math.sqrt(bfvelX * bfvelX + bfvelY * bfvelY) * dirY / Math.sqrt(dirX * dirX + dirY * dirY);
-                var angle = Math.atan2(enemy.vel.y,enemy.vel.x)
-                var startPos = {x:(this.pos.x-game.worlds[this.world].pos.x-game.worlds[this.world].areas[this.area].pos.x),y:(this.pos.y-game.worlds[this.world].pos.y-game.worlds[this.world].areas[this.area].pos.y)};
-                var endPos = {x:startPos.x+((((190+enemy.radius*32)/32))*Math.cos(angle)),
-                y:startPos.y+((((190+enemy.radius*32)/32))*Math.sin(angle))};
-                enemy.pos.x = endPos.x; enemy.pos.y = endPos.y;
+      if(this.stomp&&this.energy>=10&&this.ab1L){
+        const stomp_radius = this.getStompRadius();
+        for (const i in area.entities) {
+          for (const j in area.entities[i]) {
+            const entity = area.entities[i][j];
+            if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < (stomp_radius) + entity.radius) {
+              if (!entity.imune) {
+                entity.freeze = 4000;
+                var bfvelX = entity.vel.x;
+                var bfvelY = entity.vel.y;
+                var prevVel = {x:entity.vel.x,y:entity.vel.y}
+                var dirX = entity.pos.x - (this.pos.x-game.worlds[this.world].pos.x-game.worlds[this.world].areas[this.area].pos.x);
+                var dirY = entity.pos.y - (this.pos.y-game.worlds[this.world].pos.y-game.worlds[this.world].areas[this.area].pos.y);
+                entity.vel.x = Math.sqrt(bfvelX * bfvelX + bfvelY * bfvelY) * dirX / Math.sqrt(dirX * dirX + dirY * dirY);
+                entity.vel.y = Math.sqrt(bfvelX * bfvelX + bfvelY * bfvelY) * dirY / Math.sqrt(dirX * dirX + dirY * dirY);
+                var angle = Math.atan2(entity.vel.y,entity.vel.x);
+                var startPos = {
+                  x:(this.pos.x-game.worlds[this.world].pos.x-game.worlds[this.world].areas[this.area].pos.x),
+                  y:(this.pos.y-game.worlds[this.world].pos.y-game.worlds[this.world].areas[this.area].pos.y)
+                };
+                var endPos = {
+                  x:startPos.x+(stomp_radius+entity.radius)*Math.cos(angle),
+                  y:startPos.y+(stomp_radius+entity.radius)*Math.sin(angle)
+                };
+                entity.pos.x = endPos.x; 
+                entity.pos.y = endPos.y;
                 var boundary = area.getActiveBoundary();
-                if (area.entities[i][j].collide && !area.entities[i][j].no_collide) {
-                  var fixed = closestPointToRectangle(area.entities[i][j].pos, {
-                    x: boundary.x + area.entities[i][j].radius,
-                    y: boundary.y + area.entities[i][j].radius
+                if (entity.collide && !entity.no_collide) {
+                  var fixed = closestPointToRectangle(entity.pos, {
+                    x: boundary.x + entity.radius,
+                    y: boundary.y + entity.radius
                   }, {
-                    x: boundary.w - area.entities[i][j].radius * 2,
-                    y: boundary.h - area.entities[i][j].radius * 2
+                    x: boundary.w - entity.radius * 2,
+                    y: boundary.h - entity.radius * 2
                   })
-                  area.entities[i][j].pos = fixed;
+                  entity.pos = fixed;
                 }
-                enemy.vel = prevVel;
+                entity.vel = prevVel;
               }
               this.stomp = false;
               this.aura = false;
@@ -1758,9 +1834,20 @@ class Brute extends Player {
             }
           }
         }
-        this.energy -= 10;
-      } else {this.stomp = true; this.aura = true; this.auraType = 3;}
+        this.energy -= firstAbilityCost;
+      } else if(this.ab1L && this.energy>=10 && this.firstAbilityCooldown == 0) {this.stomp = true; this.aura = true; this.auraType = 3;}
     }
+
+    if(this.ab2L){
+      const vigor_radius = [1,1,2,2,3][this.ab2L-1];
+      this.radiusAdditioner += vigor_radius;
+
+      const effectImmunity = (ab2L*15) / 100;
+      this.effectImmune *= (this.energy == this.maxEnergy) ? effectImmunity+0.25 : effectImmunity;
+    }
+  }
+  getStompRadius(){
+    return (115 + this.ab1L * 15)/32;
   }
 }
 
@@ -1768,40 +1855,31 @@ class Morfe extends Player {
   constructor(pos, speed) {
     super(pos, 6, speed, "#00dd00", "Morfe");
     this.hasAB = true;
-    this.ab1L = 5;
-    this.ab2L = 5;
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
     this.firstTotalCooldown = 3000;
     this.secondTotalCooldown = 1500;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 10) {
+    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 10 && ab1L) {
       this.energy -= 10;
       this.firstAbilityCooldown = this.firstTotalCooldown;
       this.spawnBullet(area,'reverse_projectile')
     }
-    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 10) {
+    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 10 && ab2L) {
       this.energy -= 10;
       this.secondAbilityCooldown = this.secondTotalCooldown;
       this.spawnBullet(area,'minimize_projectile')
     }
   }
   spawnBullet(area,bulletType){
-    let projectile_amount = (bulletType == 'reverse_projectile') ? 5 : 6;
+    let projectile_amount = (bulletType == 'reverse_projectile') ? this.ab1L : 1+this.ab2L;
     let static_shooting_angle = 90;
     let shooting_angle = static_shooting_angle/(projectile_amount+1);
     for(let i = 0; i < projectile_amount; i++){
-      let angle;
-      if(this.mouseActive){
-        angle = this.mouse_angle
-      } else {
-        var directionX = 0;
-        var directionY = 0;
-        if(this.oldPos.x-this.pos.x<0){directionX = 1;}
-        else if(this.oldPos.x-this.pos.x>0){directionX = -1;}
-        if(this.oldPos.y-this.pos.y<0){directionY = 1;}
-        else if(this.oldPos.y-this.pos.y>0){directionY = -1;}
-        angle = Math.atan2(directionY, directionX);
-      }
+      let angle = (this.mouseActive) ? this.mouse_angle : this.previousAngle;
       angle = radians_to_degrees(angle)-static_shooting_angle/2;
       angle += shooting_angle*(i+1);
       angle = degrees_to_radians(angle);
@@ -1817,41 +1895,39 @@ class Mirage extends Player {
   constructor(pos, speed) {
     super(pos, 6, speed, "#020fa2", "Mirage");
     this.hasAB = true;
-    this.ab1L = 5;
-    this.ab2L = 5;
-    this.firstTotalCooldown = 14000;
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
+    this.firstTotalCooldown = 7000;
     this.secondTotalCooldown = 2500;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 30) {
+    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 30 && this.ab1L) {
       this.energy -= 30;
-      this.firstAbilityCooldown = this.firstTotalCooldown;
-      //this.spawnBullet(area,'reverse_projectile')
+      this.updateFirstAbilityCooldown();
     }
-    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 15) {
+    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 15 && this.ab2L) {
       this.energy -= 15;
-      this.secondAbilityCooldown = this.secondTotalCooldown;
+      this.updateSecondAbilityCooldown();
       this.spawnBullet(area,'obscure_projectile')
     }
   }
   spawnBullet(area,bulletType){
-      let angle;
-      if(this.mouseActive){
-        angle = this.mouse_angle
-      } else {
-        var directionX = 0;
-        var directionY = 0;
-        if(this.oldPos.x-this.pos.x<0){directionX = 1;}
-        else if(this.oldPos.x-this.pos.x>0){directionX = -1;}
-        if(this.oldPos.y-this.pos.y<0){directionY = 1;}
-        else if(this.oldPos.y-this.pos.y>0){directionY = -1;}
-        angle = Math.atan2(directionY, directionX);
-      }
+      let angle = (this.mouseActive) ? this.mouse_angle : this.previousAngle;
       const world = game.worlds[this.world];
       const bullet = new ObscureProjectile(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),angle)
       if(!area.entities[bulletType]){area.entities[bulletType] = []}
       area.entities[bulletType].push(bullet);
     
+  }
+  updateFirstAbilityCooldown() {
+    this.firstTotalCooldown = 11000 - 1000 * this.ab1L;
+    this.firstAbilityCooldown = this.firstTotalCooldown;
+  }
+  updateSecondAbilityCooldown() {
+    this.secondTotalCooldown = 5000 - 500 * this.ab2L;
+    this.secondAbilityCooldown = this.secondTotalCooldown;
   }
 }
 
@@ -1859,16 +1935,17 @@ class Necro extends Player {
   constructor(pos, speed) {
     super(pos, 6, speed, "#FF00FF", "Necro");
     this.hasAB = true;
-    this.ab1L = 1;
+    this.ab1L = (settings.max_abilities) ? 1 : 0;
     this.ab2L = 0;
+    this.ab1ML = 1;
+    this.firstAbilityUnlocked = true;
     this.firstPelletTotal = 75;
     this.firstPellet = 0;
     this.resurrectAvailable = true;
     this.usesPellets = 1; // 1 - firstPellet | 2 - secondPellet | 3 - bothPellet
-    this.ab1ML = 1;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.firstPellet == 0 && this.energy >= 0 && this.resurrectAvailable && this.isDead) {
+    if (this.firstAbility && this.firstPellet == 0 && this.energy >= 0 && this.resurrectAvailable && this.isDead && this.ab1L) {
       this.isDead = false;
       this.firstPellet = this.firstPelletTotal;
       if(settings.cooldown)this.resurrectAvailable = false;
@@ -1885,47 +1962,43 @@ class Candy extends Player {
     this.sugar_rush = false;
     this.sweetToothConsumed = false;
     this.sweetToothTimer = 0;
-    this.hasAB = true; this.ab1L = 5; this.ab2L = 5; this.firstTotalCooldown = 4000; this.secondTotalCooldown = 5000;
+    this.hasAB = true; 
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
+    this.firstTotalCooldown = 4000; 
+    this.secondTotalCooldown = 5000;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 15) {
+    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 15 && this.ab1L) {
       this.firstAbilityActivated = !this.firstAbilityActivated;
       this.sugar_rush = true;
-      this.firstAbilityCooldown = 4000;
       this.energy-=15;
       this.sugarRushing = 2000;
+      this.updateFirstAbilityCooldown();
     }
-    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 5) {
+    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 5 && this.ab2L) {
       this.secondAbilityActivated = !this.secondAbilityActivated;
       this.energy-=5;
-      let candy = new Vector(this.pos.x,this.pos.y);
-      let distance = 64 / 32;
+      const angle = (this.mouseActive) ? this.mouse_angle : this.previousAngle;
+      const candy = new Vector(this.pos.x,this.pos.y);
+      const distance = 64 / 32;
+      candy.x += distance*Math.cos(angle);
+      candy.y += distance*Math.sin(angle);
 
-      if(this.mouseActive){
-        candy.x += distance*Math.cos(this.mouse_angle)
-        candy.y += distance*Math.sin(this.mouse_angle)
-      } else {
-        var directionX = 0;
-        var directionY = 0;
-        if(this.oldPos.x-this.pos.x<0){directionX = 1;}
-        else if(this.oldPos.x-this.pos.x>0){directionX = -1;}
-        if(this.oldPos.y-this.pos.y<0){directionY = 1;}
-        else if(this.oldPos.y-this.pos.y>0){directionY = -1;}
-        candy.x += distance*directionX;
-        candy.y += distance*directionY;
-      }
-      area.addEffect(0,new Vector(candy.x-offset.x,candy.y-offset.y));
-      this.secondAbilityCooldown = 5000;
+      area.addEffect(0,new Vector(candy.x-offset.x,candy.y-offset.y),this.ab2L);
+      this.secondAbilityCooldown = this.secondTotalCooldown;
     }
     if(this.sugar_rush){
       this.aura = true;
       this.auraType = 0;
-      for (var i in area.entities) {
-        for (var j in area.entities[i]) {
-          var entity = area.entities[i][j];
-          if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < ((100+Math.abs(greaterMax(this))*5) / 32) + entity.radius) {
-            if (!area.entities[i][j].imune) {
-              area.entities[i][j].sugar_rush = 2000;
+      for (let i in area.entities) {
+        for (let j in area.entities[i]) {
+          const entity = area.entities[i][j];
+          if (distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < this.getSugarRushRadius() + entity.radius) {
+            if (!entity.imune) {
+              entity.sugar_rush = 2000;
             }
           }
         }
@@ -1933,54 +2006,64 @@ class Candy extends Player {
     } else {this.aura = false; this.auraType = -1;}
     if(this.sugarRushing <= 0){this.sugar_rush = false}
     else{this.sugarRushing-=time}
+
+    if(this.sweetToothConsumed){
+      this.energy += this.maxEnergy/2;
+      this.sweetToothConsumed = false;
+      if(this.energy>this.maxEnergy){
+        this.energy = this.maxEnergy;
+      }
+    }
+    if(this.sweetToothEffect){
+      this.speedAdditioner+=this.sweetToothPower;
+      this.regenAdditioner+=this.sweetToothPower;
+      this.sweetToothTimer-=time;
+    }
+    if(this.sweetToothTimer <= 0){
+      this.sweetToothTimer = 0;
+      this.sweetToothEffect = false;
+    }
+  }
+  getSugarRushRadius(){
+    return (100+Math.abs(greaterMax(this))*5) / 32;
+  }
+  updateFirstAbilityCooldown() {
+    this.firstTotalCooldown = 6500 - 500 * this.ab1L;
+    this.firstAbilityCooldown = this.firstTotalCooldown;
   }
 }
 class Clown extends Player {
   constructor(pos, speed) {
     super(pos, 6, speed, "#ffb8c6", "Clown");
     this.hasAB = true;
-    this.ab1L = 5;
-    this.ab2L = 1;
-    this.ab2ML = true;
-    this.firstTotalCooldown = 5000;
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 1 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
+    this.ab2ML = 1;
+    this.firstTotalCooldown = 4000;
     this.secondTotalCooldown = 0;
-    this.fixedRadius = 20/32
-    this.maxSpeed = 17;
-    this.maxUpgradableEnergy = 200;
-    this.maxRegen = 5;
-    this.effectReplayer = 0.5;
+    this.maxSpeed = 14;
+    this.maxUpgradableEnergy = 60;
+    this.maxRegen = 2;
     this.prevColor = 0;
+    this.clownBall = false;
+    this.clownBallSize = 1;
+    this.rejoicing = false;
+    this.maxClownBallSize = 92;
   }
   abilities(time, area, offset) {
+    const timeFix = time / (1000 / 30);
+    const clownBallCost = 5;
     const colors = ["rgb(2, 135, 4, .8)","rgb(228, 122, 42, .8)","rgb(255, 219, 118, .8)","rgb(4, 70, 255, .8)", "rgb(216, 48, 162, .8)"]
-    if (this.firstAbility && this.firstAbilityCooldown == 0 && (this.energy >= 20 || this.clownBall)) {
+    if (this.firstAbility && this.firstAbilityCooldown == 0 && (this.energy >= clownBallCost || this.clownBall) && this.ab1L) {
       const world = game.worlds[this.world];
       if(this.clownBall){
-        const velocity = {x:0,y:0,angle:0}
-        if(this.mouseActive){
-          velocity.x = 12*Math.cos(this.mouse_angle)
-          velocity.y = 12*Math.sin(this.mouse_angle)
-        } else {
-          var directionX = 0;
-          var directionY = 0;
-          if(this.oldPos.x-this.pos.x<0){directionX = 1;}
-          else if(this.oldPos.x-this.pos.x>0){directionX = -1;}
-          if(this.oldPos.y-this.pos.y<0){directionY = 1;}
-          else if(this.oldPos.y-this.pos.y>0){directionY = -1;}
-          velocity.x = 12*directionX;
-          velocity.y = 12*directionY;
-        }
-        velocity.angle = Math.atan2(velocity.y, velocity.x);
-        const ball = new ClownTrail(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),this.clownBallSize/32,velocity.angle,colors[this.prevColor]);
-        if(!area.entities["clown_trail"]){area.entities["clown_trail"] = []}
-        area.entities["clown_trail"].push(ball);
-        this.clownBall = false
-        this.clownBallSize = 20;
-        this.firstAbilityCooldown = 5000;
+        this.spawnClownBall(world, colors, area);
       } else {
         this.clownBall=true;
         this.clownBallSize = 20;
-        this.energy-=20;
+        this.energy-=clownBallCost;
         let color = this.prevColor;
         while(color == this.prevColor){
           color = Math.floor(Math.random()*5);
@@ -1988,15 +2071,46 @@ class Clown extends Player {
         this.prevColor = color;
       }
     }
+    if (this.ab2L){
+      if(!this.rejoicing){
+        this.rejoicing = true;
+        this.effectImmune = 1.5;
+        this.speed += 5;
+        this.maxSpeed = 20;
+        this.maxUpgradableEnergy = 200;
+        this.maxRegen = 5;
+      } else {
+        this.radiusAdditioner += 5;
+      }
+    }
     if(this.clownBall){
-      this.clownBallSize+=time/1000*30;
-      if(this.clownBallSize>92){
+      this.clownBallSize += 1 * timeFix;
+      this.energy -= 5 * time / 1000;
+      if(this.energy<=0){
+        const world = game.worlds[this.world];
+        this.spawnClownBall(world, colors, area);
+      }
+
+      if(this.clownBallSize>this.maxClownBallSize){
         death(this);
         this.clownBallSize = 20;
         this.clownBall = false;
       }
     }
 
+  }
+  updateFirstAbilityCooldown() {
+    this.firstTotalCooldown = 9000-1000*this.ab1L;
+    this.firstAbilityCooldown = this.firstTotalCooldown;
+  }
+  spawnClownBall(world, colors, area){
+    const angle = (this.mouseActive) ? this.mouse_angle : this.previousAngle;
+    const ball = new ClownTrail(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),this.clownBallSize/32,angle,colors[this.prevColor]);
+    if(!area.entities["clown_trail"]){area.entities["clown_trail"] = []}
+    area.entities["clown_trail"].push(ball);
+    this.clownBall = false
+    this.clownBallSize = 20;
+    this.updateFirstAbilityCooldown();
   }
 }
 class Polygon extends Player {
@@ -2155,7 +2269,7 @@ class Enemy extends Entity {
   }
   interact(player, worldPos, time) {
     interactionWithEnemy(player,this,worldPos,true,this.corrosive,this.imune)
-    if (this.aura && !player.god && !player.isDead && player.effectImmune != 0) {
+    if (this.aura && !player.isDead && !player.god && player.effectImmune != 0) {
       if(!player.safeZone)this.auraEffect(player, worldPos, time)
     }
   }
@@ -3111,7 +3225,7 @@ class Ice extends Enemy {
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
         player.frozen = true;
-        player.frozenTimeLeft = 150*player.effectImmune/player.effectReplayer;
+        player.frozenTimeLeft = 150*player.effectImmune;
         player.frozenTime = 0
     }
   }
@@ -3154,7 +3268,7 @@ class IceSniperBullet extends Entity {
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
         player.frozen = true;
-        player.frozenTimeLeft = 1000*player.effectImmune/player.effectReplayer;
+        player.frozenTimeLeft = 1000*player.effectImmune;
         player.frozenTime = 0
     }
   }
@@ -3197,7 +3311,7 @@ class PoisonSniperBullet extends Entity {
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
         player.poison = true;
-        player.poisonTimeLeft = 1000*player.effectImmune/player.effectReplayer;
+        player.poisonTimeLeft = 1000*player.effectImmune;
         player.poisonTime = 0;
     }
   }
@@ -3233,7 +3347,7 @@ class Toxic extends Enemy {
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
-      const corrosive = (0.7*player.effectReplayer)*player.maxEnergy;
+      const corrosive = (0.7*player.effectImmune)*player.maxEnergy;
       if(player.energy>corrosive){player.energy=corrosive}
     }
   }
@@ -3253,16 +3367,17 @@ class Enlarging extends Enemy {
 class Icicle extends Enemy {
   constructor(pos, radius, speed, angle, horizontal) {
     super(pos, entityTypes.indexOf("icicle") - 1, radius, speed, angle, "#adf8ff");
+    const velChange = random_between([-1, 1]) * speed;
     this.clock = 0
     this.wallHit = false;
     if(angle !== undefined){
       this.angle = angle;
     } else if (horizontal) {
-      this.vel.x = (Math.floor(Math.random() * 2) * 2 - 1) * speed;
-      this.vel.y = 0
+      this.vel.x = velChange;
+      this.vel.y = 0;
     } else {
       this.vel.x = 0;
-      this.vel.y = (Math.floor(Math.random() * 2) * 2 - 1) * speed
+      this.vel.y = velChange;
     }
   }
   colide(boundary) {
@@ -3286,10 +3401,11 @@ class Spiral extends Enemy {
     this.angleIncrement = 0.15;
     this.angleIncrementChange = 0.004;
     this.angleAdd = false;
-    this.dir = 1
+    this.dir = 1;
     this.turning = true;
   }
   behavior(time, area, offset, players) {
+    const timeFix = time / (1000 / 30);
     if (this.angleIncrement < 0.001) {
       this.angleAdd = true;
     } else if (this.angleIncrement > 0.35) {
@@ -3301,12 +3417,12 @@ class Spiral extends Enemy {
       this.angleIncrementChange = 0.004;
     }
     if (this.angleAdd) {
-      this.angleIncrement += this.angleIncrementChange * (time / (1000 / 30));
+      this.angleIncrement += this.angleIncrementChange * timeFix;
     } else {
-      this.angleIncrement -= this.angleIncrementChange * (time / (1000 / 30));
+      this.angleIncrement -= this.angleIncrementChange * timeFix;
     }
     this.velToAngle();
-    this.angle += this.angleIncrement * this.dir * (time / (1000 / 30));
+    this.angle += this.angleIncrement * this.dir * timeFix;
     this.angleToVel();
   }
 }
@@ -3321,7 +3437,7 @@ class Gravity extends Enemy {
       var dy = player.pos.y - (this.pos.y + worldPos.y);
       var dist = distance(new Vector(0, 0), new Vector(dx, dy));
       var attractionAmplitude = Math.pow(2, -(dist / (100 / 32)));
-      var moveDist = (this.gravity * attractionAmplitude*player.effectImmune)/player.effectReplayer;
+      var moveDist = this.gravity * attractionAmplitude*player.effectImmune;
       var angleToPlayer = Math.atan2(dy, dx);
       player.pos.x -= (moveDist * Math.cos(angleToPlayer)) * (time / (1000 / 30))
       player.pos.y -= (moveDist * Math.sin(angleToPlayer)) * (time / (1000 / 30))
@@ -3342,7 +3458,7 @@ class Gravity_Ghost extends Enemy {
       var dy = player.pos.y - (this.pos.y + worldPos.y);
       var dist = distance(new Vector(0, 0), new Vector(dx, dy));
       var attractionAmplitude = Math.pow(2, -(dist / (100 / 32)));
-      var moveDist = (this.gravity * attractionAmplitude*player.effectImmune)/player.effectReplayer;
+      var moveDist = this.gravity * attractionAmplitude*player.effectImmune;
       var angleToPlayer = Math.atan2(dy, dx);
       player.pos.x -= (moveDist * Math.cos(angleToPlayer)) * (time / (1000 / 30))
       player.pos.y -= (moveDist * Math.sin(angleToPlayer)) * (time / (1000 / 30))
@@ -3361,7 +3477,7 @@ class Repelling extends Enemy {
       var dy = player.pos.y - (this.pos.y + worldPos.y);
       var dist = distance(new Vector(0, 0), new Vector(dx, dy));
       var attractionAmplitude = Math.pow(2, -(dist / (100 / 32)));
-      var moveDist = (this.gravity * attractionAmplitude*player.effectImmune)/player.effectReplayer;
+      var moveDist = this.gravity * attractionAmplitude*player.effectImmune;
       var angleToPlayer = Math.atan2(dy, dx);
       player.pos.x += (moveDist * Math.cos(angleToPlayer)) * (time / (1000 / 30))
       player.pos.y += (moveDist * Math.sin(angleToPlayer)) * (time / (1000 / 30))
@@ -3383,7 +3499,7 @@ class Repelling_Ghost extends Enemy {
       var dy = player.pos.y - (this.pos.y + worldPos.y);
       var dist = distance(new Vector(0, 0), new Vector(dx, dy));
       var attractionAmplitude = Math.pow(2, -(dist / (100 / 32)));
-      var moveDist = (this.gravity * attractionAmplitude*player.effectImmune)/player.effectReplayer;
+      var moveDist = this.gravity * attractionAmplitude*player.effectImmune;
       var angleToPlayer = Math.atan2(dy, dx);
       player.pos.x += (moveDist * Math.cos(angleToPlayer)) * (time / (1000 / 30))
       player.pos.y += (moveDist * Math.sin(angleToPlayer)) * (time / (1000 / 30))
@@ -3955,7 +4071,7 @@ class SpeedSniperBullet extends Entity {
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
       if(player.speed>5){
-        player.speed-=(this.speedLoss*player.effectImmune)/player.effectReplayer;
+        player.speed-=this.speedLoss*player.effectImmune;
         if(!settings.no_points)player.points+=Math.round(this.speedLoss*2);
       }if(player.speed<5){player.speed = 5;}
       this.toRemove = true;
@@ -4001,7 +4117,7 @@ class RegenSniperBullet extends Entity {
   }
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
-      player.regen-=(this.regenLoss*player.effectImmune)/player.effectReplayer;
+      player.regen-=this.regenLoss*player.effectImmune;
       if(!settings.no_points)player.points+=Math.round(this.regenLoss*5);
       if(player.regen<1){player.regen = 1;}
       this.vel.x = Math.cos(0) * this.speed;
@@ -4069,7 +4185,7 @@ class MagneticReduction extends Enemy {
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
-      if(player.vertSpeed!=0){player.vertSpeed = (10-5*player.effectImmune)*player.effectReplayer;}
+      player.magnetic_reduction = true;
     }
   }
 }
@@ -4080,7 +4196,7 @@ class MagneticNullification extends Enemy {
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
-      player.vertSpeed = 0;
+      player.magnetic_nullification = true;
     }
   }
 }
@@ -4413,7 +4529,7 @@ class Poison_Ghost extends Enemy {
     if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
       player.poison = true;
       player.poisonTime = 0;
-      player.poisonTimeLeft = 150*player.effectImmune/player.effectReplayer;
+      player.poisonTimeLeft = 150*player.effectImmune;
     }
   }
 }
@@ -4917,7 +5033,7 @@ class LeadSniperBullet extends Entity {
         player.cent_accelerating = false;
         player.cent_is_moving = false;
       }
-      player.leadTimeLeft = player.leadTime = this.power*player.effectImmune/player.effectReplayer;
+      player.leadTimeLeft = player.leadTime = this.power*player.effectImmune;
       this.toRemove = true;
     }
   }
@@ -4965,7 +5081,7 @@ class StickySniperBullet extends Entity {
   }
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
-      player.stickness = 1000*player.effectImmune/player.effectReplayer;
+      player.stickness = 1000*player.effectImmune;
       this.toRemove = true;
     }
   }
@@ -5035,16 +5151,19 @@ class ClownTrail extends Enemy {
 // non-enemies
 
 class SweetTooth extends Entity {
-  constructor(pos) {
+  constructor(pos,power) {
     super(pos, 0.4,"#e26110");
     this.texture = "sweet_tooth_item";
     this.Harmless = true;
     this.no_collide = true;
+    this.power = power;
   }
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius*1.5) {
+      player.sweetToothEffect = true;
       player.sweetToothConsumed = true;
       player.sweetToothTimer = 15000;
+      player.sweetToothPower = this.power;
       this.no_collide = false;
       this.weak = true;
       this.toRemove = true;

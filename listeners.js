@@ -13,12 +13,17 @@ const settings = {
   dev: false,
   death_cooldown: false,
   no_points: false,
+  max_abilities: true,
+  max_stats: false,
+  slow_upgrade: false,
+  convert_to_legacy_speed: false,
   nick: 'Ravelfett',
   wreath: 'Gold',
   hero: 'Basic',
   tick_delay: 2,
   input_delay: 0,
-  scale: 1
+  scale: 1,
+  cheats: true
 }
 
 const ping = {
@@ -90,14 +95,17 @@ window.onload = () => {
         localStorage[i] = settings[i] = finalValue;
       }
     }
-
     menu.style.display = "none";
     gamed.style.display = "inline-block";
     inMenu = false;
     const world = document.getElementById("world");
+    const starting_pos = new Vector(Math.random() * 7 + 2.5, Math.random() * 10 + 2.5);
     if(world.selectedIndex < world.length - 1) [loadMain,loadHard,loadSecondary][world.selectedIndex]();
-    const player = new [Basic,Magmax,Rime,Morfe,Aurora,Necro,Brute,Shade,Chrono,Reaper,Rameses,Cent,Jotunn,Candy,Mirage,Clown,Burst,Lantern,Pole,Polygon,Poop][hero.selectedIndex](new Vector(Math.random() * 7 + 2.5, Math.random() * 10 + 2.5),5);
+    const player = new [Basic,Magmax,Rime,Morfe,Aurora,Necro,Brute,Shade,Chrono,Reaper,Rameses,Cent,Jotunn,Candy,Mirage,Clown,Burst,Lantern,Pole,Polygon,Poop][hero.selectedIndex](starting_pos,5);
     game.players.push(player);
+    if(settings.max_stats){
+      player.upgradeToMaxStats();
+    }
     
     loadImages(game.players[0].className);
     if(game.worlds.length == 0) game.worlds.push(missing_world);
@@ -126,43 +134,54 @@ function keydownKeys(e) {
     ping.activationTime = new Date().getTime();
   }
   applyInputDelay(settings.input_delay,()=>{
-    keys[e.keyCode] = true;
+    const code = e.keyCode;
+    if(keys[code] !== false) keys[e.keyCode] = true;
     /*if(settings.dev){
       ping.keysArray.push({inputKeys:getInputKeys(keys),timestamp:new Date().getTime()});
       if(ping.keysArray.length > 100) {
         ping.keysArray.shift();
       }
     }*/
-    if (e.keyCode == 84) {
-      player.hasCheated = true;
-      player.area++
-      if (player.area>=game.worlds[player.world].areas.length-1) {
-        player.area=game.worlds[player.world].areas.length-1
+    if(settings.cheats){
+      if (e.keyCode == 84) {
+        player.hasCheated = true;
+        player.area++
+        if (player.area>=game.worlds[player.world].areas.length-1) {
+          player.area=game.worlds[player.world].areas.length-1
+        }
+        game.worlds[player.world].areas[player.area].load();
+        canv = null;
       }
-      game.worlds[player.world].areas[player.area].load();
-      canv = null;
-    }
-    if (e.keyCode == 82) {
-      player.hasCheated = true;
-      player.area = Number(player.area) + 10;
-      if (player.area>=game.worlds[player.world].areas.length-1) {
-        player.area=game.worlds[player.world].areas.length-1
+      if (e.keyCode == 82) {
+        player.hasCheated = true;
+        player.area = Number(player.area) + 10;
+        if (player.area>=game.worlds[player.world].areas.length-1) {
+          player.area=game.worlds[player.world].areas.length-1
+        }
+        game.worlds[player.world].areas[player.area].load();
+        canv = null;
       }
-      game.worlds[player.world].areas[player.area].load();
-      canv = null;
-    }
-    if (e.keyCode == 69) {
-      player.hasCheated = true;
-      player.area = Number(player.area) - 1;
-      if (player.area<0) {
-        player.area=0;
+      if (e.keyCode == 69) {
+        player.hasCheated = true;
+        player.area = Number(player.area) - 1;
+        if (player.area<0) {
+          player.area=0;
+        }
+        game.worlds[player.world].areas[player.area].load();
+        canv = null;
       }
-      game.worlds[player.world].areas[player.area].load();
-      canv = null;
-    }
-    if (e.keyCode == 86) {
-      player.hasCheated = true;
-      player.god = !player.god;
+      if (e.keyCode == 86) {
+        player.hasCheated = true;
+        player.god = !player.god;
+      }
+      if (e.keyCode == 78) {
+        player.hasCheated = true;
+        player.wallGod = !player.wallGod;
+      }
+      if (e.keyCode == 66) {
+        player.hasCheated = true;
+        settings.cooldown = !settings.cooldown;
+      }
     }
     if (e.keyCode == 72) {
       player.herocard = !player.herocard;
@@ -173,9 +192,40 @@ function keydownKeys(e) {
     if (e.keyCode == 188) {
       player.overlay = !player.overlay;
     }
-    if (e.keyCode == 78) {
-      player.hasCheated = true;
-      player.wallGod = !player.wallGod;
+    if (e.keyCode == 35) {
+      player.pos = new Vector(Math.random() * 7 + 2.5, Math.random() * 10 + 2.5);
+      player.area = 0;
+      canv = undefined;
+      player.sweetToothTimer = 0;
+      player.flow = false;
+      player.rejoicing = false;
+      player.timer = 0;
+      player.firstAbilityCooldown = 0;
+      player.secondAbilityCooldown = 0;
+      player.deathCounter = 0;
+      if (settings.no_points){
+        player.points = 0;
+        player.speed = 5;
+        player.regen = 1;
+        player.maxEnergy = 30;
+        player.experience = 0;
+        player.previousLevelExperience = 0;
+        player.nextLevelExperience = 4;
+        player.tempPrevExperience=0;
+        player.tempNextExperience=4;
+        player.level = 1;
+      }
+      if (!settings.max_abilities){
+        player.ab1L = 0;
+        player.ab2L = 0;
+      }
+      player.energy = player.maxEnergy;
+      game.worlds[player.world].areas[player.area].load();
+      for(const i in game.worlds[player.world].areas){
+        const area = game.worlds[player.world].areas[i];
+        area.matched = false;
+      }
+
     }
     if (e.keyCode == 219 && settings.dev) {
       player.safePoint = {world:player.world,area:player.area,pos:{x:player.pos.x,y:player.pos.y}};
@@ -196,10 +246,6 @@ function keydownKeys(e) {
     }
     if (e.keyCode == 80 && settings.dev) {
       settings.timer_clear = !settings.timer_clear;
-    }
-    if (e.keyCode == 66) {
-      player.hasCheated = true;
-      settings.cooldown = !settings.cooldown;
     }
   })
 }

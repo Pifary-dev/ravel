@@ -87,6 +87,13 @@ function animate(time) {
   }
   if (!inMenu) {
     const input = {keys:[...keys],mouse:mousePos,isMouse:mouse};
+    if(settings.slow_upgrade){
+      for (const i in keys){
+        if (keys[i] && ![KEYS.LEFT, KEYS.RIGHT, KEYS.UP, KEYS.DOWN, KEYS.W, KEYS.A, KEYS.S, KEYS.D, KEYS.SHIFT].includes(parseInt(i))){
+          keys[i] = false;
+        }
+      }
+    }
     const player = game.players[0];
     if(inputArray.length > settings.tick_delay && !settings.sandbox && settings.tick_delay > 0){
       while(inputArray.length > settings.tick_delay) inputArray.shift();
@@ -110,7 +117,7 @@ function animate(time) {
       if(settings.timer){
         const style = (player.victoryTimer>0) ? 'yellow' : null;
         const timerTime = secondsFormat(Math.floor(player.timer/1000));
-        drawAreaHeader(context,6,strokeColor,timerTime,staticWidth,80,null,null,style)
+        drawAreaHeader(context,6,strokeColor,timerTime,staticWidth,80,null,30,style)
       }
       const worldSelected = document.getElementById("world");
       if(worldSelected.selectedIndex == 3 && !loaded) area.text = "this is to import a map, top left in the menu";

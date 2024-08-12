@@ -13,7 +13,7 @@ class Game {
       loaded[i] = []
     }
     for (var i in this.players) {
-      this.players[i].update(time, this.worlds[this.players[i].world].friction, this.worlds[this.players[i].world].magnet);
+      this.players[i].update(time, this.worlds[this.players[i].world].friction);
       if(!this.players[i].wallGod)this.teleport(this.players[i]);
       if(!this.players[i].wallGod)this.worlds[this.players[i].world].collisionPlayer(this.players[i].area, this.players[i]);
       loaded[this.players[i].world][this.players[i].area] = true;
@@ -147,7 +147,7 @@ class World {
     this.background_color = "rgba(255,255,255,0)";
     this.friction = 1;
     this.lighting = 1;
-    this.magnet = false;
+    this.magnetism = false;
     this.pellet_count = 25;
     this.pellet_multiplier = 1;
     this.fromJson(map)
@@ -178,7 +178,7 @@ class World {
         this.lighting = properties.lighting;
       }
       if (properties.magnetism !== undefined) {
-        this.magnet = properties.magnetism;
+        this.magnetism = properties.magnetism;
       }
       if (properties.applies_lantern !== undefined) {
         this.applies_lantern = properties.applies_lantern;
@@ -712,7 +712,7 @@ class Area {
     boundary.y += worldPos.y;
     var fixed = closestPointToRectangle(player.pos, new Vector(boundary.x + player.radius, boundary.y + player.radius), new Vector(boundary.w - player.radius * 2, boundary.h - player.radius * 2));
     if (Math.abs(fixed.x-player.pos.x)+Math.abs(fixed.y-player.pos.y)!==0) {
-      player.vel = new Vector(0,0);
+      //player.vel = new Vector(0,0);
       player.collides = true;
     } else {player.collides = false;}
     player.pos.x = fixed.x;
@@ -735,22 +735,22 @@ class Area {
             if (relX > 0) {
               // Right collision
               player.pos.x = rectCenterX + rectHalfSizeX + player.radius;
-              player.vel.x = 0;
+              //player.vel.x = 0;
             } else {
               // Left collision
               player.pos.x = rectCenterX - rectHalfSizeX - player.radius;
-              player.vel.x = 0;
+              //player.vel.x = 0;
             }
           } else {
             // Vertical collision
             if (relY < 0) {
               // Up collision
               player.pos.y = rectCenterY - rectHalfSizeY - player.radius;
-              player.vel.y = 0;
+              //player.vel.y = 0;
             } else {
               // Bottom collision
               player.pos.y = rectCenterY + rectHalfSizeY + player.radius;
-              player.vel.y = 0;
+              //player.vel.y = 0;
             }
           }
         }
@@ -803,6 +803,9 @@ class Area {
         var count = this.preset[i].count||1;
         var radius = this.preset[i].radius||0;
         var speed = this.preset[i].speed||0;
+        if(settings.convert_to_legacy_speed){
+          speed/=30;
+        }
         var x = this.preset[i].x;
         var y = this.preset[i].y;
         var angle = undefined;
@@ -1140,10 +1143,10 @@ class Area {
       this.entities["pellet"].push(pellet)
     }
   }
-  addEffect(type,pos){
+  addEffect(type,pos,power){
     if(type == 0){
       if(!this.entities["SweetTooth"]){this.entities["SweetTooth"] = []}
-      var effect = new SweetTooth(new Vector(pos.x,pos.y))
+      var effect = new SweetTooth(new Vector(pos.x,pos.y),power)
       this.entities["SweetTooth"].push(effect)
     }
   }
