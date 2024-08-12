@@ -342,72 +342,58 @@ class Player {
         if (!(input.keys[KEYS.C] || input.keys[KEYS.L])) {
           this.magnetAbilityPressed = false;
         }
+        if(this.shouldCentMove() && !this.cent_input_ready){
+          this.mouse_angle = this.cent_saved_angle;
+          this.distance_movement = 1;
+        } else if (input.isMouse&&!this.isMovementKeyPressed(input)) {
+          this.mouse_distance_full_strength = 150*settings.scale;
+          this.mouseActive = true;
+          if(this.slippery){this.mouse_distance_full_strength = 1;}
+          this.dirX = Math.round(input.mouse.x - width / 2);
+          this.dirY = Math.round(input.mouse.y - height / 2);
+          this.dist = distance(new Vector(0, 0), new Vector(this.dirX, this.dirY));
 
-          if (input.isMouse&&!this.cent_is_moving&&!this.isMovementKeyPressed(input)) {
-            this.mouse_distance_full_strength = 150*settings.scale;
-            this.mouseActive = true;
-            if(this.slippery){this.mouse_distance_full_strength = 1;}
+          if (this.dist > this.mouse_distance_full_strength) {
+            this.dirX *= this.mouse_distance_full_strength / this.dist;
+            this.dirY *= this.mouse_distance_full_strength / this.dist;
+          }
+          
+          this.input_angle = this.mouse_angle = Math.atan2(this.dirY,this.dirX);
+          this.mouse_distance = Math.min(this.mouse_distance_full_strength,Math.sqrt(this.dirX**2+this.dirY**2))
+          this.distance_movement = this.mouse_distance/this.mouse_distance_full_strength;
 
-            if(!this.shouldCentMove() || (this.shouldCentMove() && this.cent_input_ready)){
-
-              if(this.shouldCentMove()){
-                this.cent_input_ready = false;
-                this.cent_is_moving = true;
-                this.cent_accelerating = true; 
-                this.mouse_distance_full_strength = 1;
-              }
-
-              this.dirX = Math.round(input.mouse.x - width / 2);
-              this.dirY = Math.round(input.mouse.y - height / 2);
-              this.dist = distance(new Vector(0, 0), new Vector(this.dirX, this.dirY));
-
-              if (this.dist > this.mouse_distance_full_strength) {
-                this.dirX *= this.mouse_distance_full_strength / this.dist;
-                this.dirY *= this.mouse_distance_full_strength / this.dist;
-              }
-              
-              this.mouse_angle = Math.atan2(this.dirY,this.dirX);
-              this.input_angle = this.mouse_angle;
-              this.mouse_distance = Math.min(this.mouse_distance_full_strength,Math.sqrt(this.dirX**2+this.dirY**2))
-              this.distance_movement = this.mouse_distance/this.mouse_distance_full_strength;
-
-              if(this.shouldCentMove() && this.cent_input_ready){
-                this.cent_saved_angle = this.input_angle;
-                this.cent_input_ready = false;
-                this.cent_is_moving = true;
-              }
-            }
-        } else if (!this.cent_is_moving){
+          if(this.shouldCentMove() && this.cent_input_ready){
+            this.cent_saved_angle = this.input_angle;
+            this.cent_input_ready = false;
+            this.cent_is_moving = true;
+          }
+        } else {
             this.dirY = 0; 
             this.dirX = 0;
             this.moving = false;
             if(this.isMovementKeyPressed(input)){
-              if(this.shouldCentMove() && this.cent_input_ready) this.cent_is_moving = true;
               this.moving=true;
               input.isMouse = false;
-              if (this.shouldCentMove()) this.cent_input_ready = false;
-              this.cent_accelerating = true;
             }
-            if (input.keys[83] || input.keys[40]) {
+            if (input.keys[KEYS.S] || input.keys[KEYS.DOWN]) {
               this.dirY = 1;
             }
-            if (input.keys[87] || input.keys[38]) {
+            if (input.keys[KEYS.W] || input.keys[KEYS.UP]) {
               this.dirY = -1;
             }
-            if (input.keys[65] || input.keys[37]) {
+            if (input.keys[KEYS.A] || input.keys[KEYS.LEFT]) {
               this.dirX = -1;
             }
-            if (input.keys[68] || input.keys[39]) {
+            if (input.keys[KEYS.D] || input.keys[KEYS.RIGHT]) {
               this.dirX = 1;
             }
-        }
+            this.input_angle = Math.atan2(this.dirY,this.dirX)
 
-        this.input_angle = Math.atan2(this.dirY,this.dirX)
-
-        if(this.shouldCentMove() && this.cent_input_ready){
-          this.cent_saved_angle = this.input_angle;
-          this.cent_input_ready = false;
-          this.cent_is_moving = true;
+          if(this.shouldCentMove() && this.cent_input_ready && this.moving){
+            this.cent_saved_angle = this.input_angle;
+            this.cent_input_ready = false;
+            this.cent_is_moving = true;
+          }
         }
       }
     }
@@ -505,8 +491,8 @@ class Player {
       area.matched = true;
       this.updateExperience(12*(parseInt(this.area)));
     }
+    this.distance_movement *= speed;
     if(this.shouldCentMove()){
-      this.distance_movement = speed;
       this.cent_max_distance = this.distance_movement * 2;
       if(this.cent_is_moving){
         if(this.cent_accelerating){
@@ -530,14 +516,24 @@ class Player {
       }
       this.distance_movement = this.cent_distance;
     }
-    this.distance_movement *= speed;
-    if(this.mouseActive){
+    if (this.shift) {
+      this.distance_movement *= 0.5;
+    }
+    if(this.shouldCentMove() && !this.cent_input_ready){
+      this.mouse_angle = this.cent_saved_angle;
       this.d_x = this.distance_movement * Math.cos(this.mouse_angle);
       this.d_y = this.distance_movement * Math.sin(this.mouse_angle);
-    } else if (!this.shouldCentMove()){
+    } else if(this.shouldCentMove()){
+      this.d_x = 0;
+      this.d_y = 0;
+    } else if(this.mouseActive) {
+      this.d_x = this.distance_movement * Math.cos(this.mouse_angle);
+      this.d_y = this.distance_movement * Math.sin(this.mouse_angle);
+    } else {
       this.d_x = this.distance_movement * this.dirX;
       this.d_y = this.distance_movement * this.dirY;
     }
+    
     
     if(!this.safeZone && (magnetism || partial_magnetism)){
       if(!partial_magnetism){
@@ -562,43 +558,57 @@ class Player {
     }
     this.oldPos = (this.previousPos.x == this.pos.x && this.previousPos.y == this.pos.y) ? this.oldPos : new Vector(this.previousPos.x,this.previousPos.y)  
     this.previousPos = new Vector(this.pos.x, this.pos.y);
-    var dim = (1 - friction);
+    if(!this.slippery){
+      const friction_factor = (1 - friction);
 
-    if (this.slippery) {
-      dim = 0;
-    }
+      this.slide_x = this.distance_moved_previously[0];
+      this.slide_y = this.distance_moved_previously[1];
 
-    var friction_factor = dim;
+      this.slide_x *= 1-(1-friction_factor)*timeFix;
+      this.slide_y *= 1-(1-friction_factor)*timeFix;
 
-    this.slide_x = this.distance_moved_previously[0];
-    this.slide_y = this.distance_moved_previously[1];
+      this.d_x *= timeFix;
+      this.d_y *= timeFix;
 
-    this.slide_x *= 1-((1-friction_factor)*timeFix);
-    this.slide_y *= 1-((1-friction_factor)*timeFix);
+      this.d_x += this.slide_x;
+      this.d_y += this.slide_y;
 
-    this.d_x *= timeFix;
-    this.d_y *= timeFix;
+      console.log(`d_x: ${this.d_x}, slide_x: ${this.slide_x}, friction_factor: ${1-(1-friction_factor)*timeFix}, distance_movement: ${this.distance_movement}`);
 
-    this.d_x += this.slide_x;
-    this.d_y += this.slide_y;
+      this.abs_d_x = Math.abs(this.d_x);
+      this.abs_d_y = Math.abs(this.d_y);
 
-    this.abs_d_x = Math.abs(this.d_x);
-    this.abs_d_y = Math.abs(this.d_y);
-
-    if(this.shouldCentMove()){
-      if(this.abs_d_x > this.cent_max_distance && !this.slippery){
-        this.d_x *= this.cent_max_distance / this.abs_d_x;
+      if (this.abs_d_x<0.001) {
+        this.d_x = 0;
       }
-      if(this.abs_d_y > this.cent_max_distance && !this.slippery){
-        this.d_y *= this.cent_max_distance / this.abs_d_y;
+      if (this.abs_d_y<0.001) {
+        this.d_y = 0;
       }
+
+      if(this.shouldCentMove()){
+        if(this.abs_d_x > this.cent_max_distance){
+          this.d_x *= this.cent_max_distance / this.abs_d_x;
+        }
+        if(this.abs_d_y > this.cent_max_distance){
+          this.d_y *= this.cent_max_distance / this.abs_d_y;
+        }
+      } else {
+        if(this.abs_d_x>this.distance_movement){
+          this.d_x *= this.distance_movement / this.abs_d_x;
+        }
+        if(this.abs_d_y>this.distance_movement){
+          this.d_y *= this.distance_movement / this.abs_d_y;
+        }
+      }
+      this.distance_moved_previously = [this.d_x,this.d_y];
     } else {
-      if(this.abs_d_x>this.distance_movement&&!this.slippery){
-        this.d_x *= this.distance_movement / this.abs_d_x;
-      }
-      if(this.abs_d_y>this.distance_movement&&!this.slippery){
-        this.d_y *= this.distance_movement / this.abs_d_y;
-      }
+      this.distance_moved_previously = [0,0];
+    }
+    
+    this.prevSlippery = this.slippery;
+
+    if (this.mouseActive || this.moving) {
+      this.previousAngle = (this.mouseActive) ? this.mouse_angle : Math.atan2(this.d_y,this.d_x);
     }
 
     let prvLead = this.leadTimeLeft;
@@ -607,19 +617,6 @@ class Player {
       this.cent_input_ready = true;
       this.cent_accelerating = false;
       this.cent_is_moving = false;
-    }
-    
-    this.prevSlippery = this.slippery;
-    if (this.abs_d_x<0.001) {
-      this.d_x = 0;
-    }
-    if (this.abs_d_y<0.001) {
-      this.d_y = 0;
-    }
-    this.distance_moved_previously = [this.d_x,this.d_y]
-
-    if (this.mouseActive || this.moving) {
-      this.previousAngle = (this.mouseActive) ? this.mouse_angle : Math.atan2(this.d_y,this.d_x);
     }
     this.firstAbilityCooldown = Math.max(this.firstAbilityCooldown-time,0);
     this.secondAbilityCooldown = Math.max(this.secondAbilityCooldown-time,0);
@@ -631,8 +628,7 @@ class Player {
       this.secondPellet = 0;
     }
     this.tempColor=this.color;
-    this.pos.x += this.d_x / 32 * timeFix;
-    this.pos.y += this.d_y / 32 * timeFix;
+    this.move(this.d_x,this.d_y,timeFix);
     if(this.god&&this.isDead){this.isDead=false;}
     else if(this.deathTimer<=0&&this.isDead){death(this);}
     else if(this.isDead)this.deathTimer-=time;
@@ -643,6 +639,10 @@ class Player {
       }
     }
     this.clearEffects();
+  }
+  move(x,y,timeFix){
+    this.pos.x += x / 32 * timeFix;
+    this.pos.y += y / 32 * timeFix;
   }
   abilities(time, area, bound) {
 
@@ -681,10 +681,6 @@ class Player {
     }
     if (this.fusion) {
       this.speedMultiplier *= 0.7;
-    }
-    if (!this.shouldCentMove() && this.shift) {
-      this.speedMultiplier *= 0.5;
-      this.speedAdditioner *= 0.5;
     }
     if (this.poisonTime >= this.poisonTimeLeft) {
       this.poison = false;
