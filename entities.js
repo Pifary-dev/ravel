@@ -413,7 +413,6 @@ class Player {
   }
   updateExperience(toAdd){
     this.experience += toAdd;
-    console.log(toAdd)
     while (this.experience >= this.nextLevelExperience) {
       this.experience-=this.tempPrevExperience-this.previousLevelExperience;
       this.level++;
@@ -572,8 +571,6 @@ class Player {
 
       this.d_x += this.slide_x;
       this.d_y += this.slide_y;
-
-      console.log(`d_x: ${this.d_x}, slide_x: ${this.slide_x}, friction_factor: ${1-(1-friction_factor)*timeFix}, distance_movement: ${this.distance_movement}`);
 
       this.abs_d_x = Math.abs(this.d_x);
       this.abs_d_y = Math.abs(this.d_y);
@@ -932,6 +929,8 @@ class Jotunn extends Player {
     this.ab2L = (settings.max_abilities) ? 5 : 0; 
     this.firstTotalCooldown = 0; 
     this.secondTotalCooldown = 6000;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
   }
   abilities(time, area, offset) {
     const secondAbilityCost = 30;
@@ -1596,7 +1595,7 @@ class Magmax extends Player {
     }
   }
   getFlowSpeed(){
-    return (this.ab1L == this.ab1ML) ? 2 + this.ab1L : 1 + this.ab1L;
+    return 1 + this.ab1L;
   }
   updateHardenCooldown(){
     this.secondTotalCooldown = 250*(this.ab2ML-this.ab2L+1);
@@ -1670,7 +1669,7 @@ class Aurora extends Player {
     this.firstAbilityUnlocked = true;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.energy >= 1 && ab1L) {
+    if (this.firstAbility && this.energy >= 1 && this.ab1L) {
       this.firstAbilityActivated = !this.firstAbilityActivated;
       this.distort = !this.distort;
       if(!this.distort){this.aura = false;}
@@ -1699,7 +1698,7 @@ class Aurora extends Player {
     }
   }
   getDistortSlowdown(){
-    return 0.25 + 0.05*this.ab1L;
+    return 1-(0.25 + 0.05*this.ab1L);
   }
   getDistortRadius(){
     return (150 + 30*this.ab1L) / 32;
@@ -1838,8 +1837,8 @@ class Brute extends Player {
       const vigor_radius = [1,1,2,2,3][this.ab2L-1];
       this.radiusAdditioner += vigor_radius;
 
-      const effectImmunity = (ab2L*15) / 100;
-      this.effectImmune *= (this.energy == this.maxEnergy) ? effectImmunity+0.25 : effectImmunity;
+      const effectImmunity = 1-((this.ab2L*15) / 100);
+      this.effectImmune = (this.energy == this.maxEnergy) ? effectImmunity+0.25 : effectImmunity;
     }
   }
   getStompRadius(){
@@ -1859,12 +1858,12 @@ class Morfe extends Player {
     this.secondTotalCooldown = 1500;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 10 && ab1L) {
+    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 10 && this.ab1L) {
       this.energy -= 10;
       this.firstAbilityCooldown = this.firstTotalCooldown;
       this.spawnBullet(area,'reverse_projectile')
     }
-    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 10 && ab2L) {
+    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 10 && this.ab2L) {
       this.energy -= 10;
       this.secondAbilityCooldown = this.secondTotalCooldown;
       this.spawnBullet(area,'minimize_projectile')
@@ -1899,14 +1898,24 @@ class Mirage extends Player {
     this.secondTotalCooldown = 2500;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 30 && this.ab1L) {
+    if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 30 && this.ab1L && this.lastSafePos) {
       this.energy -= 30;
       this.updateFirstAbilityCooldown();
+      this.pos = new Vector(this.lastSafePos.x, this.lastSafePos.y);
     }
     if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 15 && this.ab2L) {
       this.energy -= 15;
       this.updateSecondAbilityCooldown();
       this.spawnBullet(area,'obscure_projectile')
+    }
+    this.isObscured = (this.invicible_time>0) ? true : false;
+    if(this.isObscured){
+      this.tempColor = "rgba(0, 8, 96, 1)";
+    } else {
+      this.tempColor = this.color;
+    }
+    if(this.safeZone && this.ab1L){
+      this.lastSafePos = new Vector(this.pos.x,this.pos.y);
     }
   }
   spawnBullet(area,bulletType){
@@ -2123,7 +2132,7 @@ class Polygon extends Player {
       this.speedAdditioner+=2;
     }
     if (this.shape==3) {
-      this.radiusMultiplier = 0.95;
+      this.radiusMultiplier = 0.75;
     }
   }
 }
@@ -3870,6 +3879,7 @@ class Tree extends Enemy {
     this.totalReleaseTime = 4000;
     this.shotTimer = Math.random() * this.totalReleaseTime;
     this.movementTimer = Math.random() * 500;
+    this.totalShakeTime = 400;
     this.waiting = true;
   }
   behavior(time, area, offset, players) {
@@ -3886,7 +3896,7 @@ class Tree extends Enemy {
       this.waiting=!this.waiting;
       this.movementTimer = 0;
     }
-    if(this.shotTimer>3500){
+    if(this.shotTimer>this.totalReleaseTime-this.totalShakeTime){
       this.speedMultiplier = Math.sin(this.movementTimer / 20)
     } else if(this.waiting){
       this.speedMultiplier = 0;
@@ -5084,7 +5094,7 @@ class StickySniperBullet extends Entity {
   }
   interact(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !invulnerable(player)) {
-      player.stickness = 1000*player.effectImmune;
+      player.stickness = 1000;
       this.toRemove = true;
     }
   }
@@ -5131,7 +5141,6 @@ class ClownTrail extends Enemy {
   behavior(time, area, offset, players) {
     const timeFix = time / (1000 / 30);
     this.radius -= (this.clock/1000)/4;
-    console.log(this.radius)
     this.clock += time;
     this.alpha -= time/1500;
     if(this.alpha<=0){this.alpha=0.001}
