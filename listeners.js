@@ -150,7 +150,7 @@ function keydownKeys(e) {
           player.area=game.worlds[player.world].areas.length-1
         }
         game.worlds[player.world].areas[player.area].load();
-        canv = null;
+        tilesCanvas = null;
       }
       if (e.keyCode == 82) {
         player.hasCheated = true;
@@ -159,7 +159,7 @@ function keydownKeys(e) {
           player.area=game.worlds[player.world].areas.length-1
         }
         game.worlds[player.world].areas[player.area].load();
-        canv = null;
+        tilesCanvas = null;
       }
       if (e.keyCode == 69) {
         player.hasCheated = true;
@@ -168,7 +168,7 @@ function keydownKeys(e) {
           player.area=0;
         }
         game.worlds[player.world].areas[player.area].load();
-        canv = null;
+        tilesCanvas = null;
       }
       if (e.keyCode == 86) {
         player.hasCheated = true;
@@ -195,7 +195,7 @@ function keydownKeys(e) {
     if (e.keyCode == 35) {
       player.pos = new Vector(Math.random() * 7 + 2.5, Math.random() * 10 + 2.5);
       player.area = 0;
-      canv = undefined;
+      tilesCanvas = undefined;
       player.sweetToothTimer = 0;
       player.flow = false;
       player.rejoicing = false;
@@ -238,7 +238,7 @@ function keydownKeys(e) {
       returnToSafePoint(player);
       player.lives = 3;
       player.victoryTimer = 0;
-      canv = null;
+      tilesCanvas = null;
     }
     if (e.keyCode == 79 && settings.dev) {
       player.timer = 0;

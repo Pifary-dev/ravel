@@ -754,8 +754,9 @@ class Player {
     }
 
     if((this.quicksand.angle || this.quicksand.angle === 0) && !(this.god||this.inBarrier||this.harden)){
-      this.pos.x += Math.cos(this.quicksand.angle * (Math.PI/180)) * (this.quicksand.strength/32) * timeFix;
-      this.pos.y += Math.sin(this.quicksand.angle * (Math.PI/180)) * (this.quicksand.strength/32) * timeFix;  
+      const power = (settings.convert_to_legacy_speed) ? this.quicksand.strength/32/30 : this.quicksand.strength/32;
+      this.pos.x += Math.cos(this.quicksand.angle * (Math.PI/180)) * power * timeFix;
+      this.pos.y += Math.sin(this.quicksand.angle * (Math.PI/180)) * power * timeFix;  
       this.quicksand.angle = undefined;
     }
 
@@ -2673,7 +2674,7 @@ class Switch extends Enemy {
     if (index >= count / 2) {
       this.disabled = true;
     }
-   this.clock = (count == 1) ? 2800 : 0;
+  // this.clock = (count == 1) ? 2800 : 0;
   }
   behavior(time, area, offset, players) {
     this.clock += time;

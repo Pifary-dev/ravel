@@ -468,36 +468,28 @@ class World {
         var type = 0;
         var texture;
         if (assets[k].type == "wall") {
-          type = 1
+          type = 1;
           if (assets[k].texture=="normal") {
-            texture = 0
-          }
-          if (assets[k].texture=="leaves") {
-            texture = 1
-          }
-          if (assets[k].texture=="wooden") {
-            texture = 2
-          }
-          if (assets[k].texture=="baguette") {
-            texture = 3
-          }
-          if (assets[k].texture=="ice") {
-            texture = 4
+            texture = 0;
+          } else if (assets[k].texture=="leaves") {
+            texture = 1;
+          } else if (assets[k].texture=="wooden") {
+            texture = 2;
+          } else if (assets[k].texture=="baguette") {
+            texture = 3;
+          } else if (assets[k].texture=="ice") {
+            texture = 4;
           }
         }
         if (assets[k].type == "light_region") {
           type = 4;
-        }
-        if (assets[k].type == "flashlight_spawner") {
+        } else if (assets[k].type == "flashlight_spawner") {
           type = 5;
-        }
-        if (assets[k].type == "torch") {
+        } else if (assets[k].type == "torch" && !assets[k].upside_down) {
           type = 6;
-        }
-        if (assets[k].type == "gate") {
+        } else if (assets[k].type == "gate") {
           type = 7;
-        }
-        if (assets[k].type == "torch"&&assets[k].upside_down) {
+        } else if (assets[k].type == "torch") {
           type = 8;
         }
         var areax = assets[k].x;

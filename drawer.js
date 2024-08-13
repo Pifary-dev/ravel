@@ -1,18 +1,21 @@
-let canv;
+let tilesCanvas;
+let wallCanvas;
 function renderArea(area, players, focus, areaUpdated) {
   var player = players[0];
   var light = document.createElement('canvas');
   var lightCtx = light.getContext("2d");
   light.width = width,
   light.height = height;
-  if( (areaUpdated || !canv) && tiles.complete){
-    canv = renderTiles(area, players, focus);
+  if( (areaUpdated || !tilesCanvas) && tiles.complete){
+    tilesCanvas = renderTiles(area, players, focus);
+    wallCanvas = renderWalls(area, players, focus);
   }
-  if(canv)context.drawImage(canv.can,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov)
-  renderFirstEntities(area, players, focus)
-  renderAssets(area, players, focus)
+  if(tilesCanvas)context.drawImage(tilesCanvas,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov);
+  renderFirstEntities(area, players, focus);
+  if(wallCanvas)context.drawImage(wallCanvas,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov);
+  renderAssets(area, players, focus);
   renderPlayers(area, players, focus);
-  renderSecondEntities(area, players, focus)
+  renderSecondEntities(area, players, focus);
 
   if(area.lighting != 1){
     for (var i in players) {
@@ -209,7 +212,7 @@ function renderTiles(area, players, focus) {
     ctx.fillRect(Math.round((zone.pos.x)*32),Math.round((zone.pos.y)*32),zone.size.x*32,zone.size.y*32);
     ctx.closePath();
   }
-  return {can:can,ctx:ctx};
+  return can;
 }
 
 function renderFirstEntities(area, players, focus) {
@@ -900,9 +903,8 @@ function renderUpgrade(ctx, xValue, yValue, text, player, active) {
   ctx.fillText(text, x + width/2, y + 10);
 }
 
-function renderAssets(area, players, focus) {
+function renderWalls(area, players, focus) {
   context.globalAlpha = 1;
-  var player = players[0];
   var boundary = area.boundary; 
   let wid = boundary.w*fov, heig = boundary.h*fov;
   var tile_image = tiles;
@@ -913,17 +915,32 @@ function renderAssets(area, players, focus) {
 	ctx.scale(fov/32,fov/32);
   for (var i in area.assets) {
     const zone = area.assets[i];
+    if(zone.type>4)continue;
     const modifier = (zone.texture == 4) ? 4 : 1;
     const zoneType = (zone.texture == 4) ? 0 : zone.type;
     zoneCanvas.width = 128*modifier;
     zoneCanvas.height = 128*modifier;
     zoneCTX.drawImage(tile_image,zoneType*128,zone.texture*128,128*modifier,128*modifier,0,0,128*modifier,128*modifier);
     ctx.imageSmoothingEnabled = true;
-		var pattern=ctx.createPattern(zoneCanvas,"repeat");
+    var pattern=ctx.createPattern(zoneCanvas,"repeat");
     ctx.fillStyle=pattern;
     ctx.beginPath();
     ctx.fillRect(Math.round((zone.pos.x)*32),Math.round((zone.pos.y)*32),zone.size.x*32,zone.size.y*32);
     ctx.closePath();
+  }
+  return can;
+}
+
+function renderAssets (area, players, focus) {
+  const player = players[0];
+  for(const i in area.assets){
+    const zone = area.assets[i];
+    if(zone.type<5)continue;
+    const posX = area.pos.x + zone.pos.x;
+    const posY = area.pos.y + zone.pos.y;
+    const imageX = width/2+(posX-focus.x)*fov;
+    const imageY = height/2+(posY-focus.y)*fov;
+    const scale = settings.scale;
     switch(zone.type){
       case 5:
         context.drawImage(flashlight_item, imageX, imageY, flashlight_item.width * scale, flashlight_item.height * scale)
@@ -940,9 +957,7 @@ function renderAssets(area, players, focus) {
         break;
     }
   }
-  context.drawImage(can,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov);
 }
-
 function roundedRect(ctx, x, y, width, height, strokeSize=5, fillEnabled=false, strokeEnabled=true) {
 	ctx.beginPath();
 	ctx.moveTo(x + strokeSize, y);
