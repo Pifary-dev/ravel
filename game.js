@@ -47,6 +47,12 @@ class Game {
           player.pos = new Vector(6,9);
           if(settings.dev){
             player.victoryTimer = 30000;
+            if(player.safePoint){
+              player.energy = player.maxEnergy;
+              player.firstAbilityCooldown = 0;
+              player.secondAbilityCooldown = 0;
+              returnToSafePoint(player);
+            }
           }
         }
       }
