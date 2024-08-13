@@ -77,16 +77,18 @@ class Entity {
   }
 }
 class Pellet extends Entity {
-  constructor(pos,power = 1) {
+  constructor(pos,power = 1, zones = []) {
     const p = ["#b84dd4", "#a32dd8", "#3b96fd", "#43c59b", "#f98f6b"];
     super(pos, 0.29, p[Math.floor(Math.random() * p.length)]);
     this.multiplier = power;
+    this.spawnZones = zones;
   }
   behavior(time, area, offset, players) {
     for (const i in players) {
       const player = players[i];
       if (distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y)) < player.radius + this.radius) {
-        const boundary = area.getActiveBoundary();
+        const randomZone = this.spawnZones[random(this.spawnZones.length-1)];
+        const boundary = (this.spawnZones.length == 0) ? area.getActiveBoundary() : {x:randomZone.pos.x,y:randomZone.pos.y,w:randomZone.size.x,h:randomZone.size.y};
         const posX = Math.random() * boundary.w + boundary.x;
         const posY = Math.random() * boundary.h + boundary.y;
         this.pos = new Vector(posX, posY);

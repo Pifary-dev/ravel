@@ -191,7 +191,7 @@ class World {
       }
       if (properties.pellet_multiplier !== undefined) {
         this.pellet_multiplier = properties.pellet_multiplier;
-      }
+      }    
       if (properties.texture !== undefined) {
         switch(properties.texture){
           case "leaves": this.texture = 1
@@ -360,6 +360,9 @@ class World {
           }
           if(zone.properties.minimum_speed!==undefined){
             block.minimum_speed=zone.properties.minimum_speed;
+          }
+          if (zone.properties.spawns_pellets !== undefined) {
+            block.spawns_pellets = zone.properties.spawns_pellets;
           }
         }
         else if(type == 4){
@@ -1125,13 +1128,22 @@ class Area {
         }
       } while ((pattern_amount[this.preset[i].pattern_id])>0);
     }
+    const pelletZones = [];
+    for(var i in this.zones){
+      const zone = this.zones[i];
+      if(zone.spawns_pellets){
+        pelletZones.push(zone);
+      }
+    }
     this.entities["pellet"] = []
     const pelletsAtZone = (boundary.t) ? 200 : this.pellet_count;
     const pelletMultiplayer = this.pellet_multiplier;
     for (var i = 0; i < pelletsAtZone; i++) {
-      var posX = Math.random() * boundary.w + boundary.x;
-      var posY = Math.random() * boundary.h + boundary.y;
-      var pellet = new Pellet(new Vector(posX, posY),pelletMultiplayer)
+      const randomZone = (pelletZones.length == 0) ? null : pelletZones[random(pelletZones.length-1)];
+      const zoneBoundary = (randomZone === null) ? boundary : {x:randomZone.pos.x,y:randomZone.pos.y,w:randomZone.size.x,h:randomZone.size.y};
+      const posX = Math.random() * zoneBoundary.w + zoneBoundary.x;
+      const posY = Math.random() * zoneBoundary.h + zoneBoundary.y;
+      const pellet = new Pellet(new Vector(posX, posY),pelletMultiplayer,pelletZones);
       this.entities["pellet"].push(pellet)
     }
   }
