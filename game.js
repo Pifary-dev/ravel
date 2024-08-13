@@ -278,6 +278,7 @@ class World {
       area.pellet_multiplier = this.pellet_multiplier;
       area.texture = this.texture;
       if (propertiesC) {
+        console.log(propertiesC)
         if (propertiesC.background_color) {
           var colorC = propertiesC.background_color
           area.background_color = "rgba(" + colorC[0] + "," + colorC[1] + "," + colorC[2] + "," + colorC[3] / 255 + ")"
@@ -305,10 +306,10 @@ class World {
         if(propertiesC.applies_lantern) {
           area.applies_lantern = true;
         }
-        if(propertiesC.pellet_count) {
+        if(propertiesC.pellet_count !== undefined) {
           area.pellet_count = propertiesC.pellet_count;
         }
-        if(propertiesC.pellet_multiplier) {
+        if(propertiesC.pellet_multiplier !== undefined) {
           area.pellet_multiplier = propertiesC.multiplier;
         }
       }

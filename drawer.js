@@ -915,7 +915,7 @@ function renderWalls(area, players, focus) {
 	ctx.scale(fov/32,fov/32);
   for (var i in area.assets) {
     const zone = area.assets[i];
-    if(zone.type>4)continue;
+    if(zone.type>3)continue;
     const modifier = (zone.texture == 4) ? 4 : 1;
     const zoneType = (zone.texture == 4) ? 0 : zone.type;
     zoneCanvas.width = 128*modifier;

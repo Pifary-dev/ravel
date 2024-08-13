@@ -471,6 +471,8 @@ class Player {
     const vertical_speed = ((partial_magnetism) ? this.speed / 2 : 10) * this.verticalSpeedMultiplayer;
     this.magnet = (magnetism || partial_magnetism) ? true : false;
 
+    if(area.applies_lantern) this.lantern = true;
+    
     if(this.flashlight_active || this.lantern_active){
       this.energy -= 1 * time / 1000;
     }
@@ -2676,6 +2678,7 @@ class Switch extends Enemy {
     if (index >= count / 2) {
       this.disabled = true;
     }
+    this.clock = 0;
   // this.clock = (count == 1) ? 2800 : 0;
   }
   behavior(time, area, offset, players) {
