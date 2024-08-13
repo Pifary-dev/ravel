@@ -1823,11 +1823,11 @@ class Brute extends Player {
                 }
                 entity.vel = prevVel;
               }
-              this.stomp = false;
-              this.aura = false;
-              this.firstAbilityCooldown = 1000;
             }
           }
+          this.stomp = false;
+          this.aura = false;
+          this.firstAbilityCooldown = 1000;
         }
         this.energy -= firstAbilityCost;
       } else if(this.ab1L && this.energy>=10 && this.firstAbilityCooldown == 0) {this.stomp = true; this.aura = true; this.auraType = 3;}
@@ -1838,7 +1838,7 @@ class Brute extends Player {
       this.radiusAdditioner += vigor_radius;
 
       const effectImmunity = 1-((this.ab2L*15) / 100);
-      this.effectImmune = (this.energy == this.maxEnergy) ? effectImmunity+0.25 : effectImmunity;
+      this.effectImmune = (this.energy == this.maxEnergy) ? effectImmunity-0.25 : effectImmunity;
     }
   }
   getStompRadius(){
