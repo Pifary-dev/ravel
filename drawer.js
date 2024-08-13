@@ -902,36 +902,28 @@ function renderUpgrade(ctx, xValue, yValue, text, player, active) {
 
 function renderAssets(area, players, focus) {
   context.globalAlpha = 1;
-  var tile_image = tiles;
   var player = players[0];
+  var boundary = area.boundary; 
+  let wid = boundary.w*fov, heig = boundary.h*fov;
+  var tile_image = tiles;
+  const can = createOffscreenCanvas(wid,heig)
+  const ctx = can.getContext('2d');
+  const zoneCanvas = createOffscreenCanvas(128,128);
+  const zoneCTX = zoneCanvas.getContext('2d');
+	ctx.scale(fov/32,fov/32);
   for (var i in area.assets) {
-    var zone = area.assets[i];
-    for (var j = 0; j < zone.size.x; j++) {
-      for (var k = 0; k < zone.size.y; k++) {
-        if (zone.type > 3) continue;
-        var tileSize = 4;
-        if (zone.texture == 4) {
-          tileSize = 16
-        }
-        context.beginPath();
-        var posX = ((area.pos.x + zone.pos.x + j) % tileSize);
-        var posY = ((area.pos.y + zone.pos.y + k) % tileSize);
-        if (posX < 0) {
-          posX = tileSize - Math.abs(posX);
-        }
-        if (posY < 0) {
-          posY = tileSize - Math.abs(posY);
-        }
-        context.imageSmoothingEnabled = true;
-        context.drawImage(tile_image, Math.abs(posX) * 32, Math.abs(posY) * 32 + zone.texture * 128, 32, 32, width / 2 + ((area.pos.x + zone.pos.x + j) - focus.x) * fov, height / 2 + ((area.pos.y + zone.pos.y + k) - focus.y) * fov, fov, fov);
-        context.closePath();
-      }
-    }
-    var posX = area.pos.x + zone.pos.x;
-    var posY = area.pos.y + zone.pos.y;
-    const imageX = width/2+(posX-focus.x)*fov;
-    const imageY = height/2+(posY-focus.y)*fov;
-    const scale = settings.scale;
+    const zone = area.assets[i];
+    const modifier = (zone.texture == 4) ? 4 : 1;
+    const zoneType = (zone.texture == 4) ? 0 : zone.type;
+    zoneCanvas.width = 128*modifier;
+    zoneCanvas.height = 128*modifier;
+    zoneCTX.drawImage(tile_image,zoneType*128,zone.texture*128,128*modifier,128*modifier,0,0,128*modifier,128*modifier);
+    ctx.imageSmoothingEnabled = true;
+		var pattern=ctx.createPattern(zoneCanvas,"repeat");
+    ctx.fillStyle=pattern;
+    ctx.beginPath();
+    ctx.fillRect(Math.round((zone.pos.x)*32),Math.round((zone.pos.y)*32),zone.size.x*32,zone.size.y*32);
+    ctx.closePath();
     switch(zone.type){
       case 5:
         context.drawImage(flashlight_item, imageX, imageY, flashlight_item.width * scale, flashlight_item.height * scale)
@@ -948,6 +940,7 @@ function renderAssets(area, players, focus) {
         break;
     }
   }
+  context.drawImage(can,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov);
 }
 
 function roundedRect(ctx, x, y, width, height, strokeSize=5, fillEnabled=false, strokeEnabled=true) {
