@@ -284,7 +284,6 @@ class World {
       area.pellet_multiplier = this.pellet_multiplier;
       area.texture = this.texture;
       if (propertiesC) {
-        console.log(propertiesC)
         if (propertiesC.background_color) {
           var colorC = propertiesC.background_color
           area.background_color = "rgba(" + colorC[0] + "," + colorC[1] + "," + colorC[2] + "," + colorC[3] / 255 + ")"

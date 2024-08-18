@@ -201,8 +201,8 @@ class Player {
     this.cent_max_distance = 10;
     this.cent_distance = 0;
     this.cent_input_ready = true;
-    this.cent_deceleration = 0.666;
-    this.cent_acceleration = 0.333;
+    this.cent_acceleration = 7.5/32;
+    this.cent_deceleration = this.cent_acceleration * 4;
     this.cent_accelerating = false;
     this.cent_is_moving = false;
     this.distance_moved_previously = [0,0];
@@ -344,7 +344,7 @@ class Player {
         if (!(input.keys[KEYS.C] || input.keys[KEYS.L])) {
           this.magnetAbilityPressed = false;
         }
-        if(this.shouldCentMove() && !this.cent_input_ready){
+        if(this.shouldCentMove() && !this.cent_can_change_input_angle()){
           this.mouse_angle = this.cent_saved_angle;
           this.distance_movement = 1;
         } else if (input.isMouse&&!this.isMovementKeyPressed(input)) {
@@ -364,7 +364,7 @@ class Player {
           this.mouse_distance = Math.min(this.mouse_distance_full_strength,Math.sqrt(this.dirX**2+this.dirY**2))
           this.distance_movement = this.mouse_distance/this.mouse_distance_full_strength;
 
-          if(this.shouldCentMove() && this.cent_input_ready){
+          if(this.shouldCentMove() && this.cent_can_change_input_angle()){
             this.cent_saved_angle = this.input_angle;
             this.cent_input_ready = false;
             this.cent_is_moving = true;
@@ -391,7 +391,7 @@ class Player {
             }
             this.input_angle = Math.atan2(this.dirY,this.dirX)
 
-          if(this.shouldCentMove() && this.cent_input_ready && this.moving){
+          if(this.shouldCentMove() && this.cent_can_change_input_angle() && this.moving){
             this.cent_saved_angle = this.input_angle;
             this.cent_input_ready = false;
             this.cent_is_moving = true;
@@ -495,7 +495,8 @@ class Player {
       this.updateExperience(12*(parseInt(this.area)));
     }
     this.distance_movement *= speed;
-    if(this.shouldCentMove()){
+    console.log(this.d_x,this.d_y)
+    if(this.shouldCentMove() && (!this.slippery || this.collides)){
       this.cent_max_distance = this.distance_movement * 2;
       if(this.cent_is_moving){
         if(this.cent_accelerating){
@@ -522,7 +523,7 @@ class Player {
     if (this.shift) {
       this.distance_movement *= 0.5;
     }
-    if(this.shouldCentMove() && !this.cent_input_ready){
+    if(this.shouldCentMove() && !this.cent_can_change_input_angle()){
       this.mouse_angle = this.cent_saved_angle;
       this.d_x = this.distance_movement * Math.cos(this.mouse_angle);
       this.d_y = this.distance_movement * Math.sin(this.mouse_angle);
@@ -562,13 +563,13 @@ class Player {
     this.oldPos = (this.previousPos.x == this.pos.x && this.previousPos.y == this.pos.y) ? this.oldPos : new Vector(this.previousPos.x,this.previousPos.y)  
     this.previousPos = new Vector(this.pos.x, this.pos.y);
     if(!this.slippery){
-      const friction_factor = (1 - friction);
+      const friction_factor = 1 - (friction * timeFix);
 
       this.slide_x = this.distance_moved_previously[0];
       this.slide_y = this.distance_moved_previously[1];
 
-      this.slide_x *= 1-(1-friction_factor)*timeFix;
-      this.slide_y *= 1-(1-friction_factor)*timeFix;
+      this.slide_x *= friction_factor;
+      this.slide_y *= friction_factor;
 
       this.d_x *= timeFix;
       this.d_y *= timeFix;
@@ -916,6 +917,10 @@ class Player {
   push_player(x,y){
     this.pos.x = x;
     this.pos.y = y;
+  }
+  cent_can_change_input_angle(){
+    return (this.cent_input_ready) ? 
+    true : this.cent_accelerating && 2 * this.cent_distance < this.cent_max_distance;
   }
 }
 class Basic extends Player {
@@ -2679,7 +2684,6 @@ class Switch extends Enemy {
       this.disabled = true;
     }
     this.clock = 0;
-  // this.clock = (count == 1) ? 2800 : 0;
   }
   behavior(time, area, offset, players) {
     this.clock += time;

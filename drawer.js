@@ -217,39 +217,40 @@ function renderTiles(area, players, focus) {
 
 function renderFirstEntities(area, players, focus) {
   var entities = area.entities //entities[i] = entities[i].sort((a,b)=>a.radius-b.radius);
-  for (var i in entities) {
+  for (const i in entities) {
     context.globalAlpha = 1;
-    for (var j in entities[i]) {
-      if (entities[i][j].renderFirst) {
+    for (const j in entities[i]) {
+      const entity = entities[i][j];
+      if (entity.renderFirst) {
         if (i=="shield") {
           context.save()
-          context.translate((width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov), (height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov))
-          context.rotate(entities[i][j].rot)
+          context.translate((width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov), (height / 2 + (area.pos.y + entity.pos.y - focus.y) * fov))
+          context.rotate(entity.rot)
           context.beginPath();
           context.fillStyle = "black";
-          context.fillRect(-entities[i][j].size.x*fov,-entities[i][j].size.y*fov, entities[i][j].size.x*fov*2, entities[i][j].size.y*fov*2);
+          context.fillRect(-entity.size.x*fov,-entity.size.y*fov, entity.size.x*fov*2, entity.size.y*fov*2);
           context.fill();
           context.closePath();
           context.restore();
         }else {
           context.beginPath();
-          context.fillStyle = entities[i][j].color;
+          context.fillStyle = entity.color;
           context.globalAlpha = 1;
-          if ((entities[i][j].Harmless || entities[i][j].healing>0)&&!entities[i][j].texture) {
+          if ((entity.Harmless || entity.healing>0)&&!entity.texture) {
             context.globalAlpha = 0.4;
-            if(entities[i][j].healing>0){
+            if(entity.healing>0){
               context.fillStyle="rgb(0, 221, 0)";
             }
           }
-          if(entities[i][j].radius * fov>0){
-          if(!entities[i][j].texture){
-            context.arc(width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov, entities[i][j].radius * fov, 0, Math.PI * 2, true);
+          if(entity.radius * fov>0){
+          if(!entity.texture){
+            context.arc(width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov, height / 2 + (area.pos.y + entity.pos.y - focus.y) * fov, entity.radius * fov, 0, Math.PI * 2, true);
             context.fill();
             context.closePath();
           }
           else{
             var Texture;
-            switch(entities[i][j].texture){
+            switch(entity.texture){
               case "pumpkinOn": Texture = pumpkinOn;
               break;
               case "pumpkinOff": Texture = pumpkinOff;
@@ -260,14 +261,14 @@ function renderFirstEntities(area, players, focus) {
             }
             if(Texture){
               context.imageSmoothingEnabled = true;
-              context.drawImage(Texture,width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x-entities[i][j].radius) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y-entities[i][j].radius) * fov,entities[i][j].radius * fov*2,entities[i][j].radius * fov*2)
+              context.drawImage(Texture,width / 2 + (area.pos.x + entity.pos.x - focus.x-entity.radius) * fov, height / 2 + (area.pos.y + entity.pos.y - focus.y-entity.radius) * fov,entity.radius * fov*2,entity.radius * fov*2)
               Texture = 0;
               context.imageSmoothingEnabled = false;
             }
           }
-          if (entities[i][j].outline && settings.outline) {
+          if (entity.outline && settings.outline) {
             context.strokeStyle = "black";
-            if(entities[i][j].texture) context.arc(width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov, entities[i][j].radius * fov, 0, Math.PI * 2);
+            if(entity.texture) context.arc(width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov, height / 2 + (area.pos.y + entity.pos.y - focus.y) * fov, entity.radius * fov, 0, Math.PI * 2);
             context.lineWidth = 2/(32/fov);
             context.stroke()
           }
@@ -279,6 +280,7 @@ function renderFirstEntities(area, players, focus) {
 }
 function renderPlayers(area, players, focus) {
   context.imageSmoothingEnabled = true;
+  context.globalAlpha = 1;
   for (var i in players) {
     var player = players[i];
     if (player.bandage) {
@@ -609,10 +611,11 @@ function renderMinimap(area, players, focus) {
       case 5: style = "rgb(255, 249, 186, 255)";break;
     }
     style = toRGBArray(style);
-    const x = Math.round((zone.pos.x - bound.x) * coef);
-    const y = Math.round(staticHeight - minimapSize.y + (zone.pos.y - bound.y) * coef + yOff);
-    const w = Math.ceil(zone.size.x * coef);
-    const h = Math.ceil(zone.size.y * coef);
+    context.imageSmoothingEnabled = false;
+    const x = (zone.pos.x - bound.x) * coef;
+    const y = staticHeight - minimapSize.y + (zone.pos.y - bound.y) * coef + yOff;
+    const w = zone.size.x * coef;
+    const h = zone.size.y * coef;
     // Canvas floating numbers moment
     
     let background_color = toRGBArray(zone.background_color);
