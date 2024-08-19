@@ -495,7 +495,6 @@ class Player {
       this.updateExperience(12*(parseInt(this.area)));
     }
     this.distance_movement *= speed;
-    console.log(this.d_x,this.d_y)
     if(this.shouldCentMove() && (!this.slippery || this.collides)){
       this.cent_max_distance = this.distance_movement * 2;
       if(this.cent_is_moving){
