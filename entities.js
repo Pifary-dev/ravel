@@ -3906,11 +3906,11 @@ class Tree extends Enemy {
       this.movementTimer = 0;
     }
     if(this.shotTimer>this.totalReleaseTime-this.totalShakeTime){
-      this.speedMultiplier = Math.sin(this.movementTimer / 20)
+      this.speedMultiplier *= Math.sin(this.movementTimer / 20)
     } else if(this.waiting){
-      this.speedMultiplier = 0;
+      this.speedMultiplier *= 0;
     } else {
-      this.speedMultiplier = Math.max(Math.sin(this.movementTimer / 200),0)
+      this.speedMultiplier *= Math.max(Math.sin(this.movementTimer / 200),0)
     }
   }
 }

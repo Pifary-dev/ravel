@@ -251,8 +251,8 @@ function combineSpeed(player){
   return parseFloat(((player.d_x**2 + player.d_y**2)**0.5).toFixed(2));
 }
 
-function returnToSafePoint (player){
-  if(settings.timer_clear){player.timer = 0}
+function returnToSafePoint (player, should_clear_timer = true){
+  if(settings.timer_clear && should_clear_timer){player.timer = 0}
   const safeP = {world:player.safePoint.world,area:player.safePoint.area,pos:{x:player.safePoint.pos.x,y:player.safePoint.pos.y}};
   player.pos = safeP.pos;
   player.world = safeP.world;
@@ -920,6 +920,12 @@ const KEYS = {
   3: 51,
   4: 52,
   5: 53
+}
+
+function calculateFps(){
+  const thisFrameTime = (thisLoop = new Date) - lastLoop;
+  frameTime += (thisFrameTime - frameTime) / filterStrength;
+  lastLoop = thisLoop;
 }
 
 class Pulsation {

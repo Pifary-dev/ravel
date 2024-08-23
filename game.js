@@ -51,7 +51,7 @@ class Game {
               player.energy = player.maxEnergy;
               player.firstAbilityCooldown = 0;
               player.secondAbilityCooldown = 0;
-              returnToSafePoint(player);
+              returnToSafePoint(player, false);
             }
           }
         }

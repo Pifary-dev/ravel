@@ -139,7 +139,7 @@ function renderArea(area, players, focus, areaUpdated) {
       context.lineWidth = 0.5;
       const avgPing = (ping.array.length > 5) ? Math.round(ping.array.reduce((e,t)=>e+t)/ping.array.length) : settings.tick_delay*33 + settings.input_delay;
       const diff = document.getElementById("diff").value;
-      const devStat = "Delay: " + avgPing + ", Comb Spd: "+ combineSpeed(player);
+      const devStat = "Delay: " + avgPing + ", FPS: " + Math.round(1000/frameTime);
       let offset = 0;
       if(diff == "Easy"){
         const deathCounter = (settings.dev) ? "Deaths: " + players[0].deathCounter + ", " + devStat : "Deaths: " + players[0].deathCounter; 

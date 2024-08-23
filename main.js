@@ -75,8 +75,11 @@ const lantern = new Image();
 const tick_time = 1000 / 60; let tick_speed = 1;
 const missing_world = new World(new Vector(0, 0), 0, missingMap);
 
+// calculate fps (dev mode only)
+const filterStrength = 50;
+let frameTime = 0, lastLoop = new Date, thisLoop;
+
 function animate(time) {
-  updateBackground(context,width,height,'#333');
   let progress = tick_time;
   if(settings.sandbox){
     window.requestAnimationFrame(animate);
@@ -86,6 +89,8 @@ function animate(time) {
     }
   }
   if (!inMenu) {
+    if(settings.dev) calculateFps();
+    updateBackground(context,width,height,'#333');
     const input = {keys:[...keys],mouse:mousePos,isMouse:mouse};
     if(settings.slow_upgrade){
       for (const i in keys){
