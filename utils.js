@@ -260,7 +260,7 @@ function returnToSafePoint (player, should_clear_timer = true){
 }
 
 function invulnerable(player){
-  if (player.god||player.inBarrier||player.invicible) return true;
+  if (player.god||player.inBarrier||player.invincible) return true;
   return false
 }
 
@@ -512,19 +512,20 @@ function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive
       dead = false;
     }
     if(dead){
-      if(player.className == "Cent" && !player.invicible){
-        if(player.energy >= 20 && player.secondAbilityCooldown==0 && player.mortarTime<=0){
+      if(player.className == "Cent" && !player.invincible){
+        if(player.energy >= 40 && player.secondAbilityCooldown==0 && player.mortarTime<=0){
           player.onDeathSecondAb=true;
-          player.invicible=true;
+          player.invincible=true;
         }
       }
       if(player.bandage){
         player.bandage = false;
-        player.invicible = true;
-        player.invicible_time = 900;
+        player.invincible = true;
+        player.isUnbandaging = true;
+        player.invincible_time = 1000;
       }
   }
-    if((player.invicible&&!corrosive)||Harmless){
+    if((player.invincible&&!corrosive)||Harmless){
       dead = false;
     }
     if(dead && !player.isDead){

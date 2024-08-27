@@ -282,48 +282,33 @@ function renderPlayers(area, players, focus) {
   context.imageSmoothingEnabled = true;
   context.globalAlpha = 1;
   for (var i in players) {
-    var player = players[i];
-    if (player.bandage) {
+    const player = players[i];
+    if (player.bandage || player.isUnbandaging) {
+      const bandage_radius = (player.isUnbandaging) ? 1 : 3;
       context.beginPath();
       context.fillStyle = "#dedabe";
-      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.radius * fov + 3, 0, Math.PI * 2, true);
+      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (player.radius + bandage_radius / 32) * fov, 0, Math.PI * 2, false);
       context.fill();
+      if(!player.isUnbandaging) {
+        context.strokeStyle="#aaa791";
+        context.lineWidth = 1;
+        context.stroke();
+      }
       context.closePath();
     }
     if(player.aura){
-      if(player.auraType == 0){
-        const radius = player.getSugarRushRadius();
+      const auraTypes = {
+        0: { radius: player.getSugarRushRadius ? player.getSugarRushRadius() : 0, color: "rgba(255, 128, 189, 0.25)" },
+        1: { radius: player.getParalysisRadius ? player.getParalysisRadius() : 0, color: "rgba(77, 233, 242, 0.2)" },
+        2: { radius: player.getDistortRadius ? player.getDistortRadius() : 0, color: "rgba(255, 0, 0, 0.2)" },
+        3: { radius: player.getStompRadius ? player.getStompRadius() : 0, color: "rgba(153, 62, 6, 0.2)" },
+        4: { radius: 190 / 32, color: "rgba(76, 240, 161, 0.25)" },
+      };
+      const aura = auraTypes[player.auraType];
+      if (aura) {
         context.beginPath();
-        context.fillStyle = "rgba(255, 128, 189, 0.25)";
-        context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, radius * fov, 0, Math.PI * 2, true);
-        context.fill();
-        context.closePath();
-      } else if(player.auraType == 1){
-        const radius = player.getParalysisRadius();
-        context.beginPath();
-        context.fillStyle = "rgba(77, 233, 242, 0.2)";
-        context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, radius * fov, 0, Math.PI * 2, true);
-        context.fill();
-        context.closePath();
-      } else if(player.auraType == 2){
-        const radius = player.getDistortRadius();
-        context.beginPath();
-        context.fillStyle = "rgba(255, 0, 0, 0.2)";
-        context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, radius * fov, 0, Math.PI * 2, true);
-        context.fill();
-        context.closePath();
-      } else if(player.auraType == 3){
-        const radius = player.getStompRadius();
-        context.beginPath();
-        context.fillStyle = "rgba(153, 62, 6, 0.2)";
-        context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, radius * fov, 0, Math.PI * 2, true);
-        context.fill();
-        context.closePath();
-      } else if(player.auraType == 4){
-        const radius = 190 / 32;
-        context.beginPath();
-        context.fillStyle = "rgba(76, 240, 161, 0.25)";
-        context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, radius * fov, 0, Math.PI * 2, true);
+        context.fillStyle = aura.color;
+        context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, aura.radius * fov, 0, Math.PI * 2, true);
         context.fill();
         context.closePath();
       }
@@ -611,7 +596,6 @@ function renderMinimap(area, players, focus) {
       case 5: style = "rgb(255, 249, 186, 255)";break;
     }
     style = toRGBArray(style);
-    context.imageSmoothingEnabled = false;
     const x = (zone.pos.x - bound.x) * coef;
     const y = staticHeight - minimapSize.y + (zone.pos.y - bound.y) * coef + yOff;
     const w = zone.size.x * coef;

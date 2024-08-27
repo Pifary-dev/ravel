@@ -144,7 +144,7 @@ class Player {
     this.energy = this.maxEnergy;
     this.regen = 1;
     this.vel = new Vector(0, 0);
-    this.invicible = false;
+    this.invincible = false;
     this.tempPrevExperience=0;
     this.tempNextExperience=4;
     this.speedMultiplier = 1;
@@ -633,10 +633,10 @@ class Player {
     if(this.god&&this.isDead){this.isDead=false;}
     else if(this.deathTimer<=0&&this.isDead){death(this);}
     else if(this.isDead)this.deathTimer-=time;
-    if(this.invicible_time>=0){
-      this.invicible_time-=time;
-      if(this.invicible_time<=0){
-        this.invicible = false;
+    if(this.invincible_time>=0){
+      this.invincible_time-=time;
+      if(this.invincible_time<=0){
+        this.invincible = false;
       }
     }
     this.clearEffects();
@@ -1364,18 +1364,17 @@ class Cent extends Player {
     this.mortarTime = 0;
   }
   abilities(time, area, offset) {
-    if(this.fusion){this.invicible = true; this.speedMultiplier*=0.7}
+    if(this.fusion){this.invincible = true; this.speedMultiplier*=0.7}
     if(this.mortarTime)if(this.mortarTime>0){
       this.mortarTime-=time; 
       this.speedMultiplier=0; 
-      this.invicible = true;
+      this.invincible = true;
       if(this.mortarTime<=0){
         this.mortar = false;
       }
     }
     if(this.firstAbility){
-      if(this.energy>=5&&this.firstAbilityCooldown==0){
-        this.energy-=5;
+      if(this.firstAbilityCooldown==0){
         this.fusion = true;
         this.fusionTime = 700;
         this.firstAbilityCooldown = this.firstTotalCooldown;
@@ -1392,7 +1391,7 @@ class Cent extends Player {
       }
     }
     if(this.god) this.mortarTime = 0;
-    if(this.fusionTime>0||this.mortarTime>0){this.invicible = true}else{this.invicible = false;}
+    if(this.fusionTime>0||this.mortarTime>0){this.invincible = true}else{this.invincible = false;}
     if(this.fusionTime>0){this.fusionTime-=time;if(this.fusionTime<=0){this.fusion = false;}}
   }
 }
@@ -1540,7 +1539,11 @@ class Rameses extends Player {
     if (this.stand) {
       this.speedMultiplier*=0.5;
     }
+    if(this.isUnbandaging && this.invincible_time<=0){
+      this.isUnbandaging = false;
+    }
   }
+
   updateFirstAbilityCooldown(){
     const firstCooldown = 12000 - (this.ab1L-1) * 1000;
     this.firstTotalCooldown = (this.safeZone) ? firstCooldown/3 : firstCooldown;
@@ -1584,13 +1587,13 @@ class Magmax extends Player {
 
     if(this.harden){
       this.tempColor = "rgb(200, 70, 0)";
-      this.invicible = true;
+      this.invincible = true;
       this.speedMultiplier = 0;
       this.d_x = 0;
       this.d_y = 0;
       this.energy -= secondAbilityCost * time / 1000;
     } else {
-      this.invicible = false;
+      this.invincible = false;
     }
     if(this.flow){
       this.tempColor = "rgb(255, 80, 10)";
@@ -1625,7 +1628,7 @@ class Rime extends Player {
     this.secondTotalCooldown = 0;
   }
   abilities(time, area, offset) {
-    const firstAbilityCost = 2;
+    const firstAbilityCost = 3;
     const secondAbilityCost = 15;
     const paralysisRadius = this.getParalysisRadius();
     const paralysisDuration = 2000;
@@ -1662,7 +1665,7 @@ class Rime extends Player {
     return (60 + this.ab1L * 20) / 32;
   }
   getParalysisRadius(){
-    return (110 + this.ab1 * 20) / 32
+    return (110 + this.ab2L * 20) / 32
   }
 }
 
@@ -1917,7 +1920,7 @@ class Mirage extends Player {
       this.updateSecondAbilityCooldown();
       this.spawnBullet(area,'obscure_projectile')
     }
-    this.isObscured = (this.invicible_time>0) ? true : false;
+    this.isObscured = (this.invincible_time>0) ? true : false;
     if(this.isObscured){
       this.tempColor = "rgba(0, 8, 96, 1)";
     } else {
@@ -2018,8 +2021,12 @@ class Candy extends Player {
         }
       }
     } else {this.aura = false; this.auraType = -1;}
-    if(this.sugarRushing <= 0){this.sugar_rush = false}
-    else{this.sugarRushing-=time}
+    if(this.sugarRushing <= 0){
+      this.sugar_rush = false
+    } else if(this.sugarRushing > 0){
+      this.sugarRushing -= time;
+      this.tempColor = "rgba(230, 103, 164, 1)";
+    }
 
     if(this.sweetToothConsumed){
       this.energy += this.maxEnergy/2;
@@ -5251,8 +5258,8 @@ class ObscureProjectile extends Enemy {
         const player = players[0];
         if (distance(this.pos, new Vector(entity.pos.x, entity.pos.y)) < this.radius + entity.radius && !entity.toRemove && entity.isEnemy && !entity.obscure) {
           player.pos = new Vector(entity.pos.x+offset.x,entity.pos.y+offset.y)
-          player.invicible_time = 1000;
-          player.invicible = true;
+          player.invincible_time = 1000;
+          player.invincible = true;
           this.toRemove = true;
         }
       }
