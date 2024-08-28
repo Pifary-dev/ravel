@@ -14,6 +14,7 @@ function renderArea(area, players, focus, areaUpdated) {
   }
   if(tilesCanvas)context.drawImage(tilesCanvas,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov);
   renderFirstEntities(area, players, focus);
+  context.globalAlpha = 1;
   if(wallCanvas)context.drawImage(wallCanvas,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov);
   renderAssets(area, players, focus);
   renderPlayers(area, players, focus);
@@ -639,6 +640,7 @@ function renderMinimap(area, players, focus) {
   // Draw players on main context with correct size and position
   for (const i in players) {
     const player = players[i];
+    const playerMinimapRadius = Math.min((player.radius + coef),4);
     const newPos = new Vector(
       (player.pos.x - area.pos.x - bound.x) * coef,
       (player.pos.y - area.pos.y - bound.y) * coef
@@ -647,7 +649,7 @@ function renderMinimap(area, players, focus) {
     context.fillStyle = player.color;
     context.strokeStyle = player.strokeColor;
     context.lineWidth = 2;
-    context.arc(newPos.x * (minimapSize.x / minimapCanvas.width), staticHeight - minimapSize.y + newPos.y * (minimapSize.y / minimapCanvas.height), (player.radius + coef)*0.9, 0, Math.PI * 2, true);
+    context.arc(newPos.x * (minimapSize.x / minimapCanvas.width), staticHeight - minimapSize.y + newPos.y * (minimapSize.y / minimapCanvas.height), playerMinimapRadius, 0, Math.PI * 2, true);
     context.fill();
     context.stroke();
     context.closePath();

@@ -942,6 +942,7 @@ class Jotunn extends Player {
     this.secondTotalCooldown = 6000;
     this.firstAbilityUnlocked = true;
     this.secondAbilityUnlocked = true;
+    this.strokeColor = "#3c8ccf";
   }
   abilities(time, area, offset) {
     const secondAbilityCost = 30;
@@ -1106,6 +1107,7 @@ class Shade extends Player {
     this.firstTotalCooldown = 7000; 
     this.secondTotalCooldown = 1000;
     this.shadeSpeed = 0;
+    this.strokeColor = "#423545";
   }
   abilities(time, area, offset) {
     const firstAbilityCost = 30;
@@ -1326,6 +1328,7 @@ class Reaper extends Player {
     this.secondAbilityUnlocked = true;
     this.firstTotalCooldown = 4000;
     this.secondTotalCooldown = 10000;
+    this.strokeColor = "#222a39";
   }
   abilities(time, area, offset) {
     const invisibilityTime = 3500;
@@ -1364,6 +1367,7 @@ class Cent extends Player {
     this.firstTotalCooldown = 1000;
     this.secondTotalCooldown = 10000;
     this.mortarTime = 0;
+    this.strokeColor = "#424242";
   }
   abilities(time, area, offset) {
     if(this.fusion){this.invincible = true; this.speedMultiplier*=0.7}
@@ -1526,6 +1530,7 @@ class Rameses extends Player {
     this.firstAbilityUnlocked = true;
     this.firstTotalCooldown = 8000; 
     this.secondTotalCooldown = 6000;
+    this.strokeColor = "#686b2a";
   }
   abilities(time, area, offset) {
     const firstAbilityCost = 50;
@@ -2971,9 +2976,12 @@ class WindSniperBullet extends Entity {
   behavior(time, area, offset, players) {
     this.clock += time;
   }
-  interact(player,worldPos,time){
+  interact(player, worldPos, time) {
     const timeFix = time / (1000 / 30);
-    while(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+    const maxIterations = 25; // Prevent infinite loop
+    let iterations = 0;
+    
+    while (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && iterations < maxIterations) {
       var dx = player.pos.x - (this.pos.x + worldPos.x);
       var dy = player.pos.y - (this.pos.y + worldPos.y);
       var dist = distance(new Vector(0, 0), new Vector(dx, dy));
@@ -2983,6 +2991,12 @@ class WindSniperBullet extends Entity {
       player.pos.x += (moveDist * Math.cos(angleToPlayer)) * timeFix;
       player.pos.y += (moveDist * Math.sin(angleToPlayer)) * timeFix;
       game.worlds[game.players[0].world].collisionPlayer(game.players[0].area, game.players[0]);
+      
+      iterations++;
+    }
+    
+    if (iterations >= maxIterations) {
+      console.warn('Max iterations reached in WindSniperBullet interact');
     }
   }
 }
@@ -4340,16 +4354,22 @@ class Wind extends Enemy {
     this.ignore_invulnerability = ignore_invulnerability;
   }
   interact(player,worldPos,time){
-    if(!invulnerable(player)||this.ignore_invulnerability)while(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
-      var dx = player.pos.x - (this.pos.x + worldPos.x);
-      var dy = player.pos.y - (this.pos.y + worldPos.y);
-      var dist = distance(new Vector(0, 0), new Vector(dx, dy));
-      var attractionAmplitude = Math.pow(2, -(dist / (this.radius/2)));
-      var moveDist = this.gravity * attractionAmplitude;
-      var angleToPlayer = Math.atan2(dy, dx);
-      player.pos.x += (moveDist * Math.cos(angleToPlayer)) * (time / (1000 / 30))
-      player.pos.y += (moveDist * Math.sin(angleToPlayer)) * (time / (1000 / 30))
-      game.worlds[game.players[0].world].collisionPlayer(game.players[0].area, game.players[0]);
+    const timeFix = time / (1000 / 30);
+    if(!invulnerable(player)||this.ignore_invulnerability) {
+      const maxIterations = 100; // Prevent infinite loop
+      let iterations = 0;
+      while(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && iterations < maxIterations) {
+        var dx = player.pos.x - (this.pos.x + worldPos.x);
+        var dy = player.pos.y - (this.pos.y + worldPos.y);
+        var dist = distance(new Vector(0, 0), new Vector(dx, dy));
+        var attractionAmplitude = Math.pow(2, -(dist / (this.radius/2)));
+        var moveDist = this.gravity * attractionAmplitude;
+        var angleToPlayer = Math.atan2(dy, dx);
+        player.pos.x += (moveDist * Math.cos(angleToPlayer)) * timeFix;
+        player.pos.y += (moveDist * Math.sin(angleToPlayer)) * timeFix;
+        game.worlds[game.players[0].world].collisionPlayer(game.players[0].area, game.players[0]);
+        iterations++;
+      }
     }
   }
 }
