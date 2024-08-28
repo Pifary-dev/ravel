@@ -5,7 +5,7 @@ let keys = [];
 const settings = {
   outline:true,
   cooldown:true,
-  sandbox:true,
+  fps_limit: "60",
   timer: false,
   timer_clear:true,
   mouse_toggle:true,

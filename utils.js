@@ -823,6 +823,10 @@ function drawShape(context, type, x, y, color, width, height) {
     context.lineTo(x + width, y);
     context.lineTo(x + width / 2, y - height + 2);
     context.fill();
+  } else if (type === 'circle') {
+    const radius = Math.min(width, height) / 2;
+    context.arc(x + width / 2, y - height / 2, radius, 0, 2 * Math.PI);
+    context.fill();
   }
   
   context.closePath();

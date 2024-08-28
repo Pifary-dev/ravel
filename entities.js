@@ -127,6 +127,7 @@ class Player {
     this.staticRadius = 15;
     this.color = color;
     this.tempColor = color
+    this.strokeColor = color;
     this.speed = speed;
     this.world = 0;
     this.area = 0;
@@ -928,6 +929,7 @@ class Basic extends Player {
     this.hasAB = true; 
     this.ab1L = 0; 
     this.ab2L = 0; 
+    this.strokeColor = "#b60000";
   }
 }
 class Jotunn extends Player {
@@ -1562,6 +1564,7 @@ class Magmax extends Player {
     this.secondAbilityUnlocked = true;
     this.firstTotalCooldown = 0; 
     this.secondTotalCooldown = 250;
+    this.strokeColor = "#b60000";
   }
   abilities(time, area, offset) {
     const firstAbilityCost = 2;
@@ -1626,6 +1629,7 @@ class Rime extends Player {
     this.ab2L = (settings.max_abilities) ? 5 : 0;
     this.firstTotalCooldown = 500;
     this.secondTotalCooldown = 0;
+    this.strokeColor = "#2626af";
   }
   abilities(time, area, offset) {
     const firstAbilityCost = 3;
@@ -1679,6 +1683,7 @@ class Aurora extends Player {
     this.firstTotalCooldown = 0;
     this.secondTotalCooldown = 0;
     this.firstAbilityUnlocked = true;
+    this.strokeColor = "#ba5600";
   }
   abilities(time, area, offset) {
     if (this.firstAbility && this.energy >= 1 && this.ab1L) {
@@ -1729,6 +1734,7 @@ class Chrono extends Player {
     this.firstAbilityUnlocked = true;
     this.secondAbilityUnlocked = true;
     this.teleportPosition = [];
+    this.strokeColor = "#009260";
   }
   abilities(time, area, offset) {
     const timeFix = time / (1000 / 30);
@@ -1791,6 +1797,7 @@ class Brute extends Player {
     this.secondTotalCooldown = 0;
     this.firstAbilityUnlocked = true;
     this.secondAbilityUnlocked = true;
+    this.strokeColor = "#703f00";
   }
   abilities(time, area, offset) {
     const firstAbilityCost = 10;
@@ -1868,6 +1875,7 @@ class Morfe extends Player {
     this.secondAbilityUnlocked = true;
     this.firstTotalCooldown = 3000;
     this.secondTotalCooldown = 1500;
+    this.strokeColor = "#007d00";
   }
   abilities(time, area, offset) {
     if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 10 && this.ab1L) {
@@ -1908,6 +1916,7 @@ class Mirage extends Player {
     this.secondAbilityUnlocked = true;
     this.firstTotalCooldown = 7000;
     this.secondTotalCooldown = 2500;
+    this.strokeColor = "#000172";
   }
   abilities(time, area, offset) {
     if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 30 && this.ab1L && this.lastSafePos) {
@@ -1960,6 +1969,7 @@ class Necro extends Player {
     this.firstPellet = 0;
     this.resurrectAvailable = true;
     this.usesPellets = 1; // 1 - firstPellet | 2 - secondPellet | 3 - bothPellet
+    this.strokeColor = "#a900a9";
   }
   abilities(time, area, offset) {
     if (this.firstAbility && this.firstPellet == 0 && this.energy >= 0 && this.resurrectAvailable && this.isDead && this.ab1L) {
@@ -1986,6 +1996,7 @@ class Candy extends Player {
     this.secondAbilityUnlocked = true;
     this.firstTotalCooldown = 4000; 
     this.secondTotalCooldown = 5000;
+    this.strokeColor = "#cf609d";
   }
   abilities(time, area, offset) {
     if (this.firstAbility && this.firstAbilityCooldown == 0 && this.energy >= 15 && this.ab1L) {
@@ -2072,6 +2083,7 @@ class Clown extends Player {
     this.heavyBallonSize = 1;
     this.rejoicing = false;
     this.maxHeavyBallonSize = 92;
+    this.strokeColor = "#b36b79";
   }
   abilities(time, area, offset) {
     const timeFix = time / (1000 / 30);

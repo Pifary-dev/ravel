@@ -1,5 +1,6 @@
 let tilesCanvas;
 let wallCanvas;
+let minimapCanvas;
 function renderArea(area, players, focus, areaUpdated) {
   var player = players[0];
   var light = document.createElement('canvas');
@@ -9,6 +10,7 @@ function renderArea(area, players, focus, areaUpdated) {
   if( (areaUpdated || !tilesCanvas) && tiles.complete){
     tilesCanvas = renderTiles(area, players, focus);
     wallCanvas = renderWalls(area, players, focus);
+    minimapCanvas = undefined;
   }
   if(tilesCanvas)context.drawImage(tilesCanvas,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov);
   renderFirstEntities(area, players, focus);
@@ -571,68 +573,83 @@ function renderSecondEntities(area, players, focus) {
     }
   }
 }
-
 function renderMinimap(area, players, focus) {
   if (!players[0].minimap) return;
   const minimapSize = new Vector(370, 100);
   const bound = area.boundary;
-  const xCoef = minimapSize.x / bound.w;
-  const yCoef = minimapSize.y / bound.h;
-  let coef = xCoef;
-  if (yCoef < xCoef) {
-    coef = yCoef;
+  const xCoef = minimapSize.x / bound.w,
+        yCoef = minimapSize.y / bound.h;
+  if (xCoef > yCoef) {
+    minimapSize.x *= yCoef / xCoef;
+  } else {
+    minimapSize.y *= xCoef / yCoef;
   }
-  // coef = Math.round(coef)
-  const yOff = Math.round(minimapSize.y - bound.h * coef);
-  context.closePath();
-  for (const i in area.zones) {
-    context.beginPath();
-    const zone = area.zones[i];
-    let style = "rgb(255, 255, 255, 255)";
-    switch(zone.type){
-      case 1: style = "rgb(195, 195, 195, 255)";break;
-      case 2:case 4: style = "rgb(255, 244, 108, 255)";break;
-      case 3: style = "rgb(106, 208, 222, 255)";break;
-      case 5: style = "rgb(255, 249, 186, 255)";break;
-    }
-    style = toRGBArray(style);
-    const x = (zone.pos.x - bound.x) * coef;
-    const y = staticHeight - minimapSize.y + (zone.pos.y - bound.y) * coef + yOff;
-    const w = zone.size.x * coef;
-    const h = zone.size.y * coef;
-    // Canvas floating numbers moment
-    
-    let background_color = toRGBArray(zone.background_color);
-    background_color[3] *= 255;
-    background_color = arrayToInt32(background_color);
-    const background_color_array = [background_color >> 24 & 255, background_color >> 16 & 255, background_color >> 8 & 255, 255 & background_color];
-    
-    context.fillStyle = arrayToRGBStr(mixColors(style,background_color_array));
-    context.fillRect(x, y, w, h);
-    context.closePath();
-    
-    context.beginPath();
-    context.fillStyle = "rgba(80, 80, 80, 0.6)",
-		context.fillRect(x, y, w, h);
-    context.closePath();
-  }
-  for(const i in area.assets){
-    const asset = area.assets[i];
-    if(asset.texture === undefined) continue
-    const x = (asset.pos.x - bound.x) * coef;
-    const y = staticHeight - minimapSize.y + (asset.pos.y - bound.y) * coef + yOff;
-    const w = asset.size.x * coef;
-    const h = asset.size.y * coef;
-    context.fillStyle = "rgba(0, 0, 0, 0.4)";
-		context.fillRect(x, y, w, h)
-  }
+  const coef = Math.ceil(Math.min(xCoef, yCoef));
 
-  for (var i in players) {
-    var newPos = new Vector((players[i].pos.x - area.pos.x - bound.x) * coef, (players[i].pos.y - area.pos.y - bound.y) * coef)
+  // If minimapCanvas doesn't exist or needs to be recreated (e.g., when area changes)
+  if (!minimapCanvas) {
+    const canvasSize = new Vector(bound.w * coef, bound.h * coef);
+    minimapCanvas = createOffscreenCanvas(canvasSize.x, canvasSize.y);
+    const ctx = minimapCanvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
+    
+    for (const i in area.zones) {
+      const zone = area.zones[i];
+      let style = "rgb(255, 255, 255, 255)";
+      switch(zone.type){
+        case 1: style = "rgb(195, 195, 195, 255)";break;
+        case 2:case 4: style = "rgb(255, 244, 108, 255)";break;
+        case 3: style = "rgb(106, 208, 222, 255)";break;
+        case 5: style = "rgb(255, 249, 186, 255)";break;
+      }
+      style = toRGBArray(style);
+      const x = (zone.pos.x - bound.x) * coef;
+      const y = (zone.pos.y - bound.y) * coef;
+      const w = zone.size.x * coef;
+      const h = zone.size.y * coef;
+      
+      let background_color = toRGBArray(zone.background_color);
+      background_color[3] *= 255;
+      background_color = arrayToInt32(background_color);
+      const background_color_array = [background_color >> 24 & 255, background_color >> 16 & 255, background_color >> 8 & 255, 255 & background_color];
+      
+      ctx.fillStyle = arrayToRGBStr(mixColors(style,background_color_array));
+      ctx.fillRect(x, y, w, h);
+    }
+
+    for(const i in area.assets){
+      const asset = area.assets[i];
+      if(asset.texture === undefined) continue;
+      const x = (asset.pos.x - bound.x) * coef;
+      const y = (asset.pos.y - bound.y) * coef;
+      const w = asset.size.x * coef;
+      const h = asset.size.y * coef;
+      ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+      ctx.fillRect(x, y, w, h);
+    }
+
+    ctx.fillStyle = "rgba(80, 80, 80, 0.6)";
+    ctx.fillRect(0, 0, canvasSize.x, canvasSize.y);
+  }
+  
+  context.imageSmoothingEnabled = false;
+  context.drawImage(minimapCanvas, 0, staticHeight - Math.round(minimapSize.y), Math.round(minimapSize.x), Math.round(minimapSize.y));
+  context.imageSmoothingEnabled = true;
+
+  // Draw players on main context with correct size and position
+  for (const i in players) {
+    const player = players[i];
+    const newPos = new Vector(
+      (player.pos.x - area.pos.x - bound.x) * coef,
+      (player.pos.y - area.pos.y - bound.y) * coef
+    );
     context.beginPath();
-    context.fillStyle = players[i].color;
-    context.arc(newPos.x, staticHeight - minimapSize.y + newPos.y + yOff, 4, 0, Math.PI * 2, true);
+    context.fillStyle = player.color;
+    context.strokeStyle = player.strokeColor;
+    context.lineWidth = 2;
+    context.arc(newPos.x * (minimapSize.x / minimapCanvas.width), staticHeight - minimapSize.y + newPos.y * (minimapSize.y / minimapCanvas.height), (player.radius + coef)*0.9, 0, Math.PI * 2, true);
     context.fill();
+    context.stroke();
     context.closePath();
   }
 }
@@ -867,7 +884,7 @@ function renderUI(area, players, focus) {
   context.fillText((Math.round(players[0].regen * 10) / 10), staticWidth / 2 - 516 / 2 + 105 + 41 + 164, staticHeight - 85 + 17 + 44 - 17)
   context.closePath();
 
-  const shape = settings.sandbox ? 'rect' : 'triangle';
+  const shape = settings.fps_limit == "unlimited" ? 'rect' : (settings.fps_limit == "60" ? 'triangle' : 'circle');
   const color = players[0].hasCheated ? "purple" : "#696969"
   drawShape(context, shape, 386, staticHeight - 4, color, 12, 12);
   

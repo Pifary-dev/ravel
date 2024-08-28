@@ -72,16 +72,16 @@ const sweet_tooth_item = new Image();
 const vengeance_projectile = new Image();
 const gate = new Image();
 const lantern = new Image();
-const tick_time = 1000 / 60; let tick_speed = 1;
+let tick_time, tick_speed = 1;
 const missing_world = new World(new Vector(0, 0), 0, missingMap);
 
 // calculate fps (dev mode only)
-const filterStrength = 50;
+const filterStrength = 25;
 let frameTime = 0, lastLoop = new Date, thisLoop;
 
 function animate(time) {
   let progress = tick_time;
-  if(settings.sandbox){
+  if(settings.fps_limit == "unlimited"){
     window.requestAnimationFrame(animate);
     progress = time - lastRender;
     if (progress > 1000) {
@@ -137,9 +137,10 @@ function animate(time) {
 }
 
 function startAnimation(){
-  if (settings.sandbox) {
+  if (settings.fps_limit == "unlimited") {
     requestAnimationFrame(animate);
   } else {
+    tick_time = 1000 / parseInt(settings.fps_limit);
     const gameInterval = new interval(tick_time,animate)
     gameInterval.run();
   }
