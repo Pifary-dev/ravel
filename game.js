@@ -3,6 +3,10 @@ class Game {
   constructor() {
     this.worlds = [];
     this.players = [];
+    this.echoManagers = {
+      normal: new EchoManager("Endless Echo",null,false),
+      hard: new EchoManager("Endless Echo Hard",null,true),
+    }
   }
   inputPlayer(player, input) {
     this.players[player].input(input);
@@ -75,8 +79,13 @@ class Game {
               maxArea = j;
             }
           }
-          player.area = maxArea;
+          player.area = parseInt(maxArea);
           player.pos = targetPoint;
+          if(this.worlds[player.world].name.startsWith("Endless Echo")) {
+            this.echoManagers[this.worlds[player.world].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
+            // Generate random enemies on load
+            new RandomEnemyGenerator(this.worlds[player.world].areas[player.area],this.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
+          }
           this.worlds[player.world].areas[player.area].load();
           player.dyingPos = new Vector(targetPoint.x,targetPoint.y);
         }
@@ -104,8 +113,13 @@ class Game {
               minWorld = j;
             }
           }
-          player.world = minWorld;
+          player.world = parseInt(minWorld);
           player.pos = targetPoint;
+          if(this.worlds[player.world].name.startsWith("Endless Echo")) {
+            this.echoManagers[this.worlds[player.world].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
+            // Generate random enemies on load
+            new RandomEnemyGenerator(this.worlds[player.world].areas[player.area],this.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
+          }
           this.worlds[player.world].areas[player.area].load();
           player.dyingPos = new Vector(targetPoint.x,targetPoint.y);
           player.onTele = true;

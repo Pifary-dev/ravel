@@ -101,6 +101,11 @@ window.onload = () => {
     
     loadImages(game.players[0].className);
     if(game.worlds.length == 0) game.worlds.push(missing_world);
+    if(game.worlds[0].name.startsWith("Endless Echo")){
+        game.echoManagers[game.worlds[0].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
+        // Generate random enemies on load
+        new RandomEnemyGenerator(game.worlds[0].areas[0],game.worlds[0].name.endsWith("Hard")).generate_random_enemies(player.area);
+    }
     game.worlds[0].areas[0].load();
     startAnimation();
 
@@ -133,11 +138,16 @@ function keydownKeys(e) {
         ping.keysArray.shift();
       }
     }*/
+    var isEndless=game.worlds[player.world].name.startsWith("Endless Echo");
     if (e.keyCode == 84) {
       player.hasCheated = true;
       player.area++
-      if (player.area>=game.worlds[player.world].areas.length-1) {
+      if (player.area>=game.worlds[player.world].areas.length-1 && !isEndless) {
         player.area=game.worlds[player.world].areas.length-1
+      }else if(isEndless){
+        game.echoManagers[game.worlds[player.world].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
+        // Generate random enemies on load
+        new RandomEnemyGenerator(game.worlds[player.world].areas[player.area],game.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
       }
       game.worlds[player.world].areas[player.area].load();
       canv = null;
@@ -145,8 +155,12 @@ function keydownKeys(e) {
     if (e.keyCode == 82) {
       player.hasCheated = true;
       player.area = Number(player.area) + 10;
-      if (player.area>=game.worlds[player.world].areas.length-1) {
+      if (player.area>=game.worlds[player.world].areas.length-1 && !isEndless) {
         player.area=game.worlds[player.world].areas.length-1
+      }else if(isEndless){
+        game.echoManagers[game.worlds[player.world].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
+        // Generate random enemies on load
+        new RandomEnemyGenerator(game.worlds[player.world].areas[player.area],game.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
       }
       game.worlds[player.world].areas[player.area].load();
       canv = null;
