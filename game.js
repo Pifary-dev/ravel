@@ -8,117 +8,124 @@ class Game {
     this.players[player].input(input);
   }
   update(time) {
-    var loaded = []
-    for (var i in this.worlds) {
-      loaded[i] = []
+    const loaded = new Map();
+    const playersByWorldAndArea = new Map();
+
+    for (const player of this.players) {
+      player.update(time, this.worlds[player.world].friction);
+      if (!player.ghost) {
+        this.teleport(player);
+        this.worlds[player.world].collisionPlayer(player.area, player);
+      }
+
+      const worldKey = player.world;
+      const areaKey = player.area;
+      if (!loaded.has(worldKey)) {
+        loaded.set(worldKey, new Set());
+      }
+      loaded.get(worldKey).add(areaKey);
+
+      const key = `${worldKey},${areaKey}`;
+      if (!playersByWorldAndArea.has(key)) {
+        playersByWorldAndArea.set(key, []);
+      }
+      playersByWorldAndArea.get(key).push(player);
     }
-    for (var i in this.players) {
-      this.players[i].update(time, this.worlds[this.players[i].world].friction);
-      if(!this.players[i].ghost)this.teleport(this.players[i]);
-      if(!this.players[i].ghost)this.worlds[this.players[i].world].collisionPlayer(this.players[i].area, this.players[i]);
-      loaded[this.players[i].world][this.players[i].area] = true;
-    }
-    for (var i in loaded) {
-      for (var j in loaded[i]) {
-        if (loaded[i][j]) {
-          var players = []
-          for (var k in this.players) {
-            if (this.players[k].world == i && this.players[k].area == j) {
-              players.push(this.players[k])
-            }
-          }
-          this.worlds[i].update(j, time, players)
-        }
+
+    for (const [worldKey, areas] of loaded) {
+      for (const areaKey of areas) {
+        const key = `${worldKey},${areaKey}`;
+        const players = playersByWorldAndArea.get(key) || [];
+        this.worlds[worldKey].update(areaKey, time, players);
       }
     }
   }
   teleport(player) {
-    var area = this.worlds[player.world].areas[player.area];
-    var onTele = false;
-    for (var i in area.zones) {
-      if(area.zones[i].type == 5){
-        var pos1 = new Vector(this.worlds[player.world].pos.x + area.pos.x + area.zones[i].pos.x, this.worlds[player.world].pos.y + area.pos.y + area.zones[i].pos.y)
-        var pos2 = new Vector(area.zones[i].size.x, area.zones[i].size.y)
-        var teleporter = closestPointToRectangle(player.pos, pos1, pos2)
-        var dist = distance(player.pos, teleporter)
-        if (dist < player.radius) {
-          player.world = 0;
-          player.area = 0;
-          player.pos = new Vector(6,9);
-          if(settings.dev){
-            player.victoryTimer = 30000;
-            if(player.safePoint){
-              player.energy = player.maxEnergy;
-              player.firstAbilityCooldown = 0;
-              player.secondAbilityCooldown = 0;
-              returnToSafePoint(player, false);
-            }
+    const area = this.worlds[player.world].areas[player.area];
+    let onTele = false;
+
+    for (const zone of area.zones) {
+      const zonePos = new Vector(
+        this.worlds[player.world].pos.x + area.pos.x + zone.pos.x,
+        this.worlds[player.world].pos.y + area.pos.y + zone.pos.y
+      );
+      const teleporter = closestPointToRectangle(player.pos, zonePos, zone.size);
+      const dist = distance(player.pos, teleporter);
+
+      if (zone.type === 5 && dist < player.radius) {
+        player.world = 0;
+        player.area = 0;
+        player.pos = new Vector(6, 9);
+        if (settings.dev) {
+          player.victoryTimer = 30000;
+          if (player.safePoint) {
+            player.energy = player.maxEnergy;
+            player.firstAbilityCooldown = 0;
+            player.secondAbilityCooldown = 0;
+            returnToSafePoint(player, false);
           }
         }
+        return;
       }
-      else if (area.zones[i].type == 2) {
-        var pos1 = new Vector(this.worlds[player.world].pos.x + area.pos.x + area.zones[i].pos.x, this.worlds[player.world].pos.y + area.pos.y + area.zones[i].pos.y)
-        var pos2 = new Vector(area.zones[i].size.x, area.zones[i].size.y)
-        var teleporter = closestPointToRectangle(player.pos, pos1, pos2)
-        var dist = distance(player.pos, teleporter)
-        if (dist< player.radius) {
-          onTele = true;
-        }
-        if (dist < player.radius && !player.onTele) {
-          var max = Math.pow(10, 1000);
-          var maxArea = 0;
-          var targetPoint = new Vector(player.pos.x + area.zones[i].translate.x, player.pos.y + area.zones[i].translate.y);
-          for (var j in this.worlds[player.world].areas) {
-            var rect = this.worlds[player.world].areas[j].getBoundary();
-            rect.x += this.worlds[player.world].areas[j].pos.x;
-            rect.y += this.worlds[player.world].areas[j].pos.y;
-            rect.x += this.worlds[player.world].pos.x;
-            rect.y += this.worlds[player.world].pos.y;
-            var closest = closestPointToRectangle(targetPoint, new Vector(rect.x, rect.y), new Vector(rect.w, rect.h))
-            var dist = distance(targetPoint, closest)
-            if (dist < max) {
-              max = dist;
-              maxArea = j;
-            }
+
+      if ((zone.type === 2 || zone.type === 3) && dist < player.radius) {
+        onTele = true;
+        if (!player.onTele) {
+          const targetPoint = new Vector(player.pos.x + zone.translate.x, player.pos.y + zone.translate.y);
+          
+          if (zone.type === 2) {
+            player.area = this.findClosestArea(targetPoint, player.world);
+          } else {
+            player.world = this.findClosestWorld(targetPoint);
           }
-          player.area = maxArea;
+
           player.pos = targetPoint;
           this.worlds[player.world].areas[player.area].load();
-          player.dyingPos = new Vector(targetPoint.x,targetPoint.y);
-        }
-      }
-      if (area.zones[i].type == 3) {
-        var pos1 = new Vector(this.worlds[player.world].pos.x + area.pos.x + area.zones[i].pos.x, this.worlds[player.world].pos.y + area.pos.y + area.zones[i].pos.y)
-        var pos2 = new Vector(area.zones[i].size.x, area.zones[i].size.y)
-        var teleporter = closestPointToRectangle(player.pos, pos1, pos2)
-        var dist = distance(player.pos, teleporter)
-        if (dist< player.radius) {
-          onTele = true;
-        }
-        if (dist < player.radius && !player.onTele) {
-          var min = Math.pow(10, 1000);
-          var minWorld = 0;
-          var targetPoint = new Vector(player.pos.x + area.zones[i].translate.x, player.pos.y + area.zones[i].translate.y);
-          for (var j in this.worlds) {
-            var rect = this.worlds[j].areas[0].getBoundary();
-            rect.x += this.worlds[j].pos.x;
-            rect.y += this.worlds[j].pos.y;
-            var closest = closestPointToRectangle(targetPoint, new Vector(rect.x, rect.y), new Vector(rect.w, rect.h))
-            var dist = distance(targetPoint, closest)
-            if (dist < min) {
-              min = dist;
-              minWorld = j;
-            }
-          }
-          player.world = minWorld;
-          player.pos = targetPoint;
-          this.worlds[player.world].areas[player.area].load();
-          player.dyingPos = new Vector(targetPoint.x,targetPoint.y);
-          player.onTele = true;
+          player.dyingPos = new Vector(targetPoint.x, targetPoint.y);
+          if (zone.type === 3) player.onTele = true;
         }
       }
     }
+
     player.onTele = onTele;
+  }
+
+  findClosestArea(targetPoint, worldIndex) {
+    let minDist = Infinity;
+    let closestArea = 0;
+
+    this.worlds[worldIndex].areas.forEach((area, index) => {
+      const rect = area.getBoundary();
+      rect.x += area.pos.x + this.worlds[worldIndex].pos.x;
+      rect.y += area.pos.y + this.worlds[worldIndex].pos.y;
+      const closest = closestPointToRectangle(targetPoint, new Vector(rect.x, rect.y), new Vector(rect.w, rect.h));
+      const dist = distance(targetPoint, closest);
+      if (dist < minDist) {
+        minDist = dist;
+        closestArea = index;
+      }
+    });
+
+    return closestArea;
+  }
+
+  findClosestWorld(targetPoint) {
+    let minDist = Infinity;
+    let closestWorld = 0;
+
+    this.worlds.forEach((world, index) => {
+      const rect = world.areas[0].getBoundary();
+      rect.x += world.pos.x;
+      rect.y += world.pos.y;
+      const closest = closestPointToRectangle(targetPoint, new Vector(rect.x, rect.y), new Vector(rect.w, rect.h));
+      const dist = distance(targetPoint, closest);
+      if (dist < minDist) {
+        minDist = dist;
+        closestWorld = index;
+      }
+    });
+
+    return closestWorld;
   }
   getStates(index) {
     var player = this.players[index];
@@ -128,6 +135,7 @@ class Game {
     obj.zones = area.zones;
     obj.assets = area.assets;
     obj.entities = area.entities;
+    obj.static_entities = area.static_entities;
     obj.background_color = area.background_color;
     obj.lighting = area.lighting;
     obj.texture = area.texture||0;
@@ -141,6 +149,7 @@ class Game {
     obj.applies_lantern = area.applies_lantern;
     obj.pellet_count = area.pellet_count;
     obj.pellet_multiplier = area.multiplier;
+    obj.boss = area.boss;
     return obj;
   }
 }
@@ -166,8 +175,8 @@ class World {
   }
   fromJson(json) {
     this.name = json.name
-    var areas = json.areas;
-    var properties = json.properties
+    const areas = json.areas;
+    const properties = json.properties
     if (properties) {
       if (properties.background_color !== undefined) {
         var color = properties.background_color
@@ -212,311 +221,204 @@ class World {
         }
       }
     }
-    var xBase = areas[0].x;
-    var yBase = areas[0].y;
-    if (areas[0].x == "var x") {
-      xBase = 0;
-    }
-    if (areas[0].y == "var y") {
-      yBase = 0;
-    }
-    var last_height;
-    var last_width;
-    var last_right;
-    var last_bottom;
-    var last_y;
-    var last_x;
-    var last_area_x;
-    var last_area_y;
-    var last_area_right;
-    var last_area_bottom;
+    const xBase = areas[0].x === "var x" ? 0 : areas[0].x;
+    const yBase = areas[0].y === "var y" ? 0 : areas[0].y;
+    let lastDimensions = { height: 0, width: 0, right: 0, bottom: 0, y: 0, x: 0 };
+    let lastAreaPos = { x: 0, y: 0, right: 0, bottom: 0 };
 
-    for (var i = 0; i < areas.length; i++) {
-      var curArea = areas[i];
-      var areaName = "Area "+(i+1);
-      if (curArea.name!==undefined) {
-        areaName = curArea.name
-      }
-      var areaPosX = curArea.x - xBase;
-      var areaPosY = curArea.y - yBase;
-      var zones = curArea.zones;
-      var assets = curArea.assets;
-      var propertiesC = curArea.properties;
-      var curAreaXStr = curArea.x.toString();
-      var curAreaYStr = curArea.y.toString();
-      if (curAreaXStr.startsWith("var x")) {
-        areaPosX = 0;
-      }
-      if (curAreaYStr.startsWith("var y")) {
-        areaPosY = 0;
-      }
-      if (curAreaXStr.startsWith("last_right")) {
-        areaPosX = last_area_right;
-      }
-      if (curAreaYStr.startsWith("last_y")) {
-        areaPosY = last_area_y;
-      }
-      if (curAreaXStr.startsWith("last_x")) {
-        areaPosX = last_area_x;
-      }
-      if(curAreaYStr.startsWith("last_bottom")){
-        areaPosY = last_area_bottom;
-      }
+    areas.forEach((curArea, i) => {
+      const areaName = (curArea.name) ? curArea.name : (curArea.boss) ? "BOSS " + `AREA ${i + 1}` : `Area ${i + 1}`;
+      let areaPosX = (typeof curArea.x === "string") ? parseFloat(curArea.x) : curArea.x - xBase;
+      let areaPosY = (typeof curArea.y === "string") ? parseFloat(curArea.y) : curArea.y - yBase;
+      const { zones, assets, properties: propertiesC } = curArea;
+      const curAreaXStr = curArea.x.toString();
+      const curAreaYStr = curArea.y.toString();
+
+      if (curAreaXStr.startsWith("var x")) areaPosX = 0;
+      if (curAreaYStr.startsWith("var y")) areaPosY = 0;
+      if (curAreaXStr.startsWith("last_right")) areaPosX = lastAreaPos.right;
+      if (curAreaYStr.startsWith("last_y")) areaPosY = lastAreaPos.y;
+      if (curAreaXStr.startsWith("last_x")) areaPosX = lastAreaPos.x;
+      if (curAreaYStr.startsWith("last_bottom")) areaPosY = lastAreaPos.bottom;
+      
       if(curAreaXStr.includes("+")){
-         areaPosX += parseFloat(curAreaXStr.split("+")[1])
-      } else if (curAreaXStr.includes("-",1)){
-         areaPosX -= parseFloat(curAreaXStr.substring(1).split("-")[1])
-      }
+        areaPosX += parseFloat(curAreaXStr.split("+")[1])
+     } else if (curAreaXStr.includes("-",1)){
+        areaPosX -= parseFloat(curAreaXStr.substring(1).split("-")[1])
+     }
       if(curAreaYStr.includes("+")){
         areaPosY += parseFloat(curAreaYStr.split("+")[1])
       } else if (curAreaYStr.includes("-",1)){
         areaPosY -= parseFloat(curAreaYStr.substring(1).split("-")[1])
       }
-      last_area_x = areaPosX;
-      last_area_y = areaPosY;
-      var area = new Area(new Vector(areaPosX / 32, areaPosY / 32));
-      area.name = areaName;
-      area.background_color = this.background_color;
-      area.title_stroke_color = this.title_stroke_color;
-      area.text = curArea.text;
-      area.lighting = this.lighting;
-      area.pellet_count = this.pellet_count;
-      area.pellet_multiplier = this.pellet_multiplier;
-      area.texture = this.texture;
+
+      lastAreaPos.x = areaPosX;
+      lastAreaPos.y = areaPosY;
+
+      const area = new Area(new Vector(areaPosX / 32, areaPosY / 32));
+      Object.assign(area, {
+        name: areaName,
+        background_color: this.background_color,
+        title_stroke_color: this.title_stroke_color,
+        text: curArea.text,
+        lighting: this.lighting,
+        pellet_count: this.pellet_count,
+        pellet_multiplier: this.pellet_multiplier,
+        texture: this.texture
+      });
+
       if (propertiesC) {
         if (propertiesC.background_color) {
-          var colorC = propertiesC.background_color
-          area.background_color = "rgba(" + colorC[0] + "," + colorC[1] + "," + colorC[2] + "," + colorC[3] / 255 + ")"
+          const colorC = propertiesC.background_color;
+          area.background_color = `rgba(${colorC[0]},${colorC[1]},${colorC[2]},${colorC[3] / 255})`;
           area.color = true;
         }
-        if (propertiesC.title_stroke_color) {
-          var colorC = propertiesC.title_stroke_color;
-          area.title_stroke_color = colorC;
-        }
-        if (propertiesC.lighting !== undefined) {
-          area.lighting = propertiesC.lighting;
-        }
-        if (propertiesC.variables !== undefined){
-          area.variables = propertiesC.variables
-        }
-        if (propertiesC.pattern_amount !== undefined){
-          area.pattern_amount = propertiesC.pattern_amount
-        }
-        if(propertiesC.magnetism) {
-          area.magnetism = true;
-        }
-        if(propertiesC.partial_magnetism) {
-          area.partial_magnetism = true;
-        }
-        if(propertiesC.applies_lantern) {
-          area.applies_lantern = true;
-        }
-        if(propertiesC.pellet_count !== undefined) {
-          area.pellet_count = propertiesC.pellet_count;
-        }
-        if(propertiesC.pellet_multiplier !== undefined) {
-          area.pellet_multiplier = propertiesC.multiplier;
-        }
+        if (propertiesC.title_stroke_color) area.title_stroke_color = propertiesC.title_stroke_color;
+        if (propertiesC.lighting !== undefined) area.lighting = propertiesC.lighting;
+        if (propertiesC.variables !== undefined) area.variables = propertiesC.variables;
+        if (propertiesC.pattern_amount !== undefined) area.pattern_amount = propertiesC.pattern_amount;
+        if (propertiesC.magnetism) area.magnetism = true;
+        if (propertiesC.partial_magnetism) area.partial_magnetism = true;
+        if (propertiesC.applies_lantern) area.applies_lantern = true;
+        if (propertiesC.pellet_count !== undefined) area.pellet_count = propertiesC.pellet_count;
+        if (propertiesC.pellet_multiplier !== undefined) area.pellet_multiplier = propertiesC.multiplier;
       }
-      var last_pos_x = 0;
-      var last_pos_y = 0;
-      for (var j = 0; j < zones.length; j++) {
-        var zone = zones[j];
-        var type = zoneTypeToId(zone.type)
-        var areax = zone.x;
-        var areay = zone.y;
-        var widthSize = zone.width;
-        var heightSize = zone.height;
-        if (heightSize.toString().startsWith("last_height")) {
-          heightSize = last_height;
-        }
-        if (widthSize.toString().startsWith("last_width")) {
-          widthSize = last_width;
-        }
-        if (areax.toString().startsWith("last_right")) {
-          areax = last_right - areaPosX;
-        }
-        if (areay.toString().startsWith("last_bottom")) {
-          areay = last_bottom - areaPosY;
-        }
-        if (areay.toString().startsWith("last_y")||areay.toString().startsWith("last_top")) {
-          areay = last_y;
-        }
-        if (areax.toString().startsWith("last_x")||areax.toString().startsWith("last_left")) {
-          areax = last_x;
-        }
-        var absoluteZoneRight = areax+zone.width+areaPosX;
-        if(last_pos_x<absoluteZoneRight){
-          last_pos_x = absoluteZoneRight;
-        }
-        var absoluteZoneBottom = areay+zone.height+areaPosY;
-        if(last_pos_y<absoluteZoneBottom){
-          last_pos_y = absoluteZoneBottom;
-        }
-        var xPos = areaPosX + areax;
-        var yPos = areaPosY + areay;
-        var spawner = zone.spawner;
-        var block = new Zone(new Vector(xPos / 32 - areaPosX / 32, yPos / 32 - areaPosY / 32), new Vector(widthSize / 32, heightSize / 32), type);
-        block.background_color = area.background_color
-        if (zone.properties!==undefined) {
-          if (zone.properties.background_color!==undefined) {
-            var colorC = zone.properties.background_color
+
+      let lastPosX = 0, lastPosY = 0;
+
+      zones.forEach(zone => {
+        const type = zoneTypeToId(zone.type);
+        let areax = zone.x, areay = zone.y;
+        let widthSize = zone.width, heightSize = zone.height;
+
+        if (heightSize.toString().startsWith("last_height")) heightSize = lastDimensions.height;
+        if (widthSize.toString().startsWith("last_width")) widthSize = lastDimensions.width;
+        if (areax.toString().startsWith("last_right")) areax = lastDimensions.right - areaPosX;
+        if (areay.toString().startsWith("last_bottom")) areay = lastDimensions.bottom - areaPosY;
+        if (areay.toString().startsWith("last_y") || areay.toString().startsWith("last_top")) areay = lastDimensions.y;
+        if (areax.toString().startsWith("last_x") || areax.toString().startsWith("last_left")) areax = lastDimensions.x;
+
+        // corrupted casino crashes without this ;-;
+        if(typeof areax === "string") areax = parseFloat(areax);
+        if(typeof areay === "string") areay = parseFloat(areay);
+
+        const absoluteZoneRight = areax + widthSize + areaPosX;
+        const absoluteZoneBottom = areay + heightSize + areaPosY;
+        lastPosX = Math.max(lastPosX, absoluteZoneRight);
+        lastPosY = Math.max(lastPosY, absoluteZoneBottom);
+
+        const xPos = areaPosX + areax;
+        const yPos = areaPosY + areay;
+        const block = new Zone(
+          new Vector(xPos / 32 - areaPosX / 32, yPos / 32 - areaPosY / 32),
+          new Vector(widthSize / 32, heightSize / 32),
+          type
+        );
+        block.background_color = area.background_color;
+
+        if (zone.properties) {
+          if (zone.properties.background_color) {
+            const colorC = zone.properties.background_color;
             block.color = true;
-            block.background_color = "rgba(" + colorC[0] + "," + colorC[1] + "," + colorC[2] + "," + colorC[3] / 255 + ")"
+            block.background_color = `rgba(${colorC[0]},${colorC[1]},${colorC[2]},${colorC[3] / 255})`;
           }
-          if(zone.properties.minimum_speed!==undefined){
-            block.minimum_speed=zone.properties.minimum_speed;
-          }
-          if (zone.properties.spawns_pellets !== undefined) {
-            block.spawns_pellets = zone.properties.spawns_pellets;
-          }
+          if (zone.properties.minimum_speed !== undefined) block.minimum_speed = zone.properties.minimum_speed;
+          if (zone.properties.spawns_pellets !== undefined) block.spawns_pellets = zone.properties.spawns_pellets;
         }
-        else if(type == 4){
-          //block.color = true;
-          //block.background_color = "rgb(255,244,108,255)";
-        }
-        if (zone.type == "teleport" || zone.type == "exit") {
+
+        if (zone.type === "teleport" || zone.type === "exit") {
           block.translate = new Vector(zone.translate.x / 32, zone.translate.y / 32);
         }
 
-        for (var k in spawner) {
-          var values = spawner[k];
-          var count = values.count||1
-          var object = {
-            type: values.types,
-            radius: values.radius,//*number
-            speed: values.speed,//*number,
-            count: count,//Math.round(count*1.5),
-            x:values.x,
-            y:values.y,
-            angle:values.angle
-          }
+        if (zone.spawner) {
+          for (const k in zone.spawner) {
+            const values = zone.spawner[k];
+            const object = {
+              type: values.types,
+              radius: values.radius || 0,
+              speed: values.speed || 0,
+              count: values.count || 1,
+              x: values.x,
+              y: values.y,
+              angle: values.angle
+            };
 
-          if(values[object.type+"_radius"] != undefined){
-            object.auraRadius = values[object.type+"_radius"];
-          }
+            if (values[`${object.type}_radius`] !== undefined) {
+              object.auraRadius = values[`${object.type}_radius`];
+            }
 
-          if(object.type == "quicksand"){
-            object.push_direction = values.push_direction;
-            object.quicksand_strength = values.quicksand_strength;
-          }
+            // Add specific properties based on object type
+            const typeSpecificProps = {
+              quicksand: ['push_direction', 'quicksand_strength', 'immune', 'classic'],
+              flower: ['growth_multiplayer'],
+              wind: ['ignore_invulnerability'],
+              wind_ghost: ['ignore_invulnerability'],
+              homing: ['increment'],
+              speed_sniper: ['speed_loss'],
+              regen_sniper: ['regen_loss'],
+              gravity: ['gravity'],
+              repelling: ['repulsion'],
+              frost_giant: ['angle', 'direction', 'turn_speed', 'shot_interval', 'cone_angle', 'pause_interval', 'pause_duration', 'turn_acceleration', 'shot_acceleration', 'pattern', 'immune', 'projectile_duration', 'projectile_radius', 'projectile_speed', 'precise_movement'],
+              radiating_bullets: ['release_interval', 'release_time']
+            };
 
-          if(object.type == "flower"){
-            object.growth_multiplayer = values.growth_multiplayer;
-          }
+            if (typeSpecificProps[object.type]) {
+              typeSpecificProps[object.type].forEach(prop => {
+                if (values[prop] !== undefined) object[prop] = values[prop];
+              });
+            }
 
-          if(object.type == "wind" || object.type == "wind_ghost"){
-            object.ignore_invulnerability = values.ignore_invulnerability;
-          }
+            ['move_clockwise', 'initial_side', 'horizontal', 'pattern_id'].forEach(prop => {
+              if (values[prop] !== undefined) object[prop] = values[prop];
+            });
 
-          if(object.type == "speed_sniper"){
-            object.speed_loss = values.speed_loss;
+            area.preset.push(object);
           }
-
-          if(object.type == "regen_sniper"){
-            object.regen_loss = values.regen_loss;
-          }
-
-          if(object.type == "gravity"){
-            object.gravity = values.gravity;
-          } 
-
-          if(object.type == "repelling"){
-            object.repulsion = values.repulsion;
-          }
-
-          if(object.type == "frost_giant"){
-            object.angle = values.angle;
-            object.direction = values.direction;
-            object.turn_speed = values.turn_speed;
-            object.shot_interval = values.shot_interval;
-            object.cone_angle = values.cone_angle;
-            object.pause_interval = values.pause_interval;
-            object.pause_duration = values.pause_duration;
-            object.turn_acceleration = values.turn_acceleration;
-            object.shot_acceleration = values.shot_acceleration;
-            object.pattern = values.pattern;
-            object.immune = values.immune;
-            object.projectile_duration = values.projectile_duration;
-            object.projectile_radius = values.projectile_radius;
-            object.projectile_speed = values.projectile_speed;
-            object.precise_movement = values.precise_movement;
-          }
-
-          if(object.type == "radiating_bullets"){
-            object.release_interval = values.release_interval;
-            object.release_time = values.release_time;
-          }
-
-          if (values.move_clockwise!==undefined) {
-            object.move_clockwise = values.move_clockwise;
-          }
-          if (values.initial_side!==undefined) {
-            object.initial_side = values.initial_side;
-          }
-          if (values.horizontal!==undefined) {
-            object.horizontal = values.horizontal;
-          }
-          if (values.pattern_id!==undefined){
-            object.pattern_id = values.pattern_id;
-          }
-          area.preset.push(object);
         }
-        area.preset.sort((a,b)=>{return b.radius-a.radius})
+
+        area.preset.sort((a, b) => b.radius - a.radius);
         area.zones.push(block);
-        last_y = areay;
-        last_x = areax;
-        last_height = heightSize;
-        last_width = widthSize;
-        last_right = xPos + widthSize;
-        last_bottom = yPos + heightSize;
-        last_area_right = last_pos_x;
-        last_area_bottom = last_pos_y;
-      }
-      for (var k in assets) {
-        var type = 0;
-        var texture;
-        if (assets[k].type == "wall") {
-          type = 1;
-          if (assets[k].texture=="normal") {
-            texture = 0;
-          } else if (assets[k].texture=="leaves") {
-            texture = 1;
-          } else if (assets[k].texture=="wooden") {
-            texture = 2;
-          } else if (assets[k].texture=="baguette") {
-            texture = 3;
-          } else if (assets[k].texture=="ice") {
-            texture = 4;
+
+        Object.assign(lastDimensions, {
+          y: areay,
+          x: areax,
+          height: heightSize,
+          width: widthSize,
+          right: xPos + widthSize,
+          bottom: yPos + heightSize
+        });
+      });
+
+      lastAreaPos.right = lastPosX;
+      lastAreaPos.bottom = lastPosY;
+
+      const assetTypeMap = { wall: 1, light_region: 4, flashlight_spawner: 5, gate: 7 };
+      const wallTextureMap = { normal: 0, leaves: 1, wooden: 2, baguette: 3, ice: 4 };
+
+      for (const key in assets) {
+        const asset = assets[key];
+        let type = 0;
+        let texture;
+
+        if (asset.type in assetTypeMap) {
+          type = assetTypeMap[asset.type];
+          if (asset.type === "wall" && asset.texture) {
+            texture = wallTextureMap[asset.texture];
           }
+        } else if (asset.type === "torch") {
+          type = asset.upside_down ? 8 : 6;
         }
-        if (assets[k].type == "light_region") {
-          type = 4;
-        } else if (assets[k].type == "flashlight_spawner") {
-          type = 5;
-        } else if (assets[k].type == "torch" && !assets[k].upside_down) {
-          type = 6;
-        } else if (assets[k].type == "gate") {
-          type = 7;
-        } else if (assets[k].type == "torch") {
-          type = 8;
-        }
-        var areax = assets[k].x;
-        var areay = assets[k].y;
-        var xPos = areaPosX + areax;
-        var yPos = areaPosY + areay;
-        var widthSize = assets[k].width;
-        var heightSize = assets[k].height;
-        var block = new Asset(new Vector(xPos / 32 - areaPosX / 32, yPos / 32 - areaPosY / 32), new Vector(widthSize / 32, heightSize / 32), type);
-        if (texture!==undefined) {
-          block.texture = texture
-        }
-        if (type!==0) {
+
+        if (type !== 0) {
+          const position = new Vector((areaPosX + asset.x - areaPosX) / 32, (areaPosY + asset.y - areaPosY) / 32);
+          const size = new Vector(asset.width / 32, asset.height / 32);
+          const block = new Asset(position, size, type);
+          if (texture !== undefined) block.texture = texture;
           area.assets.push(block);
         }
       }
       this.areas.push(area);
-    }
+    });
   }
 }
 class Area {
@@ -525,6 +427,7 @@ class Area {
     this.zones = [];
     this.assets = [];
     this.entities = {};
+    this.static_entities = {};
     this.preset = [];
     this.background_color = "rgba(255,255,255,0)";
     this.name = "undefined";
@@ -532,776 +435,538 @@ class Area {
     this.magnetism = false;
   }
   update(time, players, worldPos) {
-    var boundary = this.getActiveBoundary();
-    var areaBoundary = this.getBoundary();
-    //update entities
-    for (var i in this.entities) {
-      for (var j in this.entities[i]) {
-        const entity = this.entities[i][j];
+    const boundary = this.getActiveBoundary();
+    const areaBoundary = this.getBoundary();
+    const areaOffset = {x: this.pos.x + worldPos.x, y: this.pos.y + worldPos.y};
+
+    // Update static entities
+    for (const staticEntityType in this.static_entities) {
+      this.static_entities[staticEntityType].forEach(entity => {
+        entity.behavior(time, this, areaOffset, players);
+      });
+    }
+
+    // Update dynamic entities
+    for (const entityType in this.entities) {
+      this.entities[entityType] = this.entities[entityType].filter(entity => {
         entity.update(time);
-        entity.colide(boundary);
-        if(entity.defended){
-          if(!entity.curDefend){
-            entity.defended = false;
-            entity.imune = false;
+        entity.collide(boundary);
+        
+        for (const asset of this.assets) {
+          if (asset.type === 1) {
+            const dx = Math.abs(entity.pos.x - (asset.pos.x + asset.size.x / 2));
+            const dy = Math.abs(entity.pos.y - (asset.pos.y + asset.size.y / 2));
+            const speed = Math.abs(entity.speed / 32);
+            if (dx < (asset.size.x / 2 + entity.radius + speed) && dy < (asset.size.y / 2 + entity.radius + speed)) {
+              entity.collide({x: asset.pos.x, y: asset.pos.y, w: asset.size.x, h: asset.size.y, t: false, wall: true});
+            }
           }
+        }
+
+        if (entity.defended) {
+          entity.defended = entity.curDefend;
+          entity.immune = entity.curDefend;
           entity.curDefend = false;
         }
-        for (var v in this.assets) {
-          if (this.assets[v].type==1) {
-            var rect = {x:this.assets[v].pos.x,y:this.assets[v].pos.y,w:this.assets[v].size.x,h:this.assets[v].size.y,t:false,wall:true}
-            entity.colide(rect);
-          }}
-        if(this.eng == 3){for(var v in this.zones){
-          if(this.zones[v].type==1){
-            var rect = {x:this.zones[v].pos.x,y:this.zones[v].pos.y,w:this.zones[v].size.x,h:this.zones[v].size.y,t:false,wall:true}
-            entity.colide(rect);
+        
+        entity.behavior(time, this, areaOffset, players);
+        
+        if (!entity.toRemove) {
+          const entityBoundary = entity.area_collide ? areaBoundary : boundary;
+          const inside = pointInRectangle(
+            entity.pos,
+            {x: entityBoundary.x + entity.radius, y: entityBoundary.y + entity.radius},
+            {x: entityBoundary.w - entity.radius * 2, y: entityBoundary.h - entity.radius * 2}
+          );
+          
+          if (inside || !entity.weak) {
+            if (entity.wall_push && !entity.no_collide) {
+              entity.pos = closestPointToRectangle(
+                entity.pos,
+                {x: entityBoundary.x + entity.radius, y: entityBoundary.y + entity.radius},
+                {x: entityBoundary.w - entity.radius * 2, y: entityBoundary.h - entity.radius * 2}
+              );
+            }
+            for (const player of players) {
+              if(!player.god) entity.interact(player, areaOffset, time);
+            }
+            return true;
           }
-        }}
-        entity.behavior(time, this, {
-          x: this.pos.x + worldPos.x,
-          y: this.pos.y + worldPos.y
-        }, players)
-      }
-    }
-    //reemove toRemove
-    var newEntities = {}
-    for (var i in this.entities) {
-      newEntities[i] = []
-      for (var j in this.entities[i]) {
-        if (this.entities[i][j].toRemove) {} else {
-          newEntities[i].push(this.entities[i][j]);
         }
-      }
+        return false;
+      });
     }
-    this.entities = newEntities
-    //remove weaks one
-    var newEntities = {}
-    for (var i in this.entities) {
-      newEntities[i] = []
-      for (var j in this.entities[i]) {
-        if(this.entities[i][j].area_collide){boundary = areaBoundary}
-        var inside = pointInRectangle(this.entities[i][j].pos, {
-          x: boundary.x + this.entities[i][j].radius,
-          y: boundary.y + this.entities[i][j].radius
-        }, {
-          x: boundary.w - this.entities[i][j].radius * 2,
-          y: boundary.h - this.entities[i][j].radius * 2
-        })
-        if (!inside && this.entities[i][j].weak) {} else {
-          newEntities[i].push(this.entities[i][j]);
-        }
-      }
-    }
-    this.entities = newEntities
-    //teleport them inside the area
-    for (var i in this.entities) {
-      for (var j in this.entities[i]) {
-        if (this.entities[i][j].collide && !this.entities[i][j].no_collide) {
-          var fixed = closestPointToRectangle(this.entities[i][j].pos, {
-            x: boundary.x + this.entities[i][j].radius,
-            y: boundary.y + this.entities[i][j].radius
-          }, {
-            x: boundary.w - this.entities[i][j].radius * 2,
-            y: boundary.h - this.entities[i][j].radius * 2
-          })
-          this.entities[i][j].pos = fixed;
-        }
-      }
-    }
-    //colide with players
-    for (var i in players) {
-      players[i].abilities(time, this, {x: this.pos.x + worldPos.x,y: this.pos.y + worldPos.y})
-      for (var j in this.entities) {
-        for (var k in this.entities[j]) {
-          this.entities[j][k].interact(players[i],{
-            x: this.pos.x + worldPos.x,
-            y: this.pos.y + worldPos.y
-          },time)
-        }
-      }
+    
+    for (const player of players) {
+      player.abilities(time, this, areaOffset);
     }
   }
   getBoundary() {
-    var minx;
-    var miny;
-    var maxx;
-    var maxy;
-    for (var i in this.zones) {
-      var zone = this.zones[i];
-      if (minx == undefined) {
-        minx = zone.pos.x;
-      }
-      if (miny == undefined) {
-        miny = zone.pos.y;
-      }
-      if (maxx == undefined) {
-        maxx = zone.pos.x + zone.size.x;
-      }
-      if (maxy == undefined) {
-        maxy = zone.pos.y + zone.size.y;
-      }
-      if (zone.pos.x < minx) {
-        minx = zone.pos.x;
-      }
-      if (zone.pos.y < miny) {
-        miny = zone.pos.y;
-      }
-      if (zone.pos.x + zone.size.x > maxx) {
-        maxx = zone.pos.x + zone.size.x;
-      }
-      if (zone.pos.y + zone.size.y > maxy) {
-        maxy = zone.pos.y + zone.size.y;
-      }
+    if (this.zones.length === 0) {
+      return { x: 0, y: 0, w: 0, h: 0 };
     }
+
+    const boundaries = this.zones.reduce((acc, zone) => {
+      return {
+        minX: Math.min(acc.minX, zone.pos.x),
+        minY: Math.min(acc.minY, zone.pos.y),
+        maxX: Math.max(acc.maxX, zone.pos.x + zone.size.x),
+        maxY: Math.max(acc.maxY, zone.pos.y + zone.size.y)
+      };
+    }, {
+      minX: Infinity,
+      minY: Infinity,
+      maxX: -Infinity,
+      maxY: -Infinity
+    });
+
     return {
-      x: minx,
-      y: miny,
-      w: maxx - minx,
-      h: maxy - miny
-    }
+      x: boundaries.minX,
+      y: boundaries.minY,
+      w: boundaries.maxX - boundaries.minX,
+      h: boundaries.maxY - boundaries.minY
+    };
   }
   getActiveBoundary() {
-    var minx;
-    var miny;
-    var maxx;
-    var maxy;
-    var wasv;
-    for (var i in this.zones) {
-      if(this.zones[i].type == 4){wasv = true}
-      if (this.zones[i].type == 0||this.zones[i].type == 4) {
-        var zone = this.zones[i];
-        if (minx == undefined) {
-          minx = zone.pos.x;
-        }
-        if (miny == undefined) {
-          miny = zone.pos.y;
-        }
-        if (maxx == undefined) {
-          maxx = zone.pos.x + zone.size.x;
-        }
-        if (maxy == undefined) {
-          maxy = zone.pos.y + zone.size.y;
-        }
-        if (zone.pos.x < minx) {
-          minx = zone.pos.x;
-        }
-        if (zone.pos.y < miny) {
-          miny = zone.pos.y;
-        }
-        if (zone.pos.x + zone.size.x > maxx) {
-          maxx = zone.pos.x + zone.size.x;
-        }
-        if (zone.pos.y + zone.size.y > maxy) {
-          maxy = zone.pos.y + zone.size.y;
-        }
-      }
+    const activeZones = this.zones.filter(zone => zone.type === 0 || zone.type === 4);
+    
+    if (activeZones.length === 0) {
+      return { x: 0, y: 0, w: 0, h: 0, t: false };
     }
+
+    const boundaries = activeZones.reduce((acc, zone) => {
+      return {
+        minX: Math.min(acc.minX, zone.pos.x),
+        minY: Math.min(acc.minY, zone.pos.y),
+        maxX: Math.max(acc.maxX, zone.pos.x + zone.size.x),
+        maxY: Math.max(acc.maxY, zone.pos.y + zone.size.y),
+        isVictory: acc.isVictory || zone.type === 4
+      };
+    }, {
+      minX: Infinity,
+      minY: Infinity,
+      maxX: -Infinity,
+      maxY: -Infinity,
+      isVictory: false
+    });
+
     return {
-      x: minx,
-      y: miny,
-      w: maxx - minx,
-      h: maxy - miny,
-      t: (wasv) ? true : false
-    }
+      x: boundaries.minX,
+      y: boundaries.minY,
+      w: boundaries.maxX - boundaries.minX,
+      h: boundaries.maxY - boundaries.minY,
+      t: boundaries.isVictory
+    };
   }
   collisionPlayer(player, worldPos) {
-    var boundary = this.getBoundary();
-    boundary.x += this.pos.x;
-    boundary.y += this.pos.y;
-    boundary.x += worldPos.x;
-    boundary.y += worldPos.y;
-    var fixed = closestPointToRectangle(player.pos, new Vector(boundary.x + player.radius, boundary.y + player.radius), new Vector(boundary.w - player.radius * 2, boundary.h - player.radius * 2));
-    if (Math.abs(fixed.x-player.pos.x)+Math.abs(fixed.y-player.pos.y)!==0) {
-      //player.vel = new Vector(0,0);
-      player.collides = true;
-    } else {player.collides = false;}
-    player.pos.x = fixed.x;
-    player.pos.y = fixed.y;
-    for (var i in this.assets) {
-      if (this.assets[i].type==1) {
-        var rectHalfSizeX = this.assets[i].size.x / 2;
-        var rectHalfSizeY = this.assets[i].size.y / 2;
-        var rectCenterX = this.assets[i].pos.x + this.pos.x + worldPos.x + rectHalfSizeX;
-        var rectCenterY = this.assets[i].pos.y + this.pos.y + worldPos.y + rectHalfSizeY;
-        var distX = Math.abs(player.pos.x - rectCenterX);
-        var distY = Math.abs(player.pos.y - rectCenterY);
-        if ((distX < rectHalfSizeX + player.radius) && (distY < rectHalfSizeY + player.radius)) {
-          player.collides = true;
-          // Collision
-          var relX = (player.pos.x - rectCenterX) / rectHalfSizeX;
-          var relY = (player.pos.y - rectCenterY) / rectHalfSizeY;
-          if (Math.abs(relX) > Math.abs(relY)) {
-            // Horizontal collision.
-            if (relX > 0) {
-              // Right collision
-              player.pos.x = rectCenterX + rectHalfSizeX + player.radius;
-              //player.vel.x = 0;
-            } else {
-              // Left collision
-              player.pos.x = rectCenterX - rectHalfSizeX - player.radius;
-              //player.vel.x = 0;
-            }
-          } else {
-            // Vertical collision
-            if (relY < 0) {
-              // Up collision
-              player.pos.y = rectCenterY - rectHalfSizeY - player.radius;
-              //player.vel.y = 0;
-            } else {
-              // Bottom collision
-              player.pos.y = rectCenterY + rectHalfSizeY + player.radius;
-              //player.vel.y = 0;
-            }
-          }
-        }
+    const boundary = this.getBoundary();
+    const adjustedBoundary = {
+      x: boundary.x + this.pos.x + worldPos.x,
+      y: boundary.y + this.pos.y + worldPos.y,
+      w: boundary.w,
+      h: boundary.h
+    };
+
+    const fixed = closestPointToRectangle(
+      player.pos,
+      new Vector(adjustedBoundary.x + player.radius, adjustedBoundary.y + player.radius),
+      new Vector(adjustedBoundary.w - player.radius * 2, adjustedBoundary.h - player.radius * 2)
+    );
+
+    player.collides = Math.abs(fixed.x - player.pos.x) + Math.abs(fixed.y - player.pos.y) !== 0;
+    player.pos = fixed;
+
+    this.checkAssetCollisions(player, worldPos);
+  }
+
+  checkAssetCollisions(player, worldPos) {
+    for (const asset of this.assets) {
+      if (asset.type !== 1) continue;
+
+      const assetRect = {
+        centerX: asset.pos.x + this.pos.x + worldPos.x + asset.size.x / 2,
+        centerY: asset.pos.y + this.pos.y + worldPos.y + asset.size.y / 2,
+        halfWidth: asset.size.x / 2,
+        halfHeight: asset.size.y / 2
+      };
+
+      if (this.detectRectCircleCollision(player, assetRect)) {
+        this.resolveRectCircleCollision(player, assetRect);
       }
+    }
+  }
+
+  detectRectCircleCollision(player, rect) {
+    const distX = Math.abs(player.pos.x - rect.centerX);
+    const distY = Math.abs(player.pos.y - rect.centerY);
+    return (distX < rect.halfWidth + player.radius) && (distY < rect.halfHeight + player.radius);
+  }
+
+  resolveRectCircleCollision(player, rect) {
+    player.collides = true;
+    const relX = (player.pos.x - rect.centerX) / rect.halfWidth;
+    const relY = (player.pos.y - rect.centerY) / rect.halfHeight;
+
+    if (Math.abs(relX) > Math.abs(relY)) {
+      // Horizontal collision
+      player.pos.x = rect.centerX + (relX > 0 ? 1 : -1) * (rect.halfWidth + player.radius);
+    } else {
+      // Vertical collision
+      player.pos.y = rect.centerY + (relY > 0 ? 1 : -1) * (rect.halfHeight + player.radius);
     }
   }
   load() {
-    this.entities = {}
-    var boundary = this.getActiveBoundary();
-    var variables = this.variables;
-    var currentVariables = [];
-    var hashVariables = [];
-    for(let i in variables){
-      let variable = variables[i].toString();
-      let pushableVariable;
-      if(variable.includes("#")){
-        const id = i;
-        const hashId = parseInt(variable.split("#")[1]);
-        if(!hashVariables[hashId]){
-          hashVariables[hashId] = [];
-        }
-        if(!hashVariables[hashId][id]){
-          hashVariables[hashId][id] = [];
-        }
+    this.entities = {};
+    this.static_entities = {};
+    const boundary = this.getActiveBoundary();
+    const variables = this.variables || {};
+    const currentVariables = [];
+    const hashVariables = [];
+    this.spawnPellets(boundary);
 
-        if(isNaN(this.pattern_amount[hashId])){
-          console.error("Pattern-amount is NaN.");
-          return;
+    // Process variables only if they exist
+    if (this.variables || this.pattern_amount) {
+      // Process variables
+      for (const [i, variable] of Object.entries(variables)) {
+        const variableStr = variable?.toString() || '';
+        if (variableStr.includes("#")) {
+          const [, hashIdStr] = variableStr.split("#");
+          const hashId = parseInt(hashIdStr);
+          if (isNaN(this.pattern_amount?.[hashId])) {
+            console.error("Pattern-amount is NaN.");
+            return;
+          }
+          hashVariables[hashId] = hashVariables[hashId] || [];
+          hashVariables[hashId][i] = hashVariables[hashId][i] || [];
+          for (let index = 0; index < (this.pattern_amount?.[hashId] || 0); index++) {
+            let xVariable = process_variable(variableStr);
+            xVariable = math_module(variableStr, xVariable);
+            hashVariables[hashId][i].push(xVariable);
+          }
         }
-
-        for(let j = 0; j<this.pattern_amount[hashId]; j++){
-          let xVariable = process_variable(variable);
-          xVariable = math_module(variable,xVariable);
-          hashVariables[hashId][id].push(xVariable);
-        }
+        const pushableVariable = math_module(variableStr, process_variable(variableStr));
+        currentVariables.push(pushableVariable);
       }
-      pushableVariable = process_variable(variable);
-      pushableVariable = math_module(variable,pushableVariable);
-      currentVariables.push(pushableVariable);
     }
-    for (var i in this.preset) {
-      let pattern_amount = (this.pattern_amount) ? this.pattern_amount.slice() : NaN;
+
+    // Process presets
+    for (const preset of this.preset || []) {
+      let pattern_amount = this.pattern_amount ? [...this.pattern_amount] : [];
       do {
-        if(pattern_amount)pattern_amount[this.preset[i].pattern_id]--;
-        if (!this.entities[this.preset[i].type]) {
-          this.entities[this.preset[i].type] = []
+        if (pattern_amount && pattern_amount[preset.pattern_id] !== undefined) {
+          pattern_amount[preset.pattern_id]--;
         }
-        var pattern_id = this.preset[i].pattern_id;
-        var auraRadius = this.preset[i].auraRadius;
-        var count = this.preset[i].count||1;
-        var radius = this.preset[i].radius||0;
-        var speed = this.preset[i].speed||0;
-        if(settings.convert_to_legacy_speed){
-          speed/=30;
-        }
-        var x = this.preset[i].x;
-        var y = this.preset[i].y;
-        var angle = undefined;
+        const {
+          pattern_id, auraRadius: auraRadiusRaw, count: countRaw, radius: radiusRaw,
+          speed: speedRaw, x: xRaw, y: yRaw, angle: angleRaw, type: enemyTypes
+        } = preset;
 
-        if(typeof this.preset[i].angle === "string" && currentVariables.length>0){
-          if(this.preset[i].angle.startsWith("var")){
-            angle = (Math.PI * find_variable(this.preset[i].angle,currentVariables,hashVariables,pattern_id,pattern_amount)) / 180;
+        const processVariable = (value) => {
+          if (this.variables && typeof value === "string" && value.startsWith("var") && currentVariables.length > 0) {
+            return find_variable(value, currentVariables, hashVariables, pattern_id, pattern_amount);
           }
-        } else if(this.preset[i].angle !== undefined) {
-          angle = (Math.PI * this.preset[i].angle) / 180;
-        }
+          return value;
+        };
 
-        if(typeof count === "string" && currentVariables.length>0){
-          if(count.startsWith("var")){
-            count = find_variable(this.preset[i].count,currentVariables,hashVariables,pattern_id,pattern_amount)
-          }
-        }
+        const count = processVariable(countRaw);
+        const radius = processVariable(radiusRaw);
+        const speed = processVariable(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1);
+        const x = processVariable(xRaw);
+        const y = processVariable(yRaw);
+        const auraRadius = processVariable(auraRadiusRaw);
 
-        if(typeof radius === "string" && currentVariables.length>0){
-          if(radius.startsWith("var")){
-            radius = find_variable(this.preset[i].radius,currentVariables,hashVariables,pattern_id,pattern_amount)
-          }
-        }
-
-        if(typeof speed === "string" && currentVariables.length>0){
-          if(speed.startsWith("var")){
-            speed = find_variable(this.preset[i].speed,currentVariables,hashVariables,pattern_id,pattern_amount)
-          }
+        if (settings.convert_to_legacy_speed && !preset.converted_to_legacy) {
+          if (preset.turn_speed) preset.turn_speed /= 30;
+          if (preset.turn_acceleration) preset.turn_acceleration /= 30;
+          if (preset.shot_acceleration) preset.shot_acceleration /= 30;
+          if (preset.projectile_speed) preset.projectile_speed /= 30;
+          if (preset.speed_loss) preset.speed_loss /= 30;
+          if (preset.increment) preset.increment /= 30;
+          if (preset.gravity) preset.gravity /= 30;
+          if (preset.repulsion) preset.repulsion /= 30;
+          if (preset.quicksand_strength) preset.quicksand_strength /= 30;
+          preset.converted_to_legacy = true;
         }
 
-        if(typeof x === "string" && currentVariables.length>0){
-          if(x.startsWith("var")){
-            x = find_variable(this.preset[i].x,currentVariables,hashVariables,pattern_id,pattern_amount)
-          } 
+        let angle;
+        if (this.variables && typeof angleRaw === "string" && currentVariables.length > 0 && angleRaw.startsWith("var")) {
+          angle = (Math.PI * processVariable(angleRaw)) / 180;
+        } else if (angleRaw !== undefined) {
+          angle = (Math.PI * angleRaw) / 180;
         }
 
-        if(typeof y === "string" && currentVariables.length>0){
-          if(y.startsWith("var")){
-            y = find_variable(this.preset[i].y,currentVariables,hashVariables,pattern_id,pattern_amount)
-          }
-        }
+        for (let index = 0; index < count; index++) {
+          const rand = Math.floor(Math.random() * (enemyTypes?.length || 1));
+          const currentEnemyType = enemyTypes?.[rand];
 
-        if(typeof auraRadius === "string" && currentVariables.length>0){
-          if(auraRadius.startsWith("var")){
-            auraRadius = find_variable(this.preset[i].auraRadius,currentVariables,hashVariables,pattern_id,pattern_amount)
+          let posX, posY;
+          if (x !== undefined) {
+            posX = typeof x === "string" && x.includes(',')
+              ? min_max(...x.split(',').map(parseFloat)) / 32
+              : x / 32;
+          } else {
+            posX = Math.random() * (boundary.w - radius / 16) + boundary.x + radius / 32;
           }
-        }
 
-        for (var j = 0; j < count; j++) {
-          var rand = Math.floor(Math.random() * this.preset[i].type.length);
-          if(!radius || radius<0){radius = 0;}
-          var posX = Math.random() * (boundary.w-radius / 16) + boundary.x + radius / 32;
-          var posY = Math.random() * (boundary.h-radius / 16) + boundary.y + radius / 32;
-          if (x!==undefined) {
-            if(typeof x == "string" && x.includes(',')){
-              var xArray = x.split(',');
-              var posX = min_max(parseFloat(xArray[0]),parseFloat(xArray[1]))/32;
-            } else {
-              var posX = x/32;
-            }
-          }
-          if (y!==undefined) {
-            if(typeof y == "string" && y.includes(',')){
-              var yArray = y.split(',');
-              var posY = min_max(parseFloat(yArray[0]),parseFloat(yArray[1]))/32;
-            } else {
-              var posY = y/32;
-            }
-          }
-          var enemy = new Unknown(new Vector(posX, posY), radius / 32, speed,angle)
-          if (this.preset[i].type[rand] == "normal") {
-            enemy = new Normal(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "wall") {
-            enemy = new Wall(new Vector(posX, posY), radius / 32, speed, this.getActiveBoundary(), j, count,this.preset[i].move_clockwise,this.preset[i].initial_side)
-          }
-          if (this.preset[i].type[rand] == "dasher") {
-            enemy = new Dasher(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "homing") {
-            enemy = new Homing(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "slowing") {
-            enemy = new Slowing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "draining") {
-            enemy = new Draining(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "oscillating") {
-            enemy = new Oscillating(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "turning") {
-            enemy = new Turning(new Vector(posX, posY), radius / 32, speed, angle,this.preset[i].circle_size)
-          }
-          if (this.preset[i].type[rand] == "liquid") {
-            enemy = new Liquid(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "sizing") {
-            enemy = new Sizing(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "switch") {
-            enemy = new Switch(new Vector(posX, posY), radius / 32, speed, angle, j, count)
-          }
-          if (this.preset[i].type[rand] == "sniper") {
-            enemy = new Sniper(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "freezing") {
-            enemy = new Freezing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "web") {
-            enemy = new Web(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "cobweb") {
-            enemy = new Cobweb(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "teleporting") {
-            enemy = new Teleporting(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "star") {
-            enemy = new Star(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "immune") {
-            enemy = new Immune(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "ice_sniper") {
-            enemy = new IceSniper(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "disabling") {
-            enemy = new Disabling(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "toxic") {
-            enemy = new Toxic(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "icicle") {
-            enemy = new Icicle(new Vector(posX, posY), radius / 32, speed, angle, this.preset[i].horizontal)
-          }
-          if (this.preset[i].type[rand] == "spiral") {
-            enemy = new Spiral(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "gravity") {
-            enemy = new Gravity(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, this.preset[i].gravity)
-          }
-          if (this.preset[i].type[rand] == "repelling") {
-            enemy = new Repelling(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, this.preset[i].repulsion)
-          }
-          if (this.preset[i].type[rand] == "gravity_ghost") {
-            enemy = new Gravity_Ghost(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "repelling_ghost") {
-            enemy = new Repelling_Ghost(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "wavy") {
-            enemy = new Wavy(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "zigzag") {
-            enemy = new Zigzag(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "zoning") {
-            enemy = new Zoning(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "radiating_bullets") {
-            enemy = new Radiating(new Vector(posX, posY), radius / 32, speed, angle, this.preset[i].release_interval, this.preset[i].release_time)
-          }
-          if (this.preset[i].type[rand] == "frost_giant") {
-            enemy = new FrostGiant(new Vector(posX, posY), radius / 32, (speed) ? speed : 0, angle,this.preset[i].direction,this.preset[i].turn_speed,this.preset[i].shot_interval,this.preset[i].cone_angle,this.preset[i].pause_interval,this.preset[i].pause_duration,this.preset[i].turn_acceleration,this.preset[i].shot_acceleration,this.preset[i].pattern,this.preset[i].immune,this.preset[i].projectile_duration,this.preset[i].projectile_radius,this.preset[i].projectile_speed,this.preset[i].precise_movement)
-          }
-          if (this.preset[i].type[rand] == "speed_sniper") {
-            enemy = new SpeedSniper(new Vector(posX, posY), radius / 32, speed, angle, this.preset[i].speed_loss)
-          }
-          if (this.preset[i].type[rand] == "regen_sniper") {
-            enemy = new RegenSniper(new Vector(posX, posY), radius / 32, speed, angle, this.preset[i].regen_loss)
-          }
-          if (this.preset[i].type[rand] == "snowman") {
-            enemy = new Snowman(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "slippery") {
-            enemy = new Slippery(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "corrosive") {
-            enemy = new Corrosive(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "corrosive_sniper") {
-            enemy = new CorrosiveSniper(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "enlarging") {
-            enemy = new Enlarging(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "poison_sniper") {
-            enemy = new PoisonSniper(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "magnetic_reduction") {
-            enemy = new MagneticReduction(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "magnetic_nullification") {
-            enemy = new MagneticNullification(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "positive_magnetic_sniper") {
-            enemy = new PositiveMagneticSniper(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "negative_magnetic_sniper") {
-            enemy = new NegativeMagneticSniper(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "tree") {
-            enemy = new Tree(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "pumpkin") {
-            enemy = new Pumpkin(new Vector(posX, posY), radius / 32, speed)
-          }
-          if (this.preset[i].type[rand] == "fake_pumpkin") {
-            enemy = new FakePumpkin(new Vector(posX, posY), radius / 32)
-          }
-          if (this.preset[i].type[rand] == "experience_drain") {
-            enemy = new ExperienceDraining(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "fire_trail") {
-            enemy = new Fire_Trail(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "wind" || this.preset[i].type[rand] == "wind_ghost") {
-            enemy = new Wind(new Vector(posX, posY), radius / 32, speed, angle, this.preset[i].ignore_invulnerability)
-          }
-          if (this.preset[i].type[rand] == "lava") {
-            enemy = new Lava(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "burning") {
-            enemy = new Burning(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "sticky_sniper") {
-            enemy = new StickySniper(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "ice_ghost") {
-            enemy = new Ice(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "positive_magnetic_ghost") {
-            enemy = new PositiveMagneticGhost(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "negative_magnetic_ghost") {
-            enemy = new NegativeMagneticGhost(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "poison_ghost") {
-            enemy = new Poison_Ghost(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "grass") {
-            enemy = new Grass(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "defender") {
-            enemy = new Defender(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "glowy") {
-            enemy = new Glowy(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "firefly") {
-            enemy = new Firefly(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "mist") {
-            enemy = new Mist(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "phantom") {
-            enemy = new Phantom(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "lunging") {
-            enemy = new Lunging(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "barrier") {
-            enemy = new Barrier(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "quicksand") {
-            enemy = new Quicksand(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, this.preset[i].push_direction, this.preset[i].quicksand_strength)
-          }
-          if (this.preset[i].type[rand] == "radar") {
-            enemy = new Radar(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "wind_sniper") {
-            enemy = new WindSniper(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "disabling_ghost") {
-            enemy = new DisablingGhost(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "sand") {
-            enemy = new Sand(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "sandrock") {
-            enemy = new Sandrock(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "crumbling") {
-            enemy = new Crumbling(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "flower") {
-            enemy = new Flower(new Vector(posX, posY), radius / 32, speed, angle, this.preset[i].growth_multiplayer)
-          }
-          if (this.preset[i].type[rand] == "seedling") {
-            enemy = new Seedling(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "cactus") {
-            enemy = new Cactus(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "speed_ghost") {
-            enemy = new SpeedGhost(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "regen_ghost") {
-            enemy = new RegenGhost(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "stalactite") {
-            enemy = new Stalactite(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "charging") {
-            enemy = new Charging(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "lead_sniper") {
-            enemy = new LeadSniper(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "reducing") {
-            enemy = new Reducing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "blocking") {
-            enemy = new Blocking(new Vector(posX, posY), radius / 32, speed, angle, auraRadius)
-          }
-          if (this.preset[i].type[rand] == "force_sniper_a") {
-            enemy = new ForceSniperA(new Vector(posX, posY), radius / 32, speed, angle)
-          }
-          if (this.preset[i].type[rand] == "force_sniper_b") {
-            enemy = new ForceSniperB(new Vector(posX, posY), radius / 32, speed, angle)
-          }
+          if (y !== undefined) {
+            posY = typeof y === "string" && y.includes(',')
+              ? min_max(...y.split(',').map(parseFloat)) / 32
+              : y / 32;
+          } else {
+            posY = Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
+          }
+
+          let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, angle, preset, auraRadius, index, count);
           enemy.isSpawned = true;
-          this.entities[this.preset[i].type].push(enemy)
+          this.addEntity(entityTypes[enemy.type],enemy);
         }
-      } while ((pattern_amount[this.preset[i].pattern_id])>0);
+      } while ((pattern_amount[preset.pattern_id])>0);
     }
-    const pelletZones = [];
-    for(var i in this.zones){
-      const zone = this.zones[i];
-      if(zone.spawns_pellets){
-        pelletZones.push(zone);
-      }
+  }
+
+  spawnPellets(boundary) {
+    const pelletZones = this.zones.filter(zone => zone.spawns_pellets);
+    const pelletsAtZone = boundary.t ? 200 : this.pellet_count;
+    const pelletMultiplier = this.pellet_multiplier;
+    for (let i = 0; i < pelletsAtZone; i++) {
+      const pellet = new Pellet(new Vector(0, 0), pelletMultiplier, pelletZones || []);
+      pellet.respawn(this);
+      this.addStaticEntity("pellet", pellet);
     }
-    this.entities["pellet"] = []
-    const pelletsAtZone = (boundary.t) ? 200 : this.pellet_count;
-    const pelletMultiplayer = this.pellet_multiplier;
-    for (var i = 0; i < pelletsAtZone; i++) {
-      const randomZone = (pelletZones.length == 0) ? null : pelletZones[random(pelletZones.length-1)];
-      const zoneBoundary = (randomZone === null) ? boundary : {x:randomZone.pos.x,y:randomZone.pos.y,w:randomZone.size.x,h:randomZone.size.y};
-      const posX = Math.random() * zoneBoundary.w + zoneBoundary.x;
-      const posY = Math.random() * zoneBoundary.h + zoneBoundary.y;
-      const pellet = new Pellet(new Vector(posX, posY),pelletMultiplayer,pelletZones);
-      this.entities["pellet"].push(pellet)
+  }
+
+  createEnemy(enemyType, posX, posY, radius, speed, angle, preset, auraRadius, j, count) {
+    switch (enemyType) {
+      case "normal":
+        return new Normal(new Vector(posX, posY), radius / 32, speed, angle);
+      case "wall":
+        return new Wall(new Vector(posX, posY), radius / 32, speed, this.getActiveBoundary(), j, count, preset.move_clockwise, preset.initial_side);
+      case "dasher":
+        return new Dasher(new Vector(posX, posY), radius / 32, speed, angle);
+      case "homing":
+        return new Homing(new Vector(posX, posY), radius / 32, speed, angle, preset.increment);
+      case "slowing":
+        return new Slowing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "draining":
+        return new Draining(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "oscillating":
+        return new Oscillating(new Vector(posX, posY), radius / 32, speed, angle);
+      case "turning":
+        return new Turning(new Vector(posX, posY), radius / 32, speed, angle, preset.circle_size);
+      case "liquid":
+        return new Liquid(new Vector(posX, posY), radius / 32, speed, angle);
+      case "sizing":
+        return new Sizing(new Vector(posX, posY), radius / 32, speed, angle);
+      case "switch":
+        return new Switch(new Vector(posX, posY), radius / 32, speed, angle, j, count);
+      case "sniper":
+        return new Sniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "freezing":
+        return new Freezing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "web":
+        return new Web(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "cobweb":
+        return new Cobweb(new Vector(posX, posY), radius / 32, speed, angle);
+      case "teleporting":
+        return new Teleporting(new Vector(posX, posY), radius / 32, speed, angle);
+      case "star":
+        return new Star(new Vector(posX, posY), radius / 32, speed, angle);
+      case "immune":
+        return new Immune(new Vector(posX, posY), radius / 32, speed, angle);
+      case "ice_sniper":
+        return new IceSniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "disabling":
+        return new Disabling(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "toxic":
+        return new Toxic(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "icicle":
+        return new Icicle(new Vector(posX, posY), radius / 32, speed, angle, preset.horizontal);
+      case "spiral":
+        return new Spiral(new Vector(posX, posY), radius / 32, speed, angle);
+      case "gravity":
+        return new Gravity(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, preset.gravity);
+      case "repelling":
+        return new Repelling(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, preset.repulsion);
+      case "gravity_ghost":
+        return new Gravity_Ghost(new Vector(posX, posY), radius / 32, speed, angle);
+      case "repelling_ghost":
+        return new Repelling_Ghost(new Vector(posX, posY), radius / 32, speed, angle);
+      case "wavy":
+        return new Wavy(new Vector(posX, posY), radius / 32, speed, angle);
+      case "zigzag":
+        return new Zigzag(new Vector(posX, posY), radius / 32, speed, angle);
+      case "zoning":
+        return new Zoning(new Vector(posX, posY), radius / 32, speed, angle);
+      case "radiating_bullets":
+        return new Radiating(new Vector(posX, posY), radius / 32, speed, angle, preset.release_interval, preset.release_time);
+      case "frost_giant":
+        return new FrostGiant(new Vector(posX, posY), radius / 32, (speed) ? speed : 0, angle, preset.direction, preset.turn_speed, preset.shot_interval, preset.cone_angle, preset.pause_interval, preset.pause_duration, preset.turn_acceleration, preset.shot_acceleration, preset.pattern, preset.immune, preset.projectile_duration, preset.projectile_radius, preset.projectile_speed, preset.precise_movement);
+      case "speed_sniper":
+        return new SpeedSniper(new Vector(posX, posY), radius / 32, speed, angle, preset.speed_loss);
+      case "regen_sniper":
+        return new RegenSniper(new Vector(posX, posY), radius / 32, speed, angle, preset.regen_loss);
+      case "snowman":
+        return new Snowman(new Vector(posX, posY), radius / 32, speed, angle);
+      case "slippery":
+        return new Slippery(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "corrosive":
+        return new Corrosive(new Vector(posX, posY), radius / 32, speed, angle);
+      case "corrosive_sniper":
+        return new CorrosiveSniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "enlarging":
+        return new Enlarging(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "poison_sniper":
+        return new PoisonSniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "magnetic_reduction":
+        return new MagneticReduction(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "magnetic_nullification":
+        return new MagneticNullification(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "positive_magnetic_sniper":
+        return new PositiveMagneticSniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "negative_magnetic_sniper":
+        return new NegativeMagneticSniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "tree":
+        return new Tree(new Vector(posX, posY), radius / 32, speed, angle);
+      case "pumpkin":
+        return new Pumpkin(new Vector(posX, posY), radius / 32, speed);
+      case "fake_pumpkin":
+        return new FakePumpkin(new Vector(posX, posY), radius / 32);
+      case "experience_drain":
+        return new ExperienceDraining(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "fire_trail":
+        return new Fire_Trail(new Vector(posX, posY), radius / 32, speed, angle);
+      case "wind":
+      case "wind_ghost":
+        return new Wind(new Vector(posX, posY), radius / 32, speed, angle, preset.ignore_invulnerability);
+      case "lava":
+        return new Lava(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "burning":
+        return new Burning(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "sticky_sniper":
+        return new StickySniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "ice_ghost":
+        return new Ice(new Vector(posX, posY), radius / 32, speed, angle);
+      case "positive_magnetic_ghost":
+        return new PositiveMagneticGhost(new Vector(posX, posY), radius / 32, speed, angle);
+      case "negative_magnetic_ghost":
+        return new NegativeMagneticGhost(new Vector(posX, posY), radius / 32, speed, angle);
+      case "poison_ghost":
+        return new Poison_Ghost(new Vector(posX, posY), radius / 32, speed, angle);
+      case "grass":
+        return new Grass(new Vector(posX, posY), radius / 32, speed, angle);
+      case "defender":
+        return new Defender(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "glowy":
+        return new Glowy(new Vector(posX, posY), radius / 32, speed, angle);
+      case "firefly":
+        return new Firefly(new Vector(posX, posY), radius / 32, speed, angle);
+      case "mist":
+        return new Mist(new Vector(posX, posY), radius / 32, speed, angle);
+      case "phantom":
+        return new Phantom(new Vector(posX, posY), radius / 32, speed, angle);
+      case "lunging":
+        return new Lunging(new Vector(posX, posY), radius / 32, speed, angle);
+      case "barrier":
+        return new Barrier(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "quicksand":
+        return new Quicksand(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, preset.push_direction, preset.quicksand_strength, preset.immune, preset.classic);
+      case "radar":
+        return new Radar(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "wind_sniper":
+        return new WindSniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "disabling_ghost":
+        return new DisablingGhost(new Vector(posX, posY), radius / 32, speed, angle);
+      case "sand":
+        return new Sand(new Vector(posX, posY), radius / 32, speed, angle);
+      case "sandrock":
+        return new Sandrock(new Vector(posX, posY), radius / 32, speed, angle);
+      case "crumbling":
+        return new Crumbling(new Vector(posX, posY), radius / 32, speed, angle);
+      case "flower":
+        return new Flower(new Vector(posX, posY), radius / 32, speed, angle, preset.growth_multiplayer);
+      case "seedling":
+        return new Seedling(new Vector(posX, posY), radius / 32, speed, angle);
+      case "cactus":
+        return new Cactus(new Vector(posX, posY), radius / 32, speed, angle);
+      case "speed_ghost":
+        return new SpeedGhost(new Vector(posX, posY), radius / 32, speed, angle);
+      case "regen_ghost":
+        return new RegenGhost(new Vector(posX, posY), radius / 32, speed, angle);
+      case "stalactite":
+        return new Stalactite(new Vector(posX, posY), radius / 32, speed, angle);
+      case "charging":
+        return new Charging(new Vector(posX, posY), radius / 32, speed, angle);
+      case "lead_sniper":
+        return new LeadSniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "reducing":
+        return new Reducing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "blocking":
+        return new Blocking(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "force_sniper_a":
+        return new ForceSniperA(new Vector(posX, posY), radius / 32, speed, angle);
+      case "force_sniper_b":
+        return new ForceSniperB(new Vector(posX, posY), radius / 32, speed, angle);
+      default:
+        return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }
   }
   addEffect(type,pos,power){
     if(type == 0){
-      if(!this.entities["SweetTooth"]){this.entities["SweetTooth"] = []}
       var effect = new SweetTooth(new Vector(pos.x,pos.y),power)
-      this.entities["SweetTooth"].push(effect)
+      this.addEntity("SweetTooth", effect);
     }
   }
   addSniperBullet(type, pos, angle, radius, speed, duration = 4000, spawner) {
-    switch (type) {
-      case 0:
-        if (!this.entities["SniperProjectile"]) {
-          this.entities["SniperProjectile"] = [];
-        }
-        var bullet = new SniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["SniperProjectile"].push(bullet);
-        break;
-      case 1:
-        if (!this.entities["IceSniperProjectile"]) {
-          this.entities["IceSniperProjectile"] = [];
-        }
-        var bullet = new IceSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["IceSniperProjectile"].push(bullet);
-        break;
-      case 2:
-        if (!this.entities["RadiatingProjectile"]) {
-          this.entities["RadiatingProjectile"] = [];
-        }
-        var bullet = new RadiatingBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["RadiatingProjectile"].push(bullet);
-        break;
-      case 3:
-        if (!this.entities["SpeedProjectile"]) {
-          this.entities["SpeedProjectile"] = [];
-        }
-        var bullet = new SpeedSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed, duration);
-        this.entities["SpeedProjectile"].push(bullet);
-        break;
-      case 4:
-        if (!this.entities["RegenProjectile"]) {
-          this.entities["RegenProjectile"] = [];
-        }
-        var bullet = new RegenSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed, duration);
-        this.entities["RegenProjectile"].push(bullet);
-        break;
-      case 5:
-        if (!this.entities["CorrosiveSniperProjectile"]) {
-          this.entities["CorrosiveSniperProjectile"] = [];
-        }
-        var bullet = new CorrosiveSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["CorrosiveSniperProjectile"].push(bullet);
-        break;
-      case 6:
-        if (!this.entities["PoisonSniperProjectile"]) {
-          this.entities["PoisonSniperProjectile"] = [];
-        }
-        var bullet = new PoisonSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["PoisonSniperProjectile"].push(bullet);
-        break;
-      case 7:
-        if (!this.entities["PositiveMagneticSniperProjectile"]) {
-          this.entities["PositiveMagneticSniperProjectile"] = [];
-        }
-        var bullet = new PositiveMagneticSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["PositiveMagneticSniperProjectile"].push(bullet);
-        break;
-      case 8:
-        if (!this.entities["NegativeMagneticSniperProjectile"]) {
-          this.entities["NegativeMagneticSniperProjectile"] = [];
-        }
-        var bullet = new NegativeMagneticSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["NegativeMagneticSniperProjectile"].push(bullet);
-        break;
-      case 9:
-        if (!this.entities["frost_giant_ice_projectile"]) {
-          this.entities["frost_giant_ice_projectile"] = [];
-        }
-        var bullet = new frost_giant_ice_bullet(new Vector(pos.x,pos.y), angle, radius, speed, duration);
-        this.entities["frost_giant_ice_projectile"].push(bullet);
-        break;
-      case 10:
-        if (!this.entities["leaf_projectile"]) {
-          this.entities["leaf_projectile"] = [];
-        }
-        var bullet = new leaf_projectile(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["leaf_projectile"].push(bullet);
-        break;
-      case 11:
-        if (!this.entities["sticky_projectile"]) {
-          this.entities["sticky_projectile"] = [];
-        }
-        var bullet = new StickySniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["sticky_projectile"].push(bullet);
-        break;
-      case 12:
-        if (!this.entities["radar_projectile"]) {
-          this.entities["radar_projectile"] = [];
-        }
-        var bullet = new RadarBullet(new Vector(pos.x,pos.y), angle, radius, speed, duration, spawner);
-        this.entities["radar_projectile"].push(bullet);
-        break;
-      case 13:
-        if (!this.entities["WindSniperProjectile"]) {
-          this.entities["WindSniperProjectile"] = [];
-        }
-        var bullet = new WindSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["WindSniperProjectile"].push(bullet);
-        break;
-      case 14:
-        if (!this.entities["Residue"]) {
-          this.entities["Residue"] = [];
-        }
-        var bullet = new Residue(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["Residue"].push(bullet);
-        break;
-      case 15:
-        if (!this.entities["stalactite_projectile"]) {
-          this.entities["stalactite_projectile"] = [];
-        }
-        var bullet = new StalactiteProjectile(new Vector(pos.x,pos.y), radius);
-        this.entities["stalactite_projectile"].push(bullet);
-        break;
-      case 16:
-        if (!this.entities["LeadSniperProjectile"]) {
-          this.entities["LeadSniperProjectile"] = [];
-        }
-        var bullet = new LeadSniperBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["LeadSniperProjectile"].push(bullet);
-        break;
-      case 17:
-        if (!this.entities["ForceSniperAProjectile"]) {
-          this.entities["ForceSniperAProjectile"] = [];
-        }
-        var bullet = new ForceSniperABullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["ForceSniperAProjectile"].push(bullet);
-        break;
-      case 18:
-        if (!this.entities["ForceSniperBProjectile"]) {
-          this.entities["ForceSniperBProjectile"] = [];
-        }
-        var bullet = new ForceSniperBBullet(new Vector(pos.x,pos.y), angle, radius, speed);
-        this.entities["ForceSniperBProjectile"].push(bullet);
-        break;
+    const bulletTypes = {
+      0: { name: "SniperProjectile", class: SniperBullet },
+      1: { name: "IceSniperProjectile", class: IceSniperBullet },
+      2: { name: "RadiatingProjectile", class: RadiatingBullet },
+      3: { name: "SpeedProjectile", class: SpeedSniperBullet },
+      4: { name: "RegenProjectile", class: RegenSniperBullet },
+      5: { name: "CorrosiveSniperProjectile", class: CorrosiveSniperBullet },
+      6: { name: "PoisonSniperProjectile", class: PoisonSniperBullet },
+      7: { name: "PositiveMagneticSniperProjectile", class: PositiveMagneticSniperBullet },
+      8: { name: "NegativeMagneticSniperProjectile", class: NegativeMagneticSniperBullet },
+      9: { name: "frost_giant_ice_projectile", class: frost_giant_ice_bullet },
+      10: { name: "leaf_projectile", class: leaf_projectile },
+      11: { name: "sticky_projectile", class: StickySniperBullet },
+      12: { name: "radar_projectile", class: RadarBullet },
+      13: { name: "WindSniperProjectile", class: WindSniperBullet },
+      14: { name: "Residue", class: Residue },
+      15: { name: "stalactite_projectile", class: StalactiteProjectile },
+      16: { name: "LeadSniperProjectile", class: LeadSniperBullet },
+      17: { name: "ForceSniperAProjectile", class: ForceSniperABullet },
+      18: { name: "ForceSniperBProjectile", class: ForceSniperBBullet }
+    };
+
+    if (bulletTypes[type]) {
+      const { name, class: BulletClass } = bulletTypes[type];
+      if (!this.entities[name]) {
+        this.entities[name] = [];
+      }
+      const bulletArgs = [new Vector(pos.x, pos.y), angle, radius, speed];
+      if (type === 3 || type === 4 || type === 9 || type === 12) {
+        bulletArgs.push(duration);
+      }
+      if (type === 12) {
+        bulletArgs.push(spawner);
+      }
+      if (type === 15) {
+        bulletArgs.pop(); // Remove speed for StalactiteProjectile
+        bulletArgs.pop(); // Remove angle for StalactiteProjectile
+      }
+      const bullet = new BulletClass(...bulletArgs);
+      this.addEntity(name, bullet);
     }
   }
-  addEntity(entityName,entity){
-    if (this.entities[entityName]==undefined) {
-      this.entities[entityName] = []
-    }
+
+  addEntity(entityName, entity) {
+    this.entities[entityName] = this.entities[entityName] || [];
     this.entities[entityName].push(entity);
+  }
+  addStaticEntity(entityName, entity) {
+    this.static_entities[entityName] = this.static_entities[entityName] || [];
+    this.static_entities[entityName].push(entity);
   }
 }
 class Zone {

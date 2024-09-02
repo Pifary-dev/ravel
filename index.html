@@ -9,7 +9,10 @@
   <div id="menu">
     <div id="main">
       <div id="play">
-        <button type="button" name="button" id="connect">Enter game</button><br>
+        <button type="button" name="button" id="connect">Enter game</button><br><br>
+        <div id="name">
+          <input type="text" id="nick" value="Sandbox" placeholder="Username">
+        </div>
         <select id='hero'>
           <option>Normal</option>
           <option>Magmax</option>
@@ -38,7 +41,9 @@
     <div id='alert'></div>
     <div id="panel">
       <div id="interact">
-        <input type="file" id="load" accept="application/x-yaml, .json, .yaml" name="file">
+        <label for="load" class="file-upload-label">
+          <input type="file" id="load" accept="application/x-yaml, .json, .yaml, .txt" name="file">
+        </label>
       </div>
       <select id='world'>
         <option>Original</option>
@@ -82,47 +87,47 @@
         <option>None</option>
       </select>
     </div>
-    <div id="name">
-      <input type="text" id="nick" value="Ravelfett">
-    </div>
     <div id="settings">
       <div>Settings:</div>
       <div class="settingsElement">
   <input type="checkbox" id="mouse_toggle" checked>
-  <label>Mouse Toggle Movement</label>
+  <label for="mouse_toggle">Mouse Toggle Movement</label>
   <br><br>
   <input type="checkbox" id="outline" checked>
-  <label>Enemy outline</label>
+  <label for="outline">Enemy outline</label>
   <br><br>
   <input type="checkbox" id="timer">
-  <label>Timer</label>
+  <label for="timer">Timer</label>
   <br><br>
   <input type="checkbox" id="tiles" checked>
-  <label>Tiles</label>
+  <label for="tiles">Tiles</label>
   <br><br>
   <input type="checkbox" id="no_points">
-  <label>No Points</label>
+  <label for="no_points">No Points</label>
   <br><br>
   <input type="checkbox" id="max_abilities">
-  <label>Max Abilities</label>
+  <label for="max_abilities">Max Abilities</label>
   <br><br>
   <input type="checkbox" id="max_stats">
-  <label>Max Stats</label>
+  <label for="max_stats">Max Stats</label>
   <br><br>
   <input type="checkbox" id="slow_upgrade">
-  <label>Evades Upgrade System</label>
+  <label for="slow_upgrade">Evades Upgrade System</label>
   <br><br>
   <input type="checkbox" id="convert_to_legacy_speed">
-  <label>Convert To Legacy Speed</label>
+  <label for="convert_to_legacy_speed">Convert To Legacy Speed</label>
   <br><br>
   <input type="checkbox" id="death_cooldown">
-  <label>After Death Cooldown</label>
+  <label for="death_cooldown">After Death Cooldown</label>
   <br><br>
   <input type="checkbox" id="dev">
-  <label>Test Mode</label>
+  <label for="dev">Test Mode</label>
   <br><br>
   <input type="checkbox" id="cheats">
-  <label>Cheats</label>
+  <label for="cheats">Cheats</label>
+  <br><br>
+  <input type="checkbox" id="v_sync">
+  <label for="v_sync">V-Sync</label>
   <br><br>
   <label for="fps_limit">FPS Limit:</label>
   <select id="fps_limit">
@@ -131,12 +136,46 @@
     <option value="30">30 FPS</option>
   </select>
   <br><br>
-  <label>Input Delay:</label>
-  <input type="number" id="input_delay" placeholder="Default is 0ms" value="0" style="width:100px">
+  <label for="input_delay">Input Delay:</label>
+  <input type="number" id="input_delay" placeholder="Default is 0ms" value="0" min="0" style="width:100px">
   <br><br>
-  <label>Tick Delay:  </label>
-  <input type="number" id="tick_delay" placeholder="1 tick is 33ms" value="2" style="width:100px">
+  <label for="tick_delay">Tick Delay:</label>
+  <input type="number" id="tick_delay" placeholder="1 tick is 33ms" value="2" min="0" style="width:100px">
       </div>
+    </div>
+    <div id="hotkeys" style="position: absolute; top: 10px; right: 10px; background-color: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; color: white;">
+      <h3 style="color: #ffcc00; text-align: center;">Hotkeys</h3>
+      <ul style="list-style-type: none; padding: 0;">
+        <li>W/↑ - Move Up</li>
+        <li>S/↓ - Move Down</li>
+        <li>A/← - Move Left</li>
+        <li>D/→ - Move Right</li>
+        <li>Shift - Slow Movement</li>
+        <li>Z/J - Use First Ability</li>
+        <li>X/K - Use Second Ability</li>
+        <li>C/L - Use Third Ability</li>
+        <li>H - Hide Herocard</li>
+        <li>M - Hide Minimap</li>
+        <li>H - Hide Herocard</li>
+        <li>, - Hide Overlay</li>
+      </ul>
+      <h4 style="color: #ffcc00; margin-top: 10px;">Cheats:</h4>
+      <ul style="list-style-type: none; padding: 0;">
+        <li>T - Teleport Forward</li>
+        <li>E - Teleport Backward</li>
+        <li>R - Teleport 10 Areas Forward</li>
+        <li>V - God Mode</li>
+        <li>B - Unlimited Energy</li>
+        <li>N - No Collision</li>
+      </ul>
+      <h4 style="color: #ffcc00; margin-top: 10px;">Test Mode:</h4>
+      <ul style="list-style-type: none; padding: 0;">
+        <li>[ - Create SafePoint</li>
+        <li>] - Clear SafePoint</li>
+        <li>P - Change Timer Clear</li>
+        <li>O - Reset Timer</li>
+        <li>END - Reset Your Run</li>
+      </ul>
     </div>
   </div>
   <script src="listeners.js"></script>

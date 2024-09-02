@@ -1,14 +1,10 @@
-const canvas = document.getElementById("game");
-const context = canvas.getContext("2d");
-let width = canvas.width,
-  height = canvas.height;
 const staticWidth = width, 
   staticHeight = height;
 const game = new Game();
 const inputArray = [];
 let mousePos = new Vector(0, 0);
 let mouse = false;
-var loaded = false;
+let loaded = false;
 let lastRender = 0;
 let fov = 32;
 
@@ -55,23 +51,25 @@ function loadSecondary() {
                    new World(new Vector(0, 402), 9, insanityIsle),
                    new World(new Vector(0, 447), 10, naturalNightmare))
 }
-const tiles = new Image();
-const hat = new Image();
-const gem = new Image();
-const magnetDown = new Image();
-const magnetUp = new Image();
-const pumpkinOn = new Image();
-const pumpkinOff = new Image();
-const torch = new Image();
-const torchUp = new Image();
-const flashlight_item = new Image();
-const flashlight = new Image();
-const abilityOne = new Image();
-const abilityTwo = new Image();
-const sweet_tooth_item = new Image();
-const vengeance_projectile = new Image();
-const gate = new Image();
-const lantern = new Image();
+const images = {
+  tiles: new Image(),
+  hat: new Image(),
+  gem: new Image(),
+  magnetDown: new Image(),
+  magnetUp: new Image(),
+  pumpkinOn: new Image(),
+  pumpkinOff: new Image(),
+  torch: new Image(),
+  torchUp: new Image(),
+  flashlight_item: new Image(),
+  flashlight: new Image(),
+  abilityOne: new Image(),
+  abilityTwo: new Image(),
+  sweet_tooth_item: new Image(),
+  vengeance_projectile: new Image(),
+  gate: new Image(),
+  lantern: new Image()
+};
 let tick_time, tick_speed = 1;
 const missing_world = new World(new Vector(0, 0), 0, missingMap);
 
@@ -80,68 +78,97 @@ const filterStrength = 25;
 let frameTime = 0, lastLoop = new Date, thisLoop;
 
 function animate(time) {
-  let progress = tick_time;
-  if(settings.fps_limit == "unlimited"){
+  const progress = settings.fps_limit === "unlimited" ? Math.min(time - lastRender, 1000) : tick_time;
+  
+  if (settings.fps_limit === "unlimited") {
     window.requestAnimationFrame(animate);
-    progress = time - lastRender;
-    if (progress > 1000) {
-      progress = 1000;
-    }
   }
+  
   if (!inMenu) {
-    if(settings.dev) calculateFps();
-    updateBackground(context,width,height,'#333');
-    const input = {keys:[...keys],mouse:mousePos,isMouse:mouse};
-    if(settings.slow_upgrade){
-      for (const i in keys){
-        if (keys[i] && ![KEYS.LEFT, KEYS.RIGHT, KEYS.UP, KEYS.DOWN, KEYS.W, KEYS.A, KEYS.S, KEYS.D, KEYS.SHIFT].includes(parseInt(i))){
-          keys[i] = false;
+    if (settings.dev) calculateFps();
+    updateBackground(context, width, height, '#333');
+    
+    const input = { keys: [...keys], mouse: mousePos, isMouse: mouse };
+    
+    if (settings.slow_upgrade) {
+      const allowedKeys = [KEYS.LEFT, KEYS.RIGHT, KEYS.UP, KEYS.DOWN, KEYS.W, KEYS.A, KEYS.S, KEYS.D, KEYS.SHIFT];
+      Object.keys(keys).forEach(key => {
+        if (keys[key] && !allowedKeys.includes(parseInt(key))) {
+          keys[key] = false;
         }
-      }
+      });
     }
+    
     const player = game.players[0];
-    if(inputArray.length > settings.tick_delay && !settings.sandbox && settings.tick_delay > 0){
-      while(inputArray.length > settings.tick_delay) inputArray.shift();
+    
+    if (inputArray.length > settings.tick_delay && settings.fps_limit !== "unlimited" && settings.tick_delay > 0) {
+      inputArray.splice(0, inputArray.length - settings.tick_delay);
       game.inputPlayer(0, inputArray[0]);
     } else {
-      game.inputPlayer(0, input)
+      game.inputPlayer(0, input);
     }
     inputArray.push(input);
-    const old = {area:player.area,world:player.world};
+    
+    const oldArea = player.area;
+    const oldWorld = player.world;
+    
     game.update(progress * tick_speed);
-    const focus = new Vector(player.pos.x, player.pos.y);
+    
     const world = game.worlds[player.world];
     const area = world.areas[player.area];
     const wasVictory = area.getActiveBoundary().t;
-    const strokeColor = (area.title_stroke_color) ? area.title_stroke_color : "#425a6d";
-    const areaText = (wasVictory) ? "Victory!" : game.worlds[player.world].areas[player.area].name;
-    const areaUpdated = (old.area == player.area && old.world == player.world) ? false : true;
-    renderArea(game.getStates(0), game.players, focus, areaUpdated);
-    applyScale(context,settings.scale,()=>{
-      drawAreaHeader(context,6,strokeColor,areaText,staticWidth,40,world);
-      if(settings.timer){
-        const style = (player.victoryTimer>0) ? 'yellow' : null;
-        const timerTime = secondsFormat(Math.floor(player.timer/1000));
-        drawAreaHeader(context,6,strokeColor,timerTime,staticWidth,80,null,30,style)
+    const strokeColor = area.title_stroke_color || "#425a6d";
+    const areaText = wasVictory ? "Victory!" : area.name;
+    const areaUpdated = oldArea !== player.area || oldWorld !== player.world;
+    
+    renderArea(game.getStates(0), game.players, player.pos, areaUpdated);
+    
+    applyScale(context, settings.scale, () => {
+      drawAreaHeader(context, 6, strokeColor, areaText, staticWidth, 40, world);
+      
+      if (settings.timer) {
+        const style = player.victoryTimer > 0 ? 'yellow' : null;
+        const timerTime = secondsFormat(Math.floor(player.timer / 1000));
+        drawAreaHeader(context, 6, strokeColor, timerTime, staticWidth, 80, null, 30, style);
       }
-      const worldSelected = document.getElementById("world");
-      if(worldSelected.selectedIndex == 3 && !loaded) area.text = "this is to import a map, top left in the menu";
-      if(area.text){
-        const text = area.text;
-        const size = (world.selectedIndex == 2 && player.area == 0) ? 35 : 25;
-        drawAreaHeader(context,5,"#006b2c",text,staticWidth,staticHeight-120,null,size,"#00ff6b")
+      
+      if (settings.world.selectedIndex === 3 && !loaded) {
+        area.text = "this is to import a map, top left in the menu";
       }
-    })
+      
+      if (area.text) {
+        const size = world.selectedIndex === 2 && player.area === 0 ? 35 : 25;
+        drawAreaHeader(context, 5, "#006b2c", area.text, staticWidth, staticHeight - 120, null, size, "#00ff6b");
+      }
+    });
   }
+  
   lastRender = time;
 }
 
-function startAnimation(){
-  if (settings.fps_limit == "unlimited") {
+function startAnimation() {
+  const fpsLimit = settings.fps_limit;
+  
+  if (fpsLimit === "unlimited") {
     requestAnimationFrame(animate);
   } else {
-    tick_time = 1000 / parseInt(settings.fps_limit);
-    const gameInterval = new interval(tick_time,animate)
-    gameInterval.run();
+    tick_time = 1000 / parseInt(fpsLimit);
+    
+    if (!settings.v_sync) {
+      const gameInterval = new interval(tick_time, animate);
+      gameInterval.run();
+    } else {
+      let lastTime = 0;
+      
+      function animateRAF(currentTime) {
+        if (currentTime - lastTime >= tick_time) {
+          animate(currentTime);
+          lastTime = currentTime - ((currentTime - lastTime) % tick_time);
+        }
+        requestAnimationFrame(animateRAF);
+      }
+      
+      requestAnimationFrame(animateRAF);
+    }
   }
 }

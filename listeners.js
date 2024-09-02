@@ -17,13 +17,15 @@ const settings = {
   max_stats: false,
   slow_upgrade: false,
   convert_to_legacy_speed: false,
-  nick: 'Ravelfett',
+  nick: 'Sandbox',
   wreath: 'Gold',
   hero: 'Basic',
+  diff: 'Easy',
   tick_delay: 2,
   input_delay: 0,
   scale: 1,
-  cheats: true
+  cheats: true,
+  v_sync: false
 }
 
 const ping = {
@@ -80,10 +82,11 @@ window.onload = () => {
   document.getElementById("connect").onclick = () => {
     const hero = document.getElementById("hero");
     const head = document.getElementById("wreath");
+    settings.world = document.getElementById("world");
     if(head.value){
       const additionalInfo = (head.selectedIndex <= 5) ? "-wreath" : "";
       const formatHead = head.value.toLowerCase().replaceAll(' ', '-') + additionalInfo;
-      hat.src = `texture/${formatHead}.png`;
+      images.hat.src = `texture/${formatHead}.png`;
     }
 
     for(const i in settings){
@@ -95,13 +98,13 @@ window.onload = () => {
         localStorage[i] = settings[i] = finalValue;
       }
     }
-    menu.style.display = "none";
     gamed.style.display = "inline-block";
     inMenu = false;
     const world = document.getElementById("world");
     const starting_pos = new Vector(Math.random() * 7 + 2.5, Math.random() * 10 + 2.5);
     if(world.selectedIndex < world.length - 1) [loadMain,loadHard,loadSecondary][world.selectedIndex]();
     const player = new [Basic,Magmax,Rime,Morfe,Aurora,Necro,Brute,Shade,Chrono,Reaper,Rameses,Cent,Jotunn,Candy,Mirage,Clown,Burst,Lantern,Pole,Polygon,Poop][hero.selectedIndex](starting_pos,5);
+    player.name = settings.nick;
     game.players.push(player);
     if(settings.max_stats){
       player.upgradeToMaxStats();
@@ -111,6 +114,7 @@ window.onload = () => {
     if(game.worlds.length == 0) game.worlds.push(missing_world);
     game.worlds[0].areas[0].load();
     startAnimation();
+    menu.remove();
 
     document.addEventListener("mousemove", Pos, false);
     document.addEventListener("keydown", keydownKeys, false);

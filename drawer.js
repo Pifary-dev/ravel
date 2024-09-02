@@ -1,188 +1,139 @@
 let tilesCanvas;
-let wallCanvas;
 let minimapCanvas;
+let shouldRenderPartially = undefined;
+
+const canvas = document.getElementById("game");
+const context = canvas.getContext("2d");
+let width = canvas.width,
+  height = canvas.height;
+
 function renderArea(area, players, focus, areaUpdated) {
-  var player = players[0];
-  var light = document.createElement('canvas');
-  var lightCtx = light.getContext("2d");
-  light.width = width,
+  if(!images.tiles.complete) return;
+  const player = players[0];
+  const light = document.createElement('canvas');
+  const lightCtx = light.getContext("2d");
+  light.width = width;
   light.height = height;
-  if( (areaUpdated || !tilesCanvas) && tiles.complete){
-    tilesCanvas = renderTiles(area, players, focus);
-    wallCanvas = renderWalls(area, players, focus);
+  if (areaUpdated || !tilesCanvas) {
+    tilesCanvas = undefined; 
     minimapCanvas = undefined;
+    shouldRenderPartially = undefined;
   }
-  if(tilesCanvas)context.drawImage(tilesCanvas,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov);
-  renderFirstEntities(area, players, focus);
-  context.globalAlpha = 1;
-  if(wallCanvas)context.drawImage(wallCanvas,(-focus.x)*fov+width/2+area.pos.x*fov,(-focus.y)*fov+height/2+area.pos.y*fov);
+  renderTiles(area, players, focus);
   renderAssets(area, players, focus);
+  renderStaticEntities(area, players, focus);
   renderPlayers(area, players, focus);
-  renderSecondEntities(area, players, focus);
+  renderEntities(area, players, focus);
 
-  if(area.lighting != 1){
-    for (var i in players) {
-      var player = players[i];
-      
-      if(player.lantern_active && player.lantern){
-        player.lightCount=250/32;
-      } else {player.lightCount = 50/32;}
-
-      var grad = lightCtx.createRadialGradient(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, 0, width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.lightCount * fov);
+  if (area.lighting !== 1) {
+    const renderLight = (x, y, radius) => {
+      const grad = lightCtx.createRadialGradient(x, y, 0, x, y, radius);
       grad.addColorStop(0, "rgba(0, 0, 0, 1)");
       grad.addColorStop(1, "rgba(0, 0, 0, 0)");
       lightCtx.beginPath();
       lightCtx.fillStyle = grad;
-      lightCtx.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.lightCount * fov, 0, 2 * Math.PI, !1);
+      lightCtx.arc(x, y, radius, 0, 2 * Math.PI);
       lightCtx.fill();
-      lightCtx.closePath();
+    };
 
-      if(player.flashlight_active && player.flashlight){
-        if(player.energy<=0){player.flashlight_active = false}
-        var grad = lightCtx.createRadialGradient(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, 0, width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (460 / 32) * fov);
-        grad.addColorStop(0, "rgba(0, 0, 0, 1)");
-        grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-        lightCtx.beginPath();
-        lightCtx.fillStyle = grad;
-        var rotationSpeed = 15;
-        var flashlight_angle = 15;
-        var flashlight_distance = 500;
-        if(!mouse&&player.moving){
-          var angle = player.lastAng;
-          if(player.dirX>0){angle = 0;}
-          else if(player.dirX<0){angle = 180;}
-          if(player.dirY>0){angle = 90;}
-          else if(player.dirY<0){angle = 270;}
-          if(player.dirX>0&&player.dirY>0){angle = 45}
-          else if(player.dirX>0&&player.dirY<0){angle = 315}
-          else if(player.dirX<0&&player.dirY>0){angle = 135}
-          else if(player.dirX<0&&player.dirY<0){angle = 225}
-          player.inputAng = angle;
-        }
-        else if(mouse){
-          var angle = Math.atan2(mousePos.y-(height / 2 + (player.pos.y - focus.y) * fov), mousePos.x-(width / 2 + (player.pos.x - focus.x) * fov));
-          angle = (angle * 180) / Math.PI;
-          player.inputAng = angle;
-        }
-        if(player.inputAng<0){player.inputAng+=360}
-        if(player.inputAng>=360){player.inputAng-=360}
-        var distanceOne = player.inputAng - Math.abs(player.lastAng);
-        if(player.lastAng<=player.inputAng+rotationSpeed&&player.lastAng>=player.inputAng-rotationSpeed){}
-        else if(distanceOne<-180){player.lastAng+=rotationSpeed;}
-        else if(distanceOne>180){player.lastAng-=rotationSpeed;}
-        else if(distanceOne<0){player.lastAng-=rotationSpeed;}
-        else if(distanceOne>0){player.lastAng+=rotationSpeed;}
-        if(player.lastAng>=360)player.lastAng-=360;
-        if(player.lastAng<0)player.lastAng+=360;
-        if(player.lastAng<=player.inputAng+rotationSpeed&&player.lastAng>=player.inputAng-rotationSpeed){player.lastAng = player.inputAng}
+    players.forEach(player => {
+      let playerX = width / 2 + (player.pos.x - focus.x) * fov;
+      let playerY = height / 2 + (player.pos.y - focus.y) * fov;
+      
+      player.lightCount = (player.lantern_active && player.lantern) ? 250/32 : 50/32;
+      renderLight(playerX||0, playerY||0, player.lightCount * fov);
 
-        lightCtx.moveTo(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov);
-        lightCtx.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (flashlight_distance / 32) * fov,(Math.PI/180)*(-flashlight_angle+player.lastAng), (Math.PI/180)*(flashlight_angle+player.lastAng));
-        lightCtx.fill();
-        lightCtx.closePath();
-        }
-    }
-    for(let i in area.entities){
-      for(let j in area.entities[i]){
-        var ent = area.entities[i][j]
-        if(ent.isLight && ent.lightCount>0){
-          var grad1 = lightCtx.createRadialGradient(width / 2 + (area.pos.x + ent.pos.x - focus.x) * fov, height / 2 + (area.pos.y + ent.pos.y - focus.y) * fov, 0, width / 2 + (area.pos.x + ent.pos.x - focus.x) * fov, height / 2 + (area.pos.y + ent.pos.y - focus.y) * fov, ent.lightCount/32 * fov);
-          grad1.addColorStop(0, "rgba(0, 0, 0, 1)");
-          grad1.addColorStop(1, "rgba(0, 0, 0, 0)");
-          lightCtx.beginPath();
-          lightCtx.fillStyle = grad1;
-          lightCtx.arc(width / 2 + (area.pos.x + ent.pos.x - focus.x) * fov, height / 2 + (area.pos.y + ent.pos.y - focus.y) * fov, ent.lightCount/32 * fov, 0, 2 * Math.PI, !1);
-          lightCtx.fill();
-          lightCtx.closePath();
-        }
-      }
-    }
-    for (var i in area.assets) {
-      var zone = area.assets[i];
-      if(zone.type==6||zone.type==8||zone.type==4){
-        let lightPower = 110;
-        if(zone.type==4){
-          lightPower = 250;
-          zone.pos.x += zone.size.x/2;
-          zone.pos.y += zone.size.y/2;
-        }
-        if(area.lighting == 1) continue;
-        var grad1 = lightCtx.createRadialGradient(width / 2 + (area.pos.x + zone.pos.x - focus.x) * fov, height / 2 + (area.pos.y + zone.pos.y - focus.y) * fov, 0, width / 2 + (area.pos.x + zone.pos.x - focus.x) * fov, height / 2 + (area.pos.y + zone.pos.y - focus.y) * fov, (lightPower / 32) * fov);
-        grad1.addColorStop(0, "rgba(0, 0, 0, 1)");
-        grad1.addColorStop(1, "rgba(0, 0, 0, 0)");
+      if (player.flashlight_active && player.flashlight && player.energy > 0) {
+        const flashlightRadius = (460 / 32) * fov;
+        const flashlightAngle = 15;
+        const flashlightDistance = 500 / 32 * fov;
+
+        player.inputAng = mouse ? Math.atan2(mousePos.y - playerY, mousePos.x - playerX) * 180 / Math.PI : 
+                                  player.moving ? Math.atan2(player.dirY, player.dirX) * 180 / Math.PI : player.lastAng;
+        
+        player.inputAng = (player.inputAng + 360) % 360;
+        
+        const angleDiff = ((player.inputAng - player.lastAng + 540) % 360) - 180;
+        player.lastAng += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 15);
+        player.lastAng = (player.lastAng + 360) % 360;
+
         lightCtx.beginPath();
-        lightCtx.fillStyle = grad1;
-        lightCtx.arc(width / 2 + (area.pos.x + zone.pos.x - focus.x) * fov, height / 2 + (area.pos.y + zone.pos.y - focus.y) * fov, (lightPower / 32) * fov, 0, 2 * Math.PI, !1);
+        lightCtx.moveTo(playerX, playerY);
+        lightCtx.arc(playerX, playerY, flashlightDistance, (player.lastAng - flashlightAngle) * Math.PI / 180, (player.lastAng + flashlightAngle) * Math.PI / 180);
+        lightCtx.fillStyle = lightCtx.createRadialGradient(playerX, playerY, 0, playerX, playerY, flashlightRadius);
+        lightCtx.fillStyle.addColorStop(0, "rgba(0, 0, 0, 1)");
+        lightCtx.fillStyle.addColorStop(1, "rgba(0, 0, 0, 0)");
         lightCtx.fill();
-        lightCtx.closePath();
-        if(zone.type==4){
-          zone.pos.x -= zone.size.x/2
-          zone.pos.y -= zone.size.y/2
-        }
       }
-    }
-    lightCtx.beginPath();
-    lightCtx.fillStyle = "rgba(0, 0, 0, " + area.lighting + ")"
+    });
+
+    Object.values(area.entities).flat().concat(area.assets)
+      .filter(entity => (entity.isLight && entity.lightCount > 0) || ([6, 8, 4].includes(entity.type) && entity.size))
+      .forEach(entity => {
+        if (entity && entity.pos) {
+          const lightPower = entity.type === 4 ? 250 : (entity.lightCount || 110);
+          let entityX = width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov;
+          let entityY = height / 2 + (area.pos.y + entity.pos.y - focus.y) * fov;
+          if (entity.type === 4 && entity.size) {
+            entityX += entity.size.x / 2 * fov;
+            entityY += entity.size.y / 2 * fov;
+          }
+          
+          renderLight(entityX||0, entityY||0, (lightPower / 32) * fov);
+        }
+      });
+
+    lightCtx.fillStyle = `rgba(0, 0, 0, ${area.lighting})`;
     lightCtx.fillRect(0, 0, width, height);
-    lightCtx.fill();
-    lightCtx.closePath();
-    context.globalCompositeOperation = "destination-in"
-    context.drawImage(light, 0, 0)
-    context.globalCompositeOperation = "source-over"
+
+    context.globalCompositeOperation = "destination-in";
+    context.drawImage(light, 0, 0);
+    context.globalCompositeOperation = "source-over";
   } 
   applyScale(context,settings.scale,()=>{
     renderUI(area, players, focus);
     renderMinimap(area, players, focus);
-    if (players[0].overlay){
+    if (player.overlay) {
       context.beginPath();
       context.font = "22px cursive";
-      context.fillStyle = "gray";
-      context.strokeStyle = "gray";
       context.textAlign = "start";
       context.lineWidth = 0.5;
-      const avgPing = (ping.array.length > 5) ? Math.round(ping.array.reduce((e,t)=>e+t)/ping.array.length) : settings.tick_delay*33 + settings.input_delay;
-      const diff = document.getElementById("diff").value;
-      const devStat = "Delay: " + avgPing + ", FPS: " + Math.round(1000/frameTime);
-      let offset = 0;
-      if(diff == "Easy"){
-        const deathCounter = (settings.dev) ? "Deaths: " + players[0].deathCounter + ", " + devStat : "Deaths: " + players[0].deathCounter; 
-        context.fillText(deathCounter, 0, 20);
-        context.strokeText(deathCounter, 0, 20);
-      } else if (diff == "Medium"){
-        const lives = (settings.dev) ? "Lives: " + players[0].lives + ", " + devStat : "Lives: " + players[0].lives;
-        let liveColor;
-        switch(players[0].lives){
-          case 3: liveColor = "green"
-          break;
-          case 2: liveColor = "yellow"
-          break;
-          case 1: liveColor = "orange"
-          break;
-          case 0: liveColor = "red"
-          break;
-        }
-        context.fillStyle = liveColor;
-        context.strokeStyle = liveColor; 
-        context.fillText(lives, 0, 20);
-        context.strokeText(lives, 0, 20);
+
+      const roughDelay = settings.fps_limit === "unlimited" ? 0 : Math.round((settings.tick_delay * (1000 / parseInt(settings.fps_limit))) + settings.input_delay);
+      const avgPing = ping.array.length > 5 ? Math.round(ping.array.reduce((e, t) => e + t) / ping.array.length) : roughDelay;
+      const devStat = `Delay: ${avgPing}, FPS: ${Math.round(1000 / frameTime)}`;
+
+      let text, color;
+      if (settings.diff === "Easy") {
+        text = settings.dev ? `Deaths: ${player.deathCounter}, ${devStat}` : `Deaths: ${player.deathCounter}`;
+        color = "gray";
+      } else if (settings.diff === "Medium") {
+        text = settings.dev ? `Lives: ${player.lives}, ${devStat}` : `Lives: ${player.lives}`;
+        color = ["red", "orange", "yellow", "green"][player.lives] || "gray";
       } else if (settings.dev) {
-        const text = devStat;
+        text = devStat;
+        color = "gray";
+      }
+
+      if (text) {
+        context.fillStyle = context.strokeStyle = color;
         context.fillText(text, 0, 20);
         context.strokeText(text, 0, 20);
       }
-      if(settings.dev){
-        context.fillStyle = "gray";
-        context.strokeStyle = 'gray';
-        const safePoint = (player.safePoint) ? "Safe Point: {X:" + Math.round(player.safePoint.pos.x*fov) + ", Y: " + Math.round(player.safePoint.pos.y*fov) + "} ([), to clear (])" : "None ([)"; 
-        context.fillText(safePoint, 0, 45+offset);
-        context.strokeText(safePoint, 0, 45+offset);
-        const playerPos = "Player: {X:" + Math.round(player.pos.x*fov) + ", Y: " + Math.round(player.pos.y*fov) + ", Speed: "+greaterMax(player)+"}"; 
-        context.fillText(playerPos, 0, 70+offset);
-        context.strokeText(playerPos, 0, 70+offset);
-        const timerClear = "Timer-clear: "+settings.timer_clear+" (P), (O)";
-        context.fillText(timerClear, 0, 95+offset);
-        context.strokeText(timerClear, 0, 95+offset);
+
+      if (settings.dev) {
+        context.fillStyle = context.strokeStyle = "gray";
+        const texts = [
+          player.safePoint ? `Safe Point: {X:${Math.round(player.safePoint.pos.x * fov)}, Y:${Math.round(player.safePoint.pos.y * fov)}} ([), to clear (])` : "None ([)",
+          `Player: {X:${Math.round(player.pos.x * fov)}, Y:${Math.round(player.pos.y * fov)}, Speed:${greaterMax(player)}}`,
+          `Timer-clear: ${settings.timer_clear} (P), (O)`
+        ];
+        texts.forEach((text, i) => {
+          context.fillText(text, 0, 45 + i * 25);
+          context.strokeText(text, 0, 45 + i * 25);
+        });
       }
+
       context.fill();
       context.stroke();
       context.closePath();
@@ -190,390 +141,389 @@ function renderArea(area, players, focus, areaUpdated) {
   });
 }
 
-function renderTiles(area, players, focus) {
-  var boundary = area.boundary; let wid = boundary.w*fov, heig = boundary.h*fov, world = game.worlds[players[0].world];
-  var tile_image = tiles;
-  const can = createOffscreenCanvas(wid,heig)
-  const ctx = can.getContext('2d');
-  const zoneCanvas = createOffscreenCanvas(128,128);
-  const zoneCTX = zoneCanvas.getContext('2d');
-	ctx.scale(fov/32,fov/32);
-  for (var i in area.zones) {
-    var zone = area.zones[i];
-    var textureType = (zone.type == 6) ? 0 : zone.type;
-    if(zone.type == 4){textureType = 2;}
-    else if(zone.type == 5){textureType = 4;}
-		zoneCTX.drawImage(tile_image,textureType*128,area.texture*128,128,128,0,0,128,128);
-    ctx.imageSmoothingEnabled = true;
-		var pattern=ctx.createPattern(zoneCanvas,"repeat");
-    ctx.fillStyle=pattern;
-    ctx.beginPath();
-    ctx.fillRect(Math.round((zone.pos.x)*32),Math.round((zone.pos.y)*32),zone.size.x*32,zone.size.y*32);
-    ctx.closePath();
-    ctx.fillStyle = (zone.background_color) ? zone.background_color : area.background_color;
-    ctx.beginPath();
-    ctx.fillRect(Math.round((zone.pos.x)*32),Math.round((zone.pos.y)*32),zone.size.x*32,zone.size.y*32);
-    ctx.closePath();
-  }
-  return can;
-}
-
-function renderFirstEntities(area, players, focus) {
-  var entities = area.entities //entities[i] = entities[i].sort((a,b)=>a.radius-b.radius);
-  for (const i in entities) {
-    context.globalAlpha = 1;
-    for (const j in entities[i]) {
-      const entity = entities[i][j];
-      if (entity.renderFirst) {
-        if (i=="shield") {
-          context.save()
-          context.translate((width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov), (height / 2 + (area.pos.y + entity.pos.y - focus.y) * fov))
-          context.rotate(entity.rot)
-          context.beginPath();
-          context.fillStyle = "black";
-          context.fillRect(-entity.size.x*fov,-entity.size.y*fov, entity.size.x*fov*2, entity.size.y*fov*2);
-          context.fill();
-          context.closePath();
-          context.restore();
-        }else {
-          context.beginPath();
-          context.fillStyle = entity.color;
-          context.globalAlpha = 1;
-          if ((entity.Harmless || entity.healing>0)&&!entity.texture) {
-            context.globalAlpha = 0.4;
-            if(entity.healing>0){
-              context.fillStyle="rgb(0, 221, 0)";
-            }
-          }
-          if(entity.radius * fov>0){
-          if(!entity.texture){
-            context.arc(width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov, height / 2 + (area.pos.y + entity.pos.y - focus.y) * fov, entity.radius * fov, 0, Math.PI * 2, true);
-            context.fill();
-            context.closePath();
-          }
-          else{
-            var Texture;
-            switch(entity.texture){
-              case "pumpkinOn": Texture = pumpkinOn;
-              break;
-              case "pumpkinOff": Texture = pumpkinOff;
-              break;
-              case "sweet_tooth_item": Texture = sweet_tooth_item;
-              break;
-              case "vengeance_projectile": Texture = vengeance_projectile;
-            }
-            if(Texture){
-              context.imageSmoothingEnabled = true;
-              context.drawImage(Texture,width / 2 + (area.pos.x + entity.pos.x - focus.x-entity.radius) * fov, height / 2 + (area.pos.y + entity.pos.y - focus.y-entity.radius) * fov,entity.radius * fov*2,entity.radius * fov*2)
-              Texture = 0;
-              context.imageSmoothingEnabled = false;
-            }
-          }
-          if (entity.outline && settings.outline) {
-            context.strokeStyle = "black";
-            if(entity.texture) context.arc(width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov, height / 2 + (area.pos.y + entity.pos.y - focus.y) * fov, entity.radius * fov, 0, Math.PI * 2);
-            context.lineWidth = 2/(32/fov);
-            context.stroke()
-          }
-        }
-        }
+function renderStaticEntities(area, players, focus) {
+  context.globalAlpha = 1;
+  for (const entityType in area.static_entities) {
+    const entities = area.static_entities[entityType];
+    for (const entity of entities) {
+      const enemyX = width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov;
+      const enemyY = height / 2 + (area.pos.y + entity.pos.y - focus.y) * fov;
+      const enemyRadius = (entity.scaleOscillator ? entity.scaleOscillator.value : 1) * entity.radius * fov;
+      if (enemyX + enemyRadius < 0 || enemyX - enemyRadius > width || 
+        enemyY + enemyRadius < 0 || enemyY - enemyRadius > height) {
+        continue;
       }
+      renderNormalEntity(context, entity, enemyX, enemyY, enemyRadius);
     }
   }
 }
+
+function renderEntities(area, players, focus) {
+  const ctx = context;
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const areaX = area.pos.x;
+  const areaY = area.pos.y;
+  const focusX = focus.x;
+  const focusY = focus.y;
+
+  // Render effects first
+  for (const entityType in area.entities) {
+    const entities = area.entities[entityType];
+    if (!entities[0]) continue;
+    if (!entities[0].aura) continue;
+    const len = entities.length;
+    for (let i = 0; i < len; i++) {
+      const entity = entities[i];
+
+      const effectX = halfWidth + (areaX + entity.pos.x - focusX) * fov;
+      const effectY = halfHeight + (areaY + entity.pos.y - focusY) * fov;
+      const effectRadius = entity.auraSize * fov;
+
+      // Check if the entity is within the visible range
+      if (effectX + effectRadius < 0 || effectX - effectRadius > width || 
+          effectY + effectRadius < 0 || effectY - effectRadius > height) {
+        continue;
+      }
+
+      // Render effect
+      ctx.beginPath();
+      ctx.fillStyle = entity.auraColor;
+      ctx.arc(effectX, effectY, effectRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  for (const entityType in area.entities) {
+    const entities = area.entities[entityType];
+    const len = entities.length;
+
+    for (let i = 0; i < len; i++) {
+      const entity = entities[i];
+
+      const entityX = halfWidth + (areaX + entity.pos.x - focusX) * fov;
+      const entityY = halfHeight + (areaY + entity.pos.y - focusY) * fov;
+      const radius = entity.radius * fov;
+
+      // Check if the entity is within the visible range
+      if (entityX + radius < 0 || entityX - radius > width || entityY + radius < 0 || entityY - radius > height) {
+        continue;
+      }
+
+      // Render entity
+      if (entity.shatterTime > 0) {
+        renderShatteredEntity(ctx, entity, entityX, entityY, radius);
+      } else {
+        renderNormalEntity(ctx, entity, entityX, entityY, radius);
+      }
+
+      // Render provoked indicator if needed
+      entity.provoked && renderProvokedIndicator(ctx, entityX, entityY, radius);
+    }
+  }
+}
+
+function renderShatteredEntity(ctx, entity, x, y, radius) {
+  ctx.globalAlpha = 0.4;
+  const shatterProgress = 4000 - entity.shatterTime;
+  const quarterRadius = radius / 4;
+  const fragmentationFactor = (shatterProgress - 500) / 500;
+  const healingFactor = (shatterProgress - 1000) / 3000;
+
+  if (shatterProgress < 250) {
+    ctx.beginPath();
+    ctx.fillStyle = entity.color;
+    ctx.arc(x, y, Math.max(quarterRadius, radius * (1 - shatterProgress / 250)), 0, 2 * Math.PI, false);
+    ctx.fill();
+    ctx.closePath();
+  } else if (shatterProgress < 500) {
+    ctx.beginPath();
+    ctx.fillStyle = entity.color;
+    ctx.arc(x, y, quarterRadius, 0, 2 * Math.PI, false);
+    ctx.fill();
+    ctx.closePath();
+  } else if (shatterProgress < 1000) {
+    let rotationAngle = 5 * fragmentationFactor;
+    for (let i = 0; i < 8; i++) {
+      ctx.beginPath();
+      ctx.fillStyle = entity.color;
+      ctx.arc(
+        x + (Math.cos(rotationAngle) * fragmentationFactor * radius),
+        y + (Math.sin(rotationAngle) * fragmentationFactor * radius),
+        radius / 3,
+        0,
+        2 * Math.PI,
+        false
+      );
+      rotationAngle += 2 * Math.PI / 3;
+      ctx.fill();
+      ctx.closePath();
+    }
+  } else {
+    let rotationAngle = 5 - 3 * healingFactor;
+    for (let i = 0; i < 8; i++) {
+      ctx.beginPath();
+      ctx.fillStyle = entity.color;
+      ctx.arc(
+        x + Math.cos(rotationAngle) * (radius - healingFactor * radius),
+        y + Math.sin(rotationAngle) * (radius - healingFactor * radius),
+        Math.min(radius, Math.max(quarterRadius, radius * healingFactor)),
+        0,
+        2 * Math.PI,
+        false
+      );
+      rotationAngle += 2 * Math.PI / 3;
+      ctx.fill();
+      ctx.closePath();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function renderNormalEntity(ctx, entity, x, y, radius) {
+  ctx.globalAlpha = entity.static ? 1 : (entity.alpha ?? (entity.Harmless || entity.healing > 0 ? 0.4 : 1));
+  ctx.beginPath();
+
+  if (entity.color_change) {
+    const [r, g, b] = hexToRgb(entity.color);
+    ctx.fillStyle = `rgb(${r + entity.color_change},${g - 1.45 * entity.color_change},${b - 1.3 * entity.color_change})`;
+  } else {
+    ctx.fillStyle = entity.healing > 0 ? "rgb(0, 221, 0)" : entity.color;
+  }
+
+  if (entity.texture) {
+    renderTexturedEntity(ctx, entity, x, y, radius);
+  } else {
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  if (entity.decayed) {
+    ctx.fillStyle = "rgba(0, 0, 128, 0.2)";
+    ctx.fill();
+  }
+  if (entity.defended) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+    ctx.fill();
+  }
+  if (entity.repelled) {
+    ctx.fillStyle = "rgba(255, 230, 200, 0.5)";
+    ctx.fill();
+  }
+
+  if (entity.outline && settings.outline) {
+    if (entity.texture) ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.lineWidth = 2 / (32/fov);
+    ctx.strokeStyle = "black";
+    ctx.stroke();
+  }
+
+  if (entity.releaseTime > 1000 && entity.clock >= entity.releaseTime - 500) {
+    ctx.fillStyle = `rgba(1, 1, 1, ${(500 - Math.max(entity.releaseTime - entity.clock, 0)) / 500 * 0.2 + 0.05})`;
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+}
+
+function renderTexturedEntity(ctx, entity, x, y, radius) {
+  let texture;
+  switch (entity.texture) {
+    case "pumpkinOn":
+      texture = images.pumpkinOn;
+      break;
+    case "pumpkinOff":
+      texture = images.pumpkinOff;
+      break;
+    case "sweet_tooth_item": 
+      texture = images.sweet_tooth_item;
+      break;
+    case "vengeance_projectile": 
+      texture = images.vengeance_projectile;
+      break;
+  }
+  if (texture) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(texture, x - radius, y - radius, radius * 2, radius * 2);
+    ctx.imageSmoothingEnabled = false;
+  }
+}
+
+function renderProvokedIndicator(ctx, x, y, radius) {
+  ctx.fillStyle = "rgba(161, 167, 172, 1)";
+  ctx.font = "24px Tahoma, Verdana, Segoe, sans-serif";
+  ctx.fillText("!", x, y - radius - 0.2 * fov);
+}
+
 function renderPlayers(area, players, focus) {
   context.imageSmoothingEnabled = true;
-  context.globalAlpha = 1;
-  for (var i in players) {
-    const player = players[i];
+
+  const auraTypes = {
+    0: { getRadius: player => player.getSugarRushRadius?.() || 0, color: "rgba(255, 128, 189, 0.25)" },
+    1: { getRadius: player => player.getParalysisRadius?.() || 0, color: "rgba(77, 233, 242, 0.2)" },
+    2: { getRadius: player => player.getDistortRadius?.() || 0, color: "rgba(255, 0, 0, 0.2)" },
+    3: { getRadius: player => player.getStompRadius?.() || 0, color: "rgba(153, 62, 6, 0.2)" },
+    4: { getRadius: () => 150 / 32, color: "rgba(76, 240, 161, 0.25)" },
+  };
+
+  const heavyBalloonColors = ["rgb(2, 135, 4, .8)","rgb(228, 122, 42, .8)","rgb(255, 219, 118, .8)","rgb(4, 70, 255, .8)", "rgb(216, 48, 162, .8)"];
+
+  for (const player of players) {
+    const playerX = width / 2 + (player.pos.x - focus.x) * fov;
+    const playerY = height / 2 + (player.pos.y - focus.y) * fov;
+    const playerRadius = player.radius * fov;
+
+    // Render bandage
     if (player.bandage || player.isUnbandaging) {
-      const bandage_radius = (player.isUnbandaging) ? 1 : 3;
       context.beginPath();
       context.fillStyle = "#dedabe";
-      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (player.radius + bandage_radius / 32) * fov, 0, Math.PI * 2, false);
+      context.arc(playerX, playerY, (player.radius + (player.isUnbandaging ? 1 : 3) / 32) * fov, 0, Math.PI * 2);
       context.fill();
-      if(!player.isUnbandaging) {
-        context.strokeStyle="#aaa791";
+      if (!player.isUnbandaging) {
+        context.strokeStyle = "#aaa791";
         context.lineWidth = 1;
         context.stroke();
       }
-      context.closePath();
     }
-    if(player.aura){
-      const auraTypes = {
-        0: { radius: player.getSugarRushRadius ? player.getSugarRushRadius() : 0, color: "rgba(255, 128, 189, 0.25)" },
-        1: { radius: player.getParalysisRadius ? player.getParalysisRadius() : 0, color: "rgba(77, 233, 242, 0.2)" },
-        2: { radius: player.getDistortRadius ? player.getDistortRadius() : 0, color: "rgba(255, 0, 0, 0.2)" },
-        3: { radius: player.getStompRadius ? player.getStompRadius() : 0, color: "rgba(153, 62, 6, 0.2)" },
-        4: { radius: 190 / 32, color: "rgba(76, 240, 161, 0.25)" },
-      };
+
+    // Render aura
+    if (player.aura) {
       const aura = auraTypes[player.auraType];
       if (aura) {
         context.beginPath();
         context.fillStyle = aura.color;
-        context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, aura.radius * fov, 0, Math.PI * 2, true);
+        context.arc(playerX, playerY, aura.getRadius(player) * fov, 0, Math.PI * 2);
         context.fill();
-        context.closePath();
       }
     }
 
-    if(player.heavyBallon){
-      const colors = ["rgb(2, 135, 4, .8)","rgb(228, 122, 42, .8)","rgb(255, 219, 118, .8)","rgb(4, 70, 255, .8)", "rgb(216, 48, 162, .8)"]
+    // Render heavy balloon
+    if (player.heavyBallon) {
       context.beginPath();
-      context.fillStyle = colors[player.prevColor]
-      context.strokeStyle = "black"
-      context.lineWidth = 2/(32/fov);
-      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.heavyBallonSize/32 * fov, 0, Math.PI * 2, true);
+      context.fillStyle = heavyBalloonColors[player.prevColor];
+      context.arc(playerX, playerY, player.heavyBallonSize / 32 * fov, 0, Math.PI * 2);
       context.fill();
-      if(settings.outline)context.stroke();
-      context.closePath();
+      if (settings.outline) {
+        context.strokeStyle = "black";
+        context.lineWidth = 2 / (32 / fov);
+        context.stroke();
+      }
     }
-    if(player.ghost && player.god){
-      context.fillStyle = "rgba(132,0,85,.5)"
-    } else if(player.ghost){
+
+    // Set player fill style
+    if (player.ghost && player.god) {
+      context.fillStyle = "rgba(132,0,85,.5)";
+    } else if (player.ghost) {
       context.fillStyle = "rgba(139,0,0,.5)";
-    } else if (player.god&&!player.reaperShade) {
+    } else if (player.god && !player.reaperShade) {
       context.fillStyle = "purple";
     } else {
-      context.fillStyle = player.tempColor;
-      let rgb = hexToRgb(player.tempColor);
-      if(player.night){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.6)`}
-      if(player.mortar){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},${1-player.mortarTime/1000})`}
-      if(player.fusion){context.fillStyle="rgba(60, 60, 75)"}
-      if(player.isDead){context.fillStyle=`rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.4)`}
+      const rgb = hexToRgb(player.tempColor);
+      context.fillStyle = player.night ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.6)` :
+                          player.mortar ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]},${1-player.mortarTime/1000})` :
+                          player.fusion ? "rgba(60, 60, 75)" :
+                          player.isDead ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.4)` :
+                          player.tempColor;
     }
+
+    // Render player shape
     context.beginPath();
-    if (player.type==7) {
-      if (player.shape>0) {
-        context.moveTo(width / 2 + (player.pos.x - focus.x + player.radius * Math.cos(-Math.PI/2)) * fov, height / 2 + (player.pos.y - focus.y + player.radius * Math.sin(-Math.PI/2)) * fov);
-        var numberOfSides=4;
-        if (player.shape==1) {
-          numberOfSides=4;
-        }
-        if (player.shape==2) {
-          numberOfSides=3;
-        }
-        if (player.shape==3) {
-          numberOfSides=5;
-        }
-        for (var i = 1; i <= numberOfSides; i += 1) {
-          context.lineTo(width / 2 + (player.pos.x - focus.x + player.radius * Math.cos(i * 2 * Math.PI / numberOfSides-Math.PI/2)) * fov,  height / 2 + (player.pos.y - focus.y + player.radius * Math.sin(i * 2 * Math.PI / numberOfSides-Math.PI/2)) * fov);
-        }
-      }else {
-        context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.radius * fov, 0, Math.PI * 2, true);
+    if (player.type === 7 && player.shape > 0) {
+      const numberOfSides = player.shape === 1 ? 4 : player.shape === 2 ? 3 : player.shape === 3 ? 5 : 4;
+      context.moveTo(playerX + playerRadius * Math.cos(-Math.PI/2), playerY + playerRadius * Math.sin(-Math.PI/2));
+      for (let i = 1; i <= numberOfSides; i++) {
+        context.lineTo(
+          playerX + playerRadius * Math.cos(i * 2 * Math.PI / numberOfSides - Math.PI/2),
+          playerY + playerRadius * Math.sin(i * 2 * Math.PI / numberOfSides - Math.PI/2)
+        );
       }
-    } else {
-      if(!player.reaperShade)if(!player.mortar)context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.radius * fov, 0, Math.PI * 2, true);
+    } else if (!player.reaperShade && !player.mortar) {
+      context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
     }
     context.fill();
-    context.closePath();
-    if(player.poison){
-      var poisoness = (player.poisonTimeLeft-player.poisonTime)/player.poisonTimeLeft;
+
+    // Render effects (poison, frozen, burning, lead)
+    if (player.poison) {
+      context.fillStyle = `rgba(140, 1, 183,${(player.poisonTimeLeft-player.poisonTime)/player.poisonTimeLeft})`;
       context.beginPath();
-      context.fillStyle = "rgb(140, 1, 183,"+poisoness+")";
-      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (player.radius+0.5/32) * fov, 0, Math.PI * 2, true);
+      context.arc(playerX, playerY, (player.radius + 0.5/32) * fov, 0, Math.PI * 2);
       context.fill();
     }
-    if(player.frozen){
-      var iceness = Math.min((player.frozenTimeLeft-player.frozenTime)/player.frozenTimeLeft,0.7);
+    if (player.frozen) {
+      context.fillStyle = `rgba(137, 231, 255,${Math.min((player.frozenTimeLeft-player.frozenTime)/player.frozenTimeLeft, 0.7)})`;
       context.beginPath();
-      context.fillStyle = "rgb(137, 231, 255,"+iceness+")";
-      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, (player.radius+0.5/32) * fov, 0, Math.PI * 2, true);
+      context.arc(playerX, playerY, (player.radius + 0.5/32) * fov, 0, Math.PI * 2);
       context.fill();
     }
-    if(player.burningTimer>0){
+    if (player.burningTimer > 0) {
+      context.fillStyle = `rgba(0, 0, 0,${player.burningTimer/1000})`;
       context.beginPath();
-      context.fillStyle = "rgb(0, 0, 0,"+player.burningTimer/1000+")";
-      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.radius * fov, 0, Math.PI * 2, true);
+      context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       context.fill();
     }
-    if(player.leadTimeLeft>0){
-      var leadEffect = 1-Math.min((player.leadTime-player.leadTimeLeft)/player.leadTime,0.75);
+    if (player.leadTimeLeft > 0) {
+      context.fillStyle = `rgba(33, 33, 39,${1-Math.min((player.leadTime-player.leadTimeLeft)/player.leadTime, 0.75)})`;
       context.beginPath();
-      context.fillStyle = "rgb(33, 33, 39,"+leadEffect+")";
-      context.arc(width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov, player.radius * fov, 0, Math.PI * 2, true);
+      context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       context.fill();
     }
-    context.beginPath();
-    if(document.getElementById("wreath").value!="None")if(!player.reaperShade)context.drawImage(hat, width / 2 + (player.pos.x - focus.x) * fov - (25*((player.radius*32)/15)) / 32 * fov, height / 2 + (player.pos.y - focus.y) * fov - (25*((player.radius*32)/15)) / 32 * fov, 50 / 32 * fov * ((player.radius*32)/15), 50 / 32 * fov * ((player.radius*32)/15));
-    context.closePath();
-    context.beginPath();
-    if(document.getElementById("wreath").value.endsWith("Crown"))if(!player.reaperShade)context.drawImage(gem, width / 2 + (player.pos.x - focus.x) * fov - (25*((player.radius*32)/15)) / 32 * fov, height / 2 + (player.pos.y - focus.y) * fov - (25*((player.radius*32)/15)) / 32 * fov, 50 / 32 * fov * ((player.radius*32)/15), 50 / 32 * fov * ((player.radius*32)/15));
-    context.closePath();
-    context.beginPath();
-    context.fillStyle = "blue";
-    if(!settings.cooldown)context.fillStyle = "rgb(255, 255, 0)";
-    else if(player.sweetToothEffect)context.fillStyle = "rgb(255, 43, 143)";
-    if(!player.reaperShade)context.fillRect(width / 2 + (player.pos.x - focus.x) * fov - 18 / 32 * fov, height / 2 + (player.pos.y - focus.y) * fov - player.radius * fov - 8 / 32 * fov, 36 / 32 * fov * player.energy / player.maxEnergy, 7 / 32 * fov);
-    context.fill();
-    context.closePath();
-    context.beginPath();
-    context.strokeStyle = "rgb(68, 118, 255)";
-    context.lineWidth = 1/(32/fov);
-    if(!settings.cooldown)context.strokeStyle = "rgb(211, 211, 0)";
-    else if(player.sweetToothEffect)context.strokeStyle = "rgb(212, 0, 100)";
-    if(!player.reaperShade)context.strokeRect(width / 2 + (player.pos.x - focus.x) * fov - 18 / 32 * fov, height / 2 + (player.pos.y - focus.y) * fov - player.radius * fov - 8 / 32 * fov, 36 / 32 * fov, 7 / 32 * fov);
-    context.closePath();
-    context.beginPath();
-    context.fillStyle = "black";
-    context.font = 12 / 32 * fov + "px Tahoma, Verdana, Segoe, sans-serif";
-    context.textAlign = "center";
-    if(!player.reaperShade)context.fillText(player.name, width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov - player.radius * fov - 11 / 32 * fov);
-    context.closePath();
-    if(player.isDead){
-      context.textAlign="center";
-      context.fillStyle="red";
-      context.font = 16 / 32 * fov + "px Tahoma, Verdana, Segoe, sans-serif";
-      context.fillText((Math.abs(Math.floor(player.deathTimer)/1e3)).toFixed(0),width / 2 + (player.pos.x - focus.x) * fov, height / 2 + (player.pos.y - focus.y) * fov + 6 * settings.scale)
+
+    // Constants for rendering
+    const WREATH_SIZE = 50;
+    const ENERGY_BAR_WIDTH = 36;
+    const ENERGY_BAR_HEIGHT = 7;
+    const ENERGY_BAR_Y_OFFSET = 8;
+    const NAME_FONT_SIZE = 12;
+    const NAME_Y_OFFSET = 11;
+    const DEATH_TIMER_FONT_SIZE = 16;
+    const DEATH_TIMER_Y_OFFSET = 6;
+
+    // Render wreath and crown
+    if (!player.reaperShade) {
+      const wreathValue = settings.wreath;
+      if (wreathValue !== "None") {
+        const wreathSize = WREATH_SIZE / 32 * fov * ((player.radius * 32) / 15);
+        const wreathPosition = playerX - wreathSize / 2;
+        context.drawImage(images.hat, wreathPosition, playerY - wreathSize / 2, wreathSize, wreathSize);
+      }
+      if (wreathValue.endsWith("Crown")) {
+        const crownSize = WREATH_SIZE / 32 * fov * ((player.radius * 32) / 15);
+        const crownPosition = playerX - crownSize / 2;
+        context.drawImage(images.gem, crownPosition, playerY - crownSize / 2, crownSize, crownSize);
+      }
+    }
+
+    // Render energy bar
+    if (!player.reaperShade) {
+      const energyBarWidth = ENERGY_BAR_WIDTH / 32 * fov;
+      const energyBarHeight = ENERGY_BAR_HEIGHT / 32 * fov;
+      const energyBarY = playerY - player.radius * fov - ENERGY_BAR_Y_OFFSET / 32 * fov;
+      
+      context.fillStyle = !settings.cooldown ? "rgb(255, 255, 0)" : player.sweetToothEffect ? "rgb(255, 43, 143)" : "blue";
+      context.fillRect(playerX - energyBarWidth / 2, energyBarY, energyBarWidth * player.energy / player.maxEnergy, energyBarHeight);
+      
+      context.strokeStyle = !settings.cooldown ? "rgb(211, 211, 0)" : player.sweetToothEffect ? "rgb(212, 0, 100)" : "rgb(68, 118, 255)";
+      context.lineWidth = 1 / (32 / fov);
+      context.strokeRect(playerX - energyBarWidth / 2, energyBarY, energyBarWidth, energyBarHeight);
+    }
+
+    // Render player name
+    if (!player.reaperShade) {
+      context.fillStyle = "black";
+      context.font = `${NAME_FONT_SIZE / 32 * fov}px Tahoma, Verdana, Segoe, sans-serif`;
+      context.textAlign = "center";
+      context.fillText(player.name, playerX, playerY - player.radius * fov - NAME_Y_OFFSET / 32 * fov);
+    }
+
+    // Render death timer
+    if (player.isDead) {
+      context.fillStyle = "red";
+      context.font = `${DEATH_TIMER_FONT_SIZE / 32 * fov}px Tahoma, Verdana, Segoe, sans-serif`;
+      context.fillText((Math.abs(Math.floor(player.deathTimer) / 1000)).toFixed(0), playerX, playerY + DEATH_TIMER_Y_OFFSET * settings.scale);
     }
   }
 }
 
-function renderSecondEntities(area, players, focus) {
-  var entities = area.entities
-  for (var i in entities) {
-    for (var j in entities[i]) {
-      if (entities[i][j].aura) {
-        context.beginPath();
-        context.fillStyle = entities[i][j].auraColor;
-        context.arc(width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov, entities[i][j].auraSize * fov, 0, Math.PI * 2, true);
-        context.fill();
-        context.closePath();
-      }
-    }
-  }
-  for (var i in entities) {
-    for (var j in entities[i]) {
-      context.globalAlpha = 1;
-      if (!entities[i][j].renderFirst) {
-        if (entities[i][j].shatterTime > 0) {
-          context.globalAlpha = 0.4;
-          var midX = width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov;
-          var midY = height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov;
-          var l = entities[i][j].radius / 4;
-          var s = entities[i][j].radius;
-          var u = 4e3 - entities[i][j].shatterTime;
-          var f = (u - 500) / 500;
-          var h = (u - 1e3) / 3e3;
-          if (u < 250) {
-            console.log("1");
-            context.beginPath();
-            context.fillStyle = entities[i][j].color;
-            context.arc(midX, midY, Math.max(l, Math.max(l, entities[i][j].radius * (1 - u / 250))) * fov, 0, 2 * Math.PI, !1);
-            context.fill();
-            context.closePath()
-          } else if (u < 500) {
-            console.log("2");
-            context.beginPath();
-            context.fillStyle = entities[i][j].color;
-            context.arc(midX, midY, l * fov, 0, 2 * Math.PI, !1);
-            context.fill();
-            context.closePath()
-          } else if (u < 1e3) {
-            console.log("3");
-            let n = 5 * f;
-            for (var o = 0; o < 8; o++) {
-              context.beginPath();
-              context.fillStyle = entities[i][j].color;
-              context.arc(midX + (Math.cos(n) * f * s) * fov, midY + (Math.sin(n) * f * s) * fov, entities[i][j].radius / 3 * fov, 0, 2 * Math.PI, !1);
-              n += 2 * Math.PI / 3;
-              context.fill();
-              context.closePath();
-            }
-          } else {
-            console.log("4");
-            let n = 5 - 3 * h;
-            for (var o = 0; o < 8; o++) {
-              context.beginPath();
-              context.fillStyle = entities[i][j].color;
-              context.arc(midX + Math.cos(n) * (s - h * s) * fov, midY + Math.sin(n) * (s - h * s) * fov, Math.min(entities[i][j].radius, Math.max(l, entities[i][j].radius * h)) * fov, 0, 2 * Math.PI, !1);
-              n += 2 * Math.PI / 3;
-              context.fill();
-              context.closePath();
-            }
-          } context.globalAlpha = 1;
-        } else {
-          context.globalAlpha = 1;
-          context.beginPath();
-          context.fillStyle = entities[i][j].color;
-          if ((entities[i][j].Harmless || entities[i][j].healing>0)&&!entities[i][j].texture) {
-            context.globalAlpha = 0.4;
-          }
-          if (entities[i][j].alpha){
-            if(!entities[i][j].Harmless){context.globalAlpha = entities[i][j].alpha;}
-          }
-          if (entities[i][j].color_change){
-            const rgbColor = hexToRgb(entities[i][j].color);
-            rgbColor[0] = parseInt(rgbColor[0])+entities[i][j].color_change;
-            rgbColor[1] = parseInt(rgbColor[1])-1.45*entities[i][j].color_change;
-            rgbColor[2] = parseInt(rgbColor[2])-1.3*entities[i][j].color_change;
-            context.fillStyle = `rgb(${rgbColor[0]},${rgbColor[1]},${rgbColor[2]})`;
-          }
-          if(entities[i][j].healing>0){
-            context.fillStyle="rgb(0, 221, 0)";
-          }
-          context.lineWidth = 2/(32/fov);
-          context.strokeStyle = "black"
-          if(entities[i][j].radius * fov>0){
-            if(!entities[i][j].texture){context.arc(width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov, entities[i][j].radius * fov, 0, Math.PI * 2, true);}
-            else{
-              var Texture;
-              switch(entities[i][j].texture){
-                case "pumpkinOn": Texture = pumpkinOn;
-                break;
-                case "pumpkinOff": Texture = pumpkinOff;
-                break;
-              }
-              if(Texture){
-                context.imageSmoothingEnabled = true;
-                context.drawImage(Texture,width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x-entities[i][j].radius) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y-entities[i][j].radius) * fov,entities[i][j].radius * fov*2,entities[i][j].radius * fov*2)
-                Texture = 0;
-                context.imageSmoothingEnabled = false;
-              }
-            }
-            context.fill();
-            if (entities[i][j].decayed) {
-              context.fillStyle = "rgba(0, 0, 128, 0.2)"
-              context.fill();
-            }
-            if(entities[i][j].defended){
-              context.fillStyle = "rgba(0, 0, 0, 0.6)"
-              context.fill();
-            }
-            if (entities[i][j].repelled) {
-              context.fillStyle = "rgba(255, 230, 200, 0.5)"
-              context.fill();
-            }
-            if (entities[i][j].outline && settings.outline) {
-              if(entities[i][j].texture) context.arc(width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov, height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov, entities[i][j].radius * fov, 0, Math.PI * 2);
-              context.lineWidth = 2/(32/fov);
-              context.stroke()
-            }
-            context.globalAlpha = 1;
-            context.closePath();
-          }
-          if (entities[i][j].releaseTime>1000){
-            if(entities[i][j].clock>=entities[i][j].releaseTime-500){
-              const alpha=(500-Math.max(entities[i][j].releaseTime-entities[i][j].clock,0))/500*.2+.05;
-              context.fillStyle=`rgba(1, 1, 1, ${alpha})`;
-              context.fill();
-            }
-          }
-        }
-        if (entities[i][j].provoked){
-          //draw exclamation mark for charging enemies
-          context.fillStyle = `rgba(161, 167, 172, 1)`;
-          context.font = 24 + "px Tahoma, Verdana, Segoe, sans-serif";
-          let x = width / 2 + (area.pos.x + entities[i][j].pos.x - focus.x) * fov;
-          let y = height / 2 + (area.pos.y + entities[i][j].pos.y - focus.y) * fov;
-          y -= entities[i][j].radius * fov;
-          y -= 0.2 * fov;
-          context.fillText("!", x, y);
-        }
-      }
-    }
-  }
-}
 function renderMinimap(area, players, focus) {
   if (!players[0].minimap) return;
   const minimapSize = new Vector(370, 100);
@@ -658,238 +608,241 @@ function renderMinimap(area, players, focus) {
 
 function renderUI(area, players, focus) {
   const player = players[0];
-  if(!players[0].herocard) return
-  context.lineWidth = 1;
-  const c = hexToRgb(players[0].color);
-  context.imageSmoothingEnabled = true;
-  context.beginPath();
-  context.strokeStyle = "#000000";
-  context.fillStyle = "rgba(0, 0, 0, 0.8)"
-  if(!(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern)){context.fillRect(staticWidth / 2 - 516 / 2, staticHeight - 85, 516, 85);}
-  else{context.fillRect(staticWidth / 2 - 516 / 2, staticHeight - 85, 516+82, 85);}
-  context.fill();
-  context.closePath();
+  if (!player.herocard) return;
 
-  context.beginPath();
-  context.strokeStyle = "#000000";
-  context.fillStyle = `rgb(${c[0]},${c[1]},${c[2]},0.4)`
-  if(!(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern)){context.fillRect(staticWidth / 2 - 516 / 2, staticHeight - 100, 516, 15);}
-  else{context.fillRect(staticWidth / 2 - 516 / 2, staticHeight - 100, 516+82, 15);}
-  context.fill();
-  context.closePath();
-  
-  context.beginPath();
-  context.strokeStyle = "#000000";
-  context.fillStyle = game.players[0].color
-  if(!(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern)){context.fillRect(staticWidth / 2 - 516 / 2, staticHeight - 100, ((Math.floor(game.players[0].experience)-Math.floor(game.players[0].previousLevelExperience)) / (Math.floor(game.players[0].nextLevelExperience)-Math.floor(game.players[0].previousLevelExperience))) * 516, 15);}
-  else{context.fillRect(staticWidth / 2 - 516 / 2, staticHeight - 100, ((Math.floor(game.players[0].experience)-Math.floor(game.players[0].previousLevelExperience)) / (Math.floor(game.players[0].nextLevelExperience)-Math.floor(game.players[0].previousLevelExperience))) * 598, 15);}
-  context.fill();
-  context.closePath();
+  const UI_CONSTANTS = {
+    BASE_WIDTH: 516,
+    EXTRA_WIDTH: 80,
+    UI_HEIGHT: 85,
+    EXP_BAR_HEIGHT: 15,
+    ABILITY_SPACING: 82,
+    ABILITY_SIZE: 48,
+    ABILITY_DOT_RADIUS: 3,
+    LEVEL_CIRCLE_RADIUS: 23,
+    UPGRADE_SIZE: 12,
+    POINT_CIRCLE_LARGE: 8,
+    POINT_CIRCLE_SMALL: 6,
+    POINT_SPACING: 20,
+    SEPARATOR_X: 105,
+    CLASS_NAME_OFFSET: { X: 55, Y: 20 },
+    LEVEL_OFFSET: { X: 55, Y: 55 },
+    STAT_SPACING: 82,
+    FPS_INDICATOR: { X: 386, Y: 4, SIZE: 12 },
+    COLORS: {
+      UI_BACKGROUND: "rgba(0, 0, 0, 0.8)",
+      EXP_BAR_BACKGROUND: (r, g, b) => `rgba(${r},${g},${b},0.4)`,
+      YELLOW: "yellow",
+      WHITE: "white",
+      POINT_COLOR: "rgb(200,200,0)",
+      SEPARATOR: "rgba(128, 128, 128,0.75)",
+      FPS_NORMAL: "#696969",
+      FPS_CHEAT: "purple"
+    },
+    FONT_SIZES: {
+      TINY: "10px",
+      SMALL: "13px",
+      MEDIUM: "18px",
+      LARGE: "22px"
+    }
+  };
 
-  if(game.players[0].magnet||game.players[0].flashlight||game.players[0].lantern){
+  const renderRect = (x, y, width, height, fillStyle, strokeStyle = null) => {
     context.beginPath();
-    if(game.players[0].magnet){if(game.players[0].magnetDirection == "Down")context.drawImage(magnetDown,staticWidth/2+(516-132+82+82)/2,staticHeight-68,48,48)
-    else if(game.players[0].magnetDirection == "Up")context.drawImage(magnetUp,staticWidth/2+(516-132+82+82)/2,staticHeight-68,48,48)}
-    else if(game.players[0].flashlight){context.drawImage(flashlight,staticWidth/2+(516-132+82+82)/2,staticHeight-68,48,48)}
-    else if(game.players[0].lantern){context.drawImage(lantern,staticWidth/2+(516-132+82+82)/2,staticHeight-68,48,48)}
+    context.fillStyle = fillStyle;
+    context.fillRect(x, y, width, height);
+    context.fill();
+    if (strokeStyle) {
+      context.strokeStyle = strokeStyle;
+      context.stroke();
+    }
     context.closePath();
+  };
 
+  const c = hexToRgb(player.color);
+  const hasSpecialItem = player.magnet || player.flashlight || player.lantern;
+  const totalWidth = UI_CONSTANTS.BASE_WIDTH + (hasSpecialItem ? UI_CONSTANTS.EXTRA_WIDTH : 0);
+  const centerX = staticWidth / 2;
+  const bottomY = staticHeight - UI_CONSTANTS.UI_HEIGHT;
+
+  context.lineWidth = 1;
+  context.imageSmoothingEnabled = true;
+
+  // Main UI background
+  renderRect(centerX - UI_CONSTANTS.BASE_WIDTH / 2, bottomY, totalWidth, UI_CONSTANTS.UI_HEIGHT, UI_CONSTANTS.COLORS.UI_BACKGROUND);
+
+  // Experience bar background
+  renderRect(centerX - UI_CONSTANTS.BASE_WIDTH / 2, bottomY - UI_CONSTANTS.EXP_BAR_HEIGHT, totalWidth, UI_CONSTANTS.EXP_BAR_HEIGHT, UI_CONSTANTS.COLORS.EXP_BAR_BACKGROUND(c[0], c[1], c[2]));
+
+  // Experience bar fill
+  const expPercentage = (player.experience - player.previousLevelExperience) / (player.nextLevelExperience - player.previousLevelExperience);
+  renderRect(centerX - UI_CONSTANTS.BASE_WIDTH / 2, bottomY - UI_CONSTANTS.EXP_BAR_HEIGHT, totalWidth * expPercentage, UI_CONSTANTS.EXP_BAR_HEIGHT, player.color);
+
+  if (player.hasAB) {
+    const texts = ["[X] or [K]", "[Z] or [J]", "[C] or [L]"];
+    const abilities = [
+      { key: "ab1", cooldown: "firstAbilityCooldown", totalCooldown: "firstTotalCooldown", pellet: "firstPellet", pelletTotal: "firstPelletTotal", upgradeIndex: 4 },
+      { key: "ab2", cooldown: "secondAbilityCooldown", totalCooldown: "secondTotalCooldown", pellet: "secondPellet", pelletTotal: "secondPelletTotal", upgradeIndex: 5 },
+      { key: "specialItem", upgradeIndex: 6 }
+    ];
+
+    if (player.usesPellets === 1 || player.usesPellets === 3) {
+      player.firstAbilityCooldown = player.firstPellet;
+      player.firstTotalCooldown = player.firstPelletTotal;
+    }
+    if (player.usesPellets === 2 || player.usesPellets === 3) {
+      player.secondAbilityCooldown = player.secondPellet;
+      player.secondTotalCooldown = player.secondPelletTotal;
+    }
+
+    abilities.forEach((ability, index) => {
+      if (index === 2 && !hasSpecialItem) return; // Skip rendering special item if player doesn't have it
+
+      const { key, cooldown, totalCooldown, upgradeIndex } = ability;
+      const text = texts[index];
+      const x = staticWidth / 2 - UI_CONSTANTS.BASE_WIDTH / 2 + UI_CONSTANTS.SEPARATOR_X + 41 + 246 + index * UI_CONSTANTS.ABILITY_SPACING;
+      const y = staticHeight - UI_CONSTANTS.UI_HEIGHT;
+
+      // Draw ability icon
+      if (index < 2) {
+        context.drawImage(player[key], x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
+      } else if (hasSpecialItem) {
+        let itemImage;
+        if (player.magnet) {
+          itemImage = player.magnetDirection === "Down" ? images.magnetDown : images.magnetUp;
+        } else if (player.flashlight) {
+          itemImage = images.flashlight;
+        } else if (player.lantern) {
+          itemImage = images.lantern;
+        }
+        context.drawImage(itemImage, x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
+      }
+
+      // Render text or upgrade
+      context.fillStyle = UI_CONSTANTS.COLORS.WHITE;
+      context.font = `${UI_CONSTANTS.FONT_SIZES.TINY} Tahoma, Verdana, Segoe, sans-serif`;
+      context.textAlign = "center";
+      if (player.points > 0) {
+        const active = index < 2 ? player[`${key}L`] !== player[`${key}ML`] : false;
+        renderUpgrade(context, x, y + 17/2 + 44 - 17 + UI_CONSTANTS.ABILITY_SIZE / 2 + 9.5, upgradeIndex, player, active);
+      } else {
+        context.fillText(text, x, y + 17/2 + 44 - 17 + UI_CONSTANTS.ABILITY_SIZE / 2 + 17);
+      }
+
+      // Draw cooldown overlay
+      if (index < 2) {
+        const cooldownTime = player[cooldown] / player[totalCooldown];
+        context.fillStyle = !player[`${key}L`] || cooldownTime === 1 ? "rgba(0, 0, 0, 0.6)" : "rgba(0, 0, 0, 0.2)";
+        context.fillRect(x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
+      }
+
+      // Draw ability level indicators
+      const dotY = y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2 + 45 - UI_CONSTANTS.ABILITY_SIZE - 6;
+      const maxLevel = index < 2 ? player[`${key}ML`] : 1;
+      const currentLevel = index < 2 ? player[`${key}L`] : 1;
+      for (let p = 0; p < 5; p++) {
+        context.strokeStyle = !player[`${key}L`] || (index < 2 && player[cooldown] === player[totalCooldown]) ? "rgb(150, 150, 150)" : "rgb(200, 200, 200)";
+        const dotX = x - UI_CONSTANTS.ABILITY_SIZE / 2 + 5 + (40 * (maxLevel !== 5 ? 2 : p) / 4);
+        context.beginPath();
+        context.arc(dotX, dotY, UI_CONSTANTS.ABILITY_DOT_RADIUS, 0, Math.PI * 2);
+        context.stroke();
+      }
+
+      // Fill in active level indicators
+      context.fillStyle = UI_CONSTANTS.COLORS.YELLOW;
+      context.strokeStyle = UI_CONSTANTS.COLORS.YELLOW;
+      for (let p = 0; p < currentLevel; p++) {
+        const dotX = x - UI_CONSTANTS.ABILITY_SIZE / 2 + 5 + (40 * (maxLevel !== 5 ? 2 : p) / 4);
+        context.beginPath();
+        context.arc(dotX, dotY, UI_CONSTANTS.ABILITY_DOT_RADIUS, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+      }
+
+      // Draw cooldown arc for first two abilities only
+      if (index < 2) {
+        context.fillStyle = "rgba(0, 0, 0, 0.6)";
+        sectorInRect(context, x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE, 360 * (1 - player[cooldown] / player[totalCooldown]) - 90);
+      }
+    });
+  }
+
+  function drawText(context, text, x, y, font, color, align = "center") {
     context.beginPath();
-    context.fillStyle = "yellow";
-    context.arc(staticWidth/2+(516-84+82+82)/2,staticHeight-77, 3.6, 0, Math.PI * 2, true);
+    context.font = font;
+    context.textAlign = align;
+    context.fillStyle = color;
+    context.fillText(text, x, y);
+    context.closePath();
+  }
+
+  function drawCircle(context, x, y, radius, color) {
+    context.beginPath();
+    context.fillStyle = color;
+    context.arc(x, y, radius, 0, Math.PI * 2);
     context.fill();
     context.closePath();
-
-    context.beginPath();
-    context.fillStyle = "white";
-    context.font = 10 + "px Tahoma, Verdana, Segoe, sans-serif";
-    context.textAlign = "center";
-    context.fillText("[C] or [L]", staticWidth/2+(516-84+82+82)/2,staticHeight-8)
-    context.closePath();
-  } 
-
-  if(game.players[0].hasAB){
-    var text1 = "[Z] or [J]";
-    var text2 = "[X] or [K]";
-    var text3 = "Locked";
-    if(players[0].usesPellets == 1 || players[0].usesPellets == 3){
-      players[0].firstAbilityCooldown = players[0].firstPellet;
-      players[0].firstTotalCooldown = players[0].firstPelletTotal;
-    }
-    if(players[0].usesPellets == 2 || players[0].usesPellets == 3){
-      players[0].secondAbilityCooldown = players[0].secondPellet;
-      players[0].secondTotalCooldown = players[0].secondPelletTotal;
-    }
-    for(var a = 0; a<2; a++){
-      var text = (a==1) ? text1 : text2;
-      var ab = (a==1) ? players[0].ab1 : players[0].ab2;
-      var abL = (a==1) ? players[0].ab1L : players[0].ab2L;
-      var abC = (a==1) ? players[0].firstAbilityCooldown : players[0].secondAbilityCooldown;
-      var abTC = (a==1) ? players[0].firstTotalCooldown : players[0].secondTotalCooldown;
-      var ab1ML = (a==1) ? players[0].ab1ML||false : players[0].ab2ML||false;
-      if(!abL){text = text3;}
-      var correct = (a==1) ? 0 : 82;
-      var cooldownTime = abC/abTC;
-      context.fillStyle = "white";
-      context.font = 10 + "px Tahoma, Verdana, Segoe, sans-serif";
-      context.textAlign = "center";
-      context.beginPath();
-      context.drawImage(ab, staticWidth / 2 - 516 / 2 + 105 + 41 + 246 + correct - 24, staticHeight - 85 - 3 + 17 + 44 - 17 - 24,48,48)
-      if(players[0].points <= 0){
-        context.fillText(text, staticWidth / 2 - 516 / 2 + 105 + 41 + 246 + correct, staticHeight - 85 + 17/2 + 44 - 17 + 24 + 17);
-      } else {
-        const active = (abL == ab1ML) ? false : true;
-        renderUpgrade(context, staticWidth / 2 - 516 / 2 + 105 + 41 + 246 + correct, staticHeight - 85 + 17/2 + 44 - 17 + 24 + 9.5, (a==1) ? 4 : 5, players[0], active);
-      }
-      context.closePath();
-      if(!abL||cooldownTime==1){context.fillStyle="rgba(0, 0, 0, 0.6)"}
-      else{context.fillStyle="rgba(0, 0, 0, 0.2)"};
-      context.fillRect(staticWidth / 2 - 516 / 2 + 105 + 41 + 246 + correct - 24, staticHeight - 85 - 3 + 17 + 44 - 17 - 24,48,48)
-      context.linestaticWidth = 1;
-      for(var p = 0; p<5; p++){
-        (!abL||cooldownTime==1)?context.strokeStyle="rgb(150, 150, 150)":context.strokeStyle="rgb(200, 200, 200)"
-        context.beginPath();
-        var h = staticWidth / 2 - 516 / 2 + 105 + 41 + 246 + correct - 24 + 5; var f = h + 40; var y = staticHeight - 85 - 3 + 17 + 44 - 17 - 24 + 45 - 48 - 6;
-        var b = (ab1ML != 5) ? (h+(f-h)*(2/(5-1))):h+(f-h)*(p/(5-1))
-        context.arc(b,y,3,0,Math.PI * 2, true)
-        context.stroke();
-        context.closePath();
-      }
-      context.fillStyle = "rgb(255, 255, 0)";
-      context.strokeStyle = "rgb(255, 255, 0)";
-      for(var p = 0; p<abL; p++){
-        context.beginPath();
-        var h = staticWidth / 2 - 516 / 2 + 105 + 41 + 246 + correct - 24 + 5; var f = h + 40; var y = staticHeight - 85 - 3 + 17 + 44 - 17 - 24 + 45 - 48 - 6;
-        var b = (ab1ML != 5) ? (h+(f-h)*(2/(5-1))):h+(f-h)*(p/(5-1))
-        context.arc(b,y,3,0,Math.PI * 2, true)
-        if(abL)context.fill();
-        if(abL)context.stroke();
-        context.closePath();
-      }
-      context.fillStyle="rgba(0, 0, 0, 0.6)";
-      sectorInRect(context,staticWidth / 2 - 516 / 2 + 105 + 41 + 246 + correct - 24,staticHeight - 85 - 3 + 17 + 44 - 17 - 24,48,48,360*(1-cooldownTime)-90)
-    }
   }
 
-  context.beginPath();
-  context.font = 18 + "px Tahoma, Verdana, Segoe, sans-serif";
-  context.textAlign = "center";
-  context.fillStyle = game.players[0].color;
-  context.fillText(game.players[0].className, staticWidth / 2 - 516 / 2 + 55, staticHeight - 85 + 20)
-  context.closePath();
-
-  context.beginPath();
-  context.fillStyle = game.players[0].color;
-  context.arc(staticWidth / 2 - 516 / 2 + 55, staticHeight - 85 + 55, 23, 0, Math.PI * 2);
-  context.fill();
-  context.closePath();
-
-  context.beginPath();
-  context.font = 22 + "px Tahoma, Verdana, Segoe, sans-serif";
-  context.textAlign = "center";
-  context.fillStyle = "white"
-  context.fillText(game.players[0].level, staticWidth / 2 - 516 / 2 + 55, staticHeight - 85 + 63)
-  context.closePath();
-
-  context.beginPath();
-  context.linestaticWidth = 2;
-  context.strokeStyle = "rgba(128, 128, 128,0.75)"
-  context.moveTo(staticWidth / 2 - 516 / 2 + 105, staticHeight - 85);
-  context.lineTo(staticWidth / 2 - 516 / 2 + 105, staticHeight);
-  context.stroke();
-  context.closePath();
-
-  if(players[0].points > 0){
+  function drawLine(context, x1, y1, x2, y2, color, width) {
     context.beginPath();
-    context.font = 13 + "px Tahoma, Verdana, Segoe, sans-serif";
-    context.textAlign = "center";
-    context.fillStyle = "white"
-    context.fillText("Points:", staticWidth / 2 - 516 / 2 + 136, staticHeight - 85 + 16)
+    context.lineWidth = width;
+    context.strokeStyle = color;
+    context.moveTo(x1, y1);
+    context.lineTo(x2, y2);
+    context.stroke();
     context.closePath();
-    context.fillStyle = "rgb(200,200,0)";
+  }
 
-    if(players[0].points > 8){
-      context.beginPath();
-      context.arc(staticWidth / 2 - 516 / 2 + 169, staticHeight - 85 + 12, 8, 0, Math.PI * 2);
-      context.fill();
-      context.closePath();
+  const baseX = staticWidth / 2 - UI_CONSTANTS.BASE_WIDTH / 2;
+  const baseY = staticHeight - UI_CONSTANTS.UI_HEIGHT;
 
-      context.beginPath();
-      context.fillStyle = "black";
-      context.font = 10 + "px Tahoma, Verdana, Segoe, sans-serif";
-      context.textAlign = "center";
-      context.fillText(players[0].points, staticWidth / 2 - 516 / 2 + 169, staticHeight - 85 + 16)
-      context.closePath();
+  // Draw class name
+  drawText(context, player.className, baseX + UI_CONSTANTS.CLASS_NAME_OFFSET.X, baseY + UI_CONSTANTS.CLASS_NAME_OFFSET.Y, `${UI_CONSTANTS.FONT_SIZES.MEDIUM} Tahoma, Verdana, Segoe, sans-serif`, player.color);
+
+  // Draw level circle
+  drawCircle(context, baseX + UI_CONSTANTS.LEVEL_OFFSET.X, baseY + UI_CONSTANTS.LEVEL_OFFSET.Y, UI_CONSTANTS.LEVEL_CIRCLE_RADIUS, player.color);
+  drawText(context, player.level, baseX + UI_CONSTANTS.LEVEL_OFFSET.X, baseY + UI_CONSTANTS.LEVEL_OFFSET.Y + 8, `${UI_CONSTANTS.FONT_SIZES.LARGE} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
+
+  // Draw separator line
+  drawLine(context, baseX + UI_CONSTANTS.SEPARATOR_X, baseY, baseX + UI_CONSTANTS.SEPARATOR_X, staticHeight, UI_CONSTANTS.COLORS.SEPARATOR, 2);
+
+  if (player.points > 0) {
+    drawText(context, "Points:", baseX + 136, baseY + 16, `${UI_CONSTANTS.FONT_SIZES.SMALL} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
+
+    if (player.points > 8) {
+      drawCircle(context, baseX + 169, baseY + 12, UI_CONSTANTS.POINT_CIRCLE_LARGE, UI_CONSTANTS.COLORS.POINT_COLOR);
+      drawText(context, player.points, baseX + 169, baseY + 16, `${UI_CONSTANTS.FONT_SIZES.TINY} Tahoma, Verdana, Segoe, sans-serif`, "black");
     } else {
-      for (let step = 0; step < players[0].points; step++){
-        context.beginPath();
-        context.arc(staticWidth / 2 - 516 / 2 + 169 + 20 * step, staticHeight - 85 + 12, 6, 0, Math.PI * 2);
-        context.fill();
-        context.closePath();
+      for (let step = 0; step < player.points; step++) {
+        drawCircle(context, baseX + 169 + UI_CONSTANTS.POINT_SPACING * step, baseY + 12, UI_CONSTANTS.POINT_CIRCLE_SMALL, UI_CONSTANTS.COLORS.POINT_COLOR);
       }
     }
 
-    const w = 105;
-    const i = staticWidth / 2 - 516 / 2;
-    const a = staticHeight / 2 + 275;
-    const speedActive = (parseFloat(player.speed.toFixed(3)) < player.maxSpeed) ? true : false;
-    const energyActive = (player.maxEnergy < player.maxUpgradableEnergy) ? true : false;
-    const regenActive = (parseFloat(player.regen.toFixed(3)) < player.maxRegen) ? true : false;
-		let s = i + w;
-		let l = a + 17;
-    renderUpgrade(context, s + 41, l + 52, 1, player, speedActive);
-		s = i + w + 82;
-		renderUpgrade(context, s + 41, l + 52, 2, player, energyActive);
-		s = i + w + 164;
-		renderUpgrade(context, s + 41, l + 52, 3, player, regenActive);
+    const upgradeY = staticHeight / 2 + 275 + 17 + 52;
+    const speedActive = parseFloat(player.speed.toFixed(3)) < player.maxSpeed;
+    const energyActive = player.maxEnergy < player.maxUpgradableEnergy;
+    const regenActive = parseFloat(player.regen.toFixed(3)) < player.maxRegen;
+
+    renderUpgrade(context, baseX + UI_CONSTANTS.SEPARATOR_X + 41, upgradeY, 1, player, speedActive);
+    renderUpgrade(context, baseX + UI_CONSTANTS.SEPARATOR_X + 123, upgradeY, 2, player, energyActive);
+    renderUpgrade(context, baseX + UI_CONSTANTS.SEPARATOR_X + 205, upgradeY, 3, player, regenActive);
   }
 
-  context.beginPath();
-  context.fillStyle = "white";
-  context.font = 10 + "px Tahoma, Verdana, Segoe, sans-serif";
-  context.textAlign = "center";
-  context.fillText("Speed", staticWidth / 2 - 516 / 2 + 105 + 41, staticHeight - 85 + 17 + 44)
-  context.closePath();
+  const statBaseX = baseX + UI_CONSTANTS.SEPARATOR_X + 41;
+  const statY = baseY + 17 + 44;
 
-  context.beginPath();
-  context.fillStyle = "white";
-  context.font = 22 + "px Tahoma, Verdana, Segoe, sans-serif";
-  context.textAlign = "center";
-  if(players[0].speed)context.fillText(parseFloat(players[0].speed.toFixed(1)), staticWidth / 2 - 516 / 2 + 105 + 41, staticHeight - 85 + 17 + 44 - 17)
-  context.closePath();
+  function drawStat(label, value, xOffset = 0) {
+    drawText(context, label, statBaseX + xOffset, statY, `${UI_CONSTANTS.FONT_SIZES.TINY} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
+    drawText(context, value, statBaseX + xOffset, statY - 17, `${UI_CONSTANTS.FONT_SIZES.LARGE} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
+  }
 
-  context.beginPath();
-  context.fillStyle = "white";
-  context.font = 10 + "px Tahoma, Verdana, Segoe, sans-serif";
-  context.textAlign = "center";
-  context.fillText("Energy", staticWidth / 2 - 516 / 2 + 105 + 41 + 82, staticHeight - 85 + 17 + 44)
-  context.closePath();
+  drawStat("Speed", parseFloat(player.speed.toFixed(1)));
+  drawStat("Energy", `${Math.round(player.energy)} / ${player.maxEnergy}`, 82);
+  drawStat("Regen", Math.round(player.regen * 10) / 10, 164);
 
-  context.beginPath();
-  context.fillStyle = "white";
-  context.font = 22 + "px Tahoma, Verdana, Segoe, sans-serif";
-  context.textAlign = "center";
-  context.fillText((Math.round(players[0].energy)) + " / " + players[0].maxEnergy, staticWidth / 2 - 516 / 2 + 105 + 41 + 82, staticHeight - 85 + 17 + 44 - 17)
-  context.closePath();
-
-  context.beginPath();
-  context.fillStyle = "white";
-  context.font = 10 + "px Tahoma, Verdana, Segoe, sans-serif";
-  context.textAlign = "center";
-  context.fillText("Regen", staticWidth / 2 - 516 / 2 + 105 + 41 + 164, staticHeight - 85 + 17 + 44)
-  context.closePath();
-
-  context.beginPath();
-  context.fillStyle = "white";
-  context.font = 22 + "px Tahoma, Verdana, Segoe, sans-serif";
-  context.textAlign = "center";
-  context.fillText((Math.round(players[0].regen * 10) / 10), staticWidth / 2 - 516 / 2 + 105 + 41 + 164, staticHeight - 85 + 17 + 44 - 17)
-  context.closePath();
-
-  const shape = settings.fps_limit == "unlimited" ? 'rect' : (settings.fps_limit == "60" ? 'triangle' : 'circle');
-  const color = players[0].hasCheated ? "purple" : "#696969"
+  const shape = settings.fps_limit === "unlimited" ? 'rect' : (settings.fps_limit === "60" ? 'triangle' : 'circle');
+  const color = player.hasCheated ? "purple" : "#696969";
   drawShape(context, shape, 386, staticHeight - 4, color, 12, 12);
-  
 }
 
 function renderUpgrade(ctx, xValue, yValue, text, player, active) {
@@ -909,73 +862,259 @@ function renderUpgrade(ctx, xValue, yValue, text, player, active) {
   ctx.fillText(text, x + width/2, y + 10);
 }
 
-function renderWalls(area, players, focus) {
-  context.globalAlpha = 1;
-  var boundary = area.boundary; 
-  let wid = boundary.w*fov, heig = boundary.h*fov;
-  var tile_image = tiles;
-  const can = createOffscreenCanvas(wid,heig)
-  const ctx = can.getContext('2d');
-  const zoneCanvas = createOffscreenCanvas(128,128);
-  const zoneCTX = zoneCanvas.getContext('2d');
-	ctx.scale(fov/32,fov/32);
-  for (var i in area.assets) {
-    const zone = area.assets[i];
-    if(zone.type>3)continue;
-    const modifier = (zone.texture == 4) ? 4 : 1;
-    const zoneType = (zone.texture == 4) ? 0 : zone.type;
-    zoneCanvas.width = 128*modifier;
-    zoneCanvas.height = 128*modifier;
-    zoneCTX.drawImage(tile_image,zoneType*128,zone.texture*128,128*modifier,128*modifier,0,0,128*modifier,128*modifier);
-    ctx.imageSmoothingEnabled = true;
-    var pattern=ctx.createPattern(zoneCanvas,"repeat");
-    ctx.fillStyle=pattern;
-    ctx.beginPath();
-    ctx.fillRect(Math.round((zone.pos.x)*32),Math.round((zone.pos.y)*32),zone.size.x*32,zone.size.y*32);
-    ctx.closePath();
-  }
-  return can;
+function drawTiles(area, focus) {
+    const x = (-focus.x + area.pos.x) * fov + width / 2;
+    const y = (-focus.y + area.pos.y) * fov + height / 2;
+    context.drawImage(tilesCanvas, x, y);
 }
 
-function renderAssets (area, players, focus) {
-  const player = players[0];
-  for(const i in area.assets){
-    const zone = area.assets[i];
-    if(zone.type<5)continue;
-    const posX = area.pos.x + zone.pos.x;
-    const posY = area.pos.y + zone.pos.y;
-    const imageX = width/2+(posX-focus.x)*fov;
-    const imageY = height/2+(posY-focus.y)*fov;
-    const scale = settings.scale;
-    switch(zone.type){
-      case 5:
-        context.drawImage(flashlight_item, imageX, imageY, flashlight_item.width * scale, flashlight_item.height * scale)
-        if(posX-focus.x<2&&posX-focus.x>-2&&posY-focus.y<2&&posY-focus.y>-2){player.flashlight = true;}
-        break;
-      case 6:
-        context.drawImage(torch, imageX, imageY, torch.width * scale, torch.height * scale);
-        break;
-      case 7:
-        context.drawImage(gate, imageX, imageY, gate.width * scale, gate.height * scale);
-        break;
-      case 8:
-        context.drawImage(torchUp, imageX, imageY, torchUp.width * scale, torchUp.height * scale);
-        break;
+function renderTiles(area, players, focus) {
+  if (tilesCanvas) {
+    drawTiles(area, focus);
+    return;
+  }
+  
+  if(!shouldRenderPartially){
+    const { boundary, zones, assets, texture, background_color } = area;
+    const { w, h } = boundary;
+    const wid = w * fov, heig = h * fov;
+    
+    tilesCanvas = createOffscreenCanvas(wid, heig);
+    const ctx = tilesCanvas.getContext('2d');
+    if(fov !== 32)ctx.scale(fov/32, fov/32);
+    
+    const zoneCanvas = createOffscreenCanvas(128, 128);
+    const zoneCTX = zoneCanvas.getContext('2d');
+
+    // Pre-create patterns for each texture type
+    const patterns = {};
+    for (let i = 0; i < 7; i++) {
+      zoneCTX.clearRect(0, 0, 128, 128);
+      zoneCTX.drawImage(images.tiles, i * 128, texture * 128, 128, 128, 0, 0, 128, 128);
+      patterns[i] = ctx.createPattern(zoneCanvas, "repeat");
     }
+
+    // Render zones (floor tiles)
+    ctx.imageSmoothingEnabled = true;
+    zones.forEach(zone => {
+      const textureType = zone.type === 6 ? 0 : (zone.type === 4 ? 2 : (zone.type === 5 ? 4 : zone.type));
+      ctx.fillStyle = patterns[textureType];
+      ctx.fillRect(Math.round(zone.pos.x * 32), Math.round(zone.pos.y * 32), zone.size.x * 32, zone.size.y * 32);
+      
+      ctx.fillStyle = zone.background_color || background_color;
+      ctx.fillRect(zone.pos.x * 32, zone.pos.y * 32, zone.size.x * 32, zone.size.y * 32);
+    });
+    
+    // Render walls
+    assets.forEach(zone => {
+      if (zone.type > 3) return;
+      const modifier = zone.texture === 4 ? 4 : 1;
+      const zoneType = zone.texture === 4 ? 0 : zone.type;
+      
+      zoneCanvas.width = zoneCanvas.height = 128 * modifier;
+      zoneCTX.drawImage(images.tiles, zoneType * 128, zone.texture * 128, 128 * modifier, 128 * modifier, 0, 0, 128 * modifier, 128 * modifier);
+      
+      ctx.fillStyle = ctx.createPattern(zoneCanvas, "repeat");
+      ctx.fillRect(Math.round(zone.pos.x * 32), Math.round(zone.pos.y * 32), zone.size.x * 32, zone.size.y * 32);
+    });
+
+    drawTiles(area, focus);
+  } else {
+    const { zones, assets, texture, background_color } = area;
+    
+    const tileSize = 32; // Assuming each tile is 32x32 pixels in the tileset
+    const scaledTileSize = tileSize * (fov / 32);
+    
+    // Calculate visible area
+    const visibleWidth = width / fov;
+    const visibleHeight = height / fov;
+    const startX = Math.floor(focus.x - visibleWidth / 2);
+    const startY = Math.floor(focus.y - visibleHeight / 2);
+    const endX = Math.ceil(focus.x + visibleWidth / 2);
+    const endY = Math.ceil(focus.y + visibleHeight / 2);
+    const areaX = area.pos.x;
+    const areaY = area.pos.y;
+
+    // Pre-calculate common values
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
+
+    // Render zones (floor tiles)
+    context.imageSmoothingEnabled = true;
+    zones.forEach(zone => {
+      const zoneStartX = Math.max(startX, zone.pos.x + areaX);
+      const zoneStartY = Math.max(startY, zone.pos.y + areaY);
+      const zoneEndX = Math.min(endX, zone.pos.x + zone.size.x + areaX);
+      const zoneEndY = Math.min(endY, zone.pos.y + zone.size.y + areaY);
+
+      const textureType = zone.type === 6 ? 0 : (zone.type === 4 ? 2 : (zone.type === 5 ? 4 : zone.type));
+      const tilesetX = textureType * tileSize * 4;
+      const tilesetY = texture * tileSize * 4;
+
+      for (let x = zoneStartX; x < zoneEndX; x++) {
+        const screenX = Math.round((x - focus.x) * fov + halfWidth);
+        const tileX = ((x - areaX) & 3) * tileSize; // Using bitwise AND for modulo 4
+
+        for (let y = zoneStartY; y < zoneEndY; y++) {
+          const screenY = Math.round((y - focus.y) * fov + halfHeight);
+          const tileY = ((y - areaY) & 3) * tileSize; // Using bitwise AND for modulo 4
+
+          context.drawImage(
+            images.tiles,
+            tilesetX + tileX, tilesetY + tileY, tileSize, tileSize,
+            screenX, screenY, scaledTileSize, scaledTileSize
+          );
+
+          if (zone.background_color || background_color) {
+            context.fillStyle = zone.background_color || background_color;
+            context.fillRect(screenX, screenY, scaledTileSize, scaledTileSize);
+          }
+        }
+      }
+    });
+    
+    // Render walls
+    assets.forEach(zone => {
+      if (zone.type > 3) return;
+      const modifier = zone.texture === 4 ? 4 : 1;
+      const zoneType = zone.texture === 4 ? 0 : zone.type;
+      
+      const zoneStartX = Math.max(startX, zone.pos.x + areaX);
+      const zoneStartY = Math.max(startY, zone.pos.y + areaY);
+      const zoneEndX = Math.min(endX, zone.pos.x + zone.size.x + areaX);
+      const zoneEndY = Math.min(endY, zone.pos.y + zone.size.y + areaY);
+
+      const tilesetX = zoneType * tileSize * 4;
+      const tilesetY = zone.texture * tileSize * 4;
+
+      for (let x = zoneStartX; x < zoneEndX; x++) {
+        const screenX = Math.round((x - focus.x) * fov + halfWidth);
+        const tileX = ((x - areaX) % (4 * modifier)) * tileSize;
+
+        for (let y = zoneStartY; y < zoneEndY; y++) {
+          const screenY = Math.round((y - focus.y) * fov + halfHeight);
+          const tileY = ((y - areaY) % (4 * modifier)) * tileSize;
+
+          context.drawImage(
+            images.tiles,
+            tilesetX + tileX, tilesetY + tileY, tileSize, tileSize,
+            screenX, screenY, scaledTileSize, scaledTileSize
+          );
+        }
+      }
+    });
   }
 }
-function roundedRect(ctx, x, y, width, height, strokeSize=5, fillEnabled=false, strokeEnabled=true) {
-	ctx.beginPath();
-	ctx.moveTo(x + strokeSize, y);
-	ctx.lineTo(x + width - strokeSize, y);
-	ctx.quadraticCurveTo(x + width, y, x + width, y + strokeSize);
-	ctx.lineTo(x + width, y + height - strokeSize);
-	ctx.quadraticCurveTo(x + width, y + height, x + width - strokeSize, y + height);
-	ctx.lineTo(x + strokeSize, y + height);
-	ctx.quadraticCurveTo(x, y + height, x, y + height - strokeSize);
-	ctx.lineTo(x, y + strokeSize);
-	ctx.quadraticCurveTo(x, y, x + strokeSize, y);
-	ctx.closePath();
-	if(fillEnabled) ctx.fill();
-	if(strokeEnabled) ctx.stroke();
+
+function renderAssets(area, players, focus) {
+  if(!area.assets.length)return;
+  const player = players[0];
+  const scale = settings.scale / (32 / fov * settings.scale);
+  const assetImages = {
+    5: images.flashlight_item,
+    6: images.torch,
+    7: images.gate,
+    8: images.torchUp
+  };
+
+  area.assets.forEach(zone => {
+    if (zone.type < 5) return;
+
+    const posX = area.pos.x + zone.pos.x;
+    const posY = area.pos.y + zone.pos.y;
+    const imageX = width / 2 + (posX - focus.x) * fov;
+    const imageY = height / 2 + (posY - focus.y) * fov;
+
+    const image = assetImages[zone.type];
+    context.drawImage(image, imageX, imageY, image.width * scale, image.height * scale);
+
+    if (zone.type === 5) {
+      const dx = posX - focus.x;
+      const dy = posY - focus.y;
+      if (Math.abs(dx) < 2 && Math.abs(dy) < 2) {
+        player.flashlight = true;
+      }
+    }
+  });
+}
+function roundedRect(ctx, x, y, width, height, strokeSize = 5, fillEnabled = false, strokeEnabled = true) {
+  ctx.beginPath();
+  ctx.moveTo(x + strokeSize, y);
+  ctx.arcTo(x + width, y, x + width, y + height, strokeSize);
+  ctx.arcTo(x + width, y + height, x, y + height, strokeSize);
+  ctx.arcTo(x, y + height, x, y, strokeSize);
+  ctx.arcTo(x, y, x + width, y, strokeSize);
+  ctx.closePath();
+  if (fillEnabled) ctx.fill();
+  if (strokeEnabled) ctx.stroke();
+}
+
+function updateBackground(context,width,height,color){
+  context.clearRect(0, 0, width, height);
+  context.beginPath();
+  context.fillStyle = color;
+  context.rect(0, 0, width, height);
+  context.fill();
+  context.closePath();
+}
+
+function drawAreaHeader(context,lineSize,strokeStyle,text,width,height,world,size = 35,fillStyle = "#f4faff"){
+  context.beginPath();
+  context.textAlign = "center";
+  context.lineWidth = lineSize;
+  context.fillStyle = fillStyle;
+  context.strokeStyle = strokeStyle;
+  context.font = "bold " + size + "px Tahoma, Verdana, Segoe, sans-serif";
+  context.textAlign = "center";
+  if(world != null){
+    context.strokeText(world.name + ": " + text, width / 2, height);
+    context.fillText(world.name + ": " + text, width / 2, height);
+  } else {
+    context.strokeText(text, width / 2, height);
+    context.fillText(text, width / 2, height);
+  }
+  context.closePath();
+}
+
+function drawShape(context, type, x, y, color, width, height) {
+  context.beginPath();
+  context.fillStyle = color;
+  
+  if (type === 'rect') {
+    context.fillRect(x, y - height, width, height);
+  } else if (type === 'triangle') {
+    context.moveTo(x, y);
+    context.lineTo(x + width, y);
+    context.lineTo(x + width / 2, y - height + 2);
+    context.fill();
+  } else if (type === 'circle') {
+    const radius = Math.min(width, height) / 2;
+    context.arc(x + width / 2, y - height / 2, radius, 0, 2 * Math.PI);
+    context.fill();
+  }
+  
+  context.closePath();
+}
+
+function applyScale(context,scale,drawFunction){
+  if(scale != 1){
+    context.save();
+    context.scale(scale,height/staticHeight); //hmm...
+  }
+  drawFunction();
+  if(scale != 1){
+    context.restore();
+  }
+}
+
+function changeResolution(newWidth,newHeight){ //hmm...
+  const scalingFactor = newWidth/staticWidth;
+  width = newWidth;
+  height = newHeight;
+  fov = 32 * scalingFactor;
+  settings.scale = scalingFactor;
+  canvas.width = newWidth;
+  canvas.height = newHeight;
+  window.onresize();
+  tilesCanvas = null;
 }

@@ -1,93 +1,306 @@
+body, html {
+  background-color: #222;
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Arial', sans-serif;
+  color: #000;
+}
+
 canvas {
-    position: absolute;
-    display: block;
-    transform-origin: center center;
-    cursor: default;
-  }
+  position: absolute;
+  display: block;
+  transform-origin: center center;
+  cursor: default;
+}
 
-  html,
-  body {
-    background-color: #222;
-    margin: 0px;
-    overflow: hidden;
-    font-family: Verdana, Arial, Times, serif;
-  }
+p {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #FFF;
+}
 
-  p {
-    margin: 0px;
-    font-size: 20px;
-    color: #FFF
-  }
+#main {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 1s ease-out;
+}
 
-  #main {
-    position: fixed;
-    left: 0px;
-    top: 0px;
-    width: 100%;
-    height: 100%;
-    margin-top: 20px;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
-  #play {
-    margin-left: auto;
-    margin-right: auto;
-    text-align: center;
-  }
-  #connect {
-    position: relative;
-    width: 115px;
-    color: rgb(255,255,255);
-    font-weight: bold;
-    text-align: center;
-    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-    font-size: 15px;
-    cursor: pointer;
-    height: 47px;
-    line-height: 47px;
-    border-radius: 34px;
-    border-color: white;
-    display: inline-block;
-    background-color: #a3a3a3;
-    transition:.5s;
-  }
-  #connect:hover {
-    background-color: #63c458;
-  }
-  #interact {
-    background-color: #EEE;
-    padding: 4px;
-  }
-  #panel{
-    position: fixed;
-    left: 0px;
-    top: 0px;
-    z-index: 20;
-  }
-  #name{
-    position: fixed;
-    left: 10px;
-    top: 70px;
-    z-index: 20;
-  }
-  #world {
-    margin: 10px
-  }
+#play {
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+}
 
-  #alert {
-    position: absolute;
-    bottom: 10px;
-    margin-left: auto;
-    margin-right: auto;
-    text-align: center;
-  }
+#name {
+  margin-bottom: 15px;
+}
 
-  #settings {
-    position: absolute;
-    left: 0px;
-    top: 25%;
-    background-color: white;
-    padding: 5px;
+#username {
+  color: #FFF;
+  font-size: 1rem;
+  margin-bottom: 5px;
+  display: block;
+}
+
+#nick {
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  background-color: rgba(255, 255, 255, 0.8);
+  color: #000;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  margin-bottom: 15px;
+}
+
+#nick:focus {
+  outline: none;
+  box-shadow: 0 0 5px rgba(81, 203, 238, 1);
+  background-color: #FFF;
+}
+
+#connect {
+  width: 180px;
+  color: #FFF;
+  font-weight: bold;
+  font-size: 1.1rem;
+  cursor: pointer;
+  height: 55px;
+  line-height: 55px;
+  border-radius: 28px;
+  border: none;
+  background: linear-gradient(45deg, #4CAF50, #45a049);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  letter-spacing: 1px;
+}
+
+#connect:hover {
+  background: linear-gradient(45deg, #45a049, #4CAF50);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+#connect:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#interact {
+  background-color: #EEE;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+#panel {
+  position: fixed;
+  left: 10px;
+  top: 10px;
+  z-index: 20;
+  animation: slideInLeft 0.5s ease-out;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+#world {
+  margin: 10px;
+  padding: 5px;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+
+
+#world:hover, #hero:hover, #diff:hover, #wreath:hover {
+  transform: scale(1.05);
+}
+
+#alert {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  padding: 10px 20px;
+  border-radius: 5px;
+  color: #FFF;
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { 
+    opacity: 0;
+    transform: translate(-50%, 20px);
   }
-  .settingsElement {
-    margin: 5px;
+  to { 
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
+}
+
+#settings {
+  position: absolute;
+  left: 10px;
+  top: 20%;
+  background-color: #FFF;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  max-height: 70vh;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  animation: slideInLeft 0.5s ease-out 0.1s both;
+}
+
+.settingsElement {
+  margin: 6px 0;
+}
+
+select, input[type="text"], input[type="number"] {
+  padding: 4px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  background-color: #FFF;
+  color: #000;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+select:focus, input[type="text"]:focus, input[type="number"]:focus {
+  outline: none;
+  box-shadow: 0 0 5px rgba(81, 203, 238, 1);
+  border: 1px solid rgba(81, 203, 238, 1);
+}
+
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #555;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+  margin-right: 6px;
+  transition: all 0.3s ease;
+}
+
+input[type="checkbox"]:checked {
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+  animation: checkmark 0.2s ease-in-out;
+}
+
+@keyframes checkmark {
+  0% { transform: scale(0); }
+  90% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+input[type="checkbox"]:checked::after {
+  content: '\2714';
+  font-size: 12px;
+  color: white;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+input[type="checkbox"]:active {
+  transform: scale(0.9);
+}
+
+label {
+  cursor: pointer;
+  color: #000;
+  font-size: 0.85rem;
+  transition: color 0.3s ease;
+}
+
+label:hover {
+  color: #4CAF50;
+}
+
+#settings div {
+  color: #000;
+  margin-bottom: 6px;
+}
+
+#hero {
+  padding: 10px;
+  margin-top: -15px;
+  border: none;
+  border-radius: 5px;
+  background-color: rgba(255, 255, 255, 0.8);
+  color: #000;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+#hero:focus {
+  outline: none;
+  box-shadow: 0 0 5px rgba(81, 203, 238, 1);
+  background-color: #FFF;
+}
+
+#hotkeys {
+  animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+#hotkeys ul li {
+  transition: all 0.3s ease;
+  opacity: 0;
+  animation: fadeInRight 0.5s ease-out forwards;
+}
+
+@keyframes fadeInRight {
+  from { 
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+#hotkeys ul li:nth-child(1) { animation-delay: 0.05s; }
+#hotkeys ul li:nth-child(2) { animation-delay: 0.1s; }
+#hotkeys ul li:nth-child(3) { animation-delay: 0.15s; }
+#hotkeys ul li:nth-child(4) { animation-delay: 0.2s; }
+#hotkeys ul li:nth-child(5) { animation-delay: 0.25s; }
+#hotkeys ul li:nth-child(6) { animation-delay: 0.3s; }
+#hotkeys ul li:nth-child(7) { animation-delay: 0.35s; }
+#hotkeys ul li:nth-child(8) { animation-delay: 0.4s; }
+#hotkeys ul li:nth-child(9) { animation-delay: 0.45s; }
+#hotkeys ul li:nth-child(10) { animation-delay: 0.5s; }
+#hotkeys ul li:nth-child(11) { animation-delay: 0.55s; }
+#hotkeys ul li:nth-child(12) { animation-delay: 0.6s; }
+
+#hotkeys ul li:hover {
+  transform: translateX(-5px);
+  color: #ffcc00;
+}
