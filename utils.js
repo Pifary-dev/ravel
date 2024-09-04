@@ -463,7 +463,7 @@ function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive
   let dead = true;
   let inDistance = false;
   if(Harmless === undefined){
-    Harmless = (enemy.healing > 0) ? true : enemy.Harmless;
+    Harmless = enemy.isHarmless();
   }
   if (collides(player,enemy,offset) && (!player.safeZone||!killInSafeZone)) {
     inDistance = true;
@@ -819,6 +819,16 @@ function calculateFps(){
   const thisFrameTime = (thisLoop = new Date) - lastLoop;
   frameTime += (thisFrameTime - frameTime) / filterStrength;
   lastLoop = thisLoop;
+}
+
+function textureToId(texture){
+  switch(texture){
+    case "leaves": return 1
+    case "wooden": return 2
+    case "baguette": return 3
+    case "ice": return 4
+    default: return 0
+  }
 }
 
 class Pulsation {

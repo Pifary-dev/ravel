@@ -89,58 +89,61 @@
     </div>
     <div id="settings">
       <div>Settings:</div>
-      <div class="settingsElement">
-  <input type="checkbox" id="mouse_toggle" checked>
-  <label for="mouse_toggle">Mouse Toggle Movement</label>
-  <br><br>
-  <input type="checkbox" id="outline" checked>
-  <label for="outline">Enemy outline</label>
-  <br><br>
-  <input type="checkbox" id="timer">
-  <label for="timer">Timer</label>
-  <br><br>
-  <input type="checkbox" id="tiles" checked>
-  <label for="tiles">Tiles</label>
-  <br><br>
-  <input type="checkbox" id="no_points">
-  <label for="no_points">No Points</label>
-  <br><br>
-  <input type="checkbox" id="max_abilities">
-  <label for="max_abilities">Max Abilities</label>
-  <br><br>
-  <input type="checkbox" id="max_stats">
-  <label for="max_stats">Max Stats</label>
-  <br><br>
-  <input type="checkbox" id="slow_upgrade">
-  <label for="slow_upgrade">Evades Upgrade System</label>
-  <br><br>
-  <input type="checkbox" id="convert_to_legacy_speed">
-  <label for="convert_to_legacy_speed">Convert To Legacy Speed</label>
-  <br><br>
-  <input type="checkbox" id="death_cooldown">
-  <label for="death_cooldown">After Death Cooldown</label>
-  <br><br>
-  <input type="checkbox" id="dev">
-  <label for="dev">Test Mode</label>
-  <br><br>
-  <input type="checkbox" id="cheats">
-  <label for="cheats">Cheats</label>
-  <br><br>
-  <input type="checkbox" id="v_sync">
-  <label for="v_sync">V-Sync</label>
-  <br><br>
-  <label for="fps_limit">FPS Limit:</label>
-  <select id="fps_limit">
-    <option value="unlimited">Unlimited FPS</option>
-    <option value="60" selected>60 FPS</option>
-    <option value="30">30 FPS</option>
-  </select>
-  <br><br>
-  <label for="input_delay">Input Delay:</label>
-  <input type="number" id="input_delay" placeholder="Default is 0ms" value="0" min="0" style="width:100px">
-  <br><br>
-  <label for="tick_delay">Tick Delay:</label>
-  <input type="number" id="tick_delay" placeholder="1 tick is 33ms" value="2" min="0" style="width:100px">
+      <div class="settingsElement" style="line-height:75%;">
+        <input type="checkbox" id="mouse_toggle" checked>
+        <label for="mouse_toggle">Mouse Toggle Movement</label>
+        <br><br>
+        <input type="checkbox" id="outline" checked>
+        <label for="outline">Enemy outline</label>
+        <br><br>
+        <input type="checkbox" id="timer">
+        <label for="timer">Timer</label>
+        <br><br>
+        <input type="checkbox" id="tiles" checked>
+        <label for="tiles">Tiles</label>
+        <br><br>
+        <input type="checkbox" id="fading_effects" checked>
+        <label for="fading_effects">Fading Effects</label>
+        <br><br>
+        <input type="checkbox" id="no_points">
+        <label for="no_points">No Points</label>
+        <br><br>
+        <input type="checkbox" id="max_abilities">
+        <label for="max_abilities">Max Abilities</label>
+        <br><br>
+        <input type="checkbox" id="max_stats">
+        <label for="max_stats">Max Stats</label>
+        <br><br>
+        <input type="checkbox" id="slow_upgrade">
+        <label for="slow_upgrade">Evades Upgrade System</label>
+        <br><br>
+        <input type="checkbox" id="convert_to_legacy_speed">
+        <label for="convert_to_legacy_speed">Convert To Legacy Speed</label>
+        <br><br>
+        <input type="checkbox" id="death_cooldown">
+        <label for="death_cooldown">After Death Cooldown</label>
+        <br><br>
+        <input type="checkbox" id="dev">
+        <label for="dev">Test Mode</label>
+        <br><br>
+        <input type="checkbox" id="cheats">
+        <label for="cheats">Cheats</label>
+        <br><br>
+        <input type="checkbox" id="v_sync">
+        <label for="v_sync">V-Sync</label>
+        <br><br>
+        <label for="fps_limit">FPS Limit:</label>
+        <select id="fps_limit">
+          <option value="unlimited">Unlimited FPS</option>
+          <option value="60" selected>60 FPS</option>
+          <option value="30">30 FPS</option>
+        </select>
+        <br><br>
+        <label for="input_delay">Input Delay:</label>
+        <input type="number" id="input_delay" placeholder="Default is 0ms" value="0" min="0" style="width:100px">
+        <br><br>
+        <label for="tick_delay">Tick Delay:</label>
+        <input type="number" id="tick_delay" placeholder="1 tick is 33ms" value="2" min="0" style="width:100px">
       </div>
     </div>
     <div id="hotkeys" style="position: absolute; top: 10px; right: 10px; background-color: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; color: white;">

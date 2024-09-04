@@ -9,6 +9,7 @@ const settings = {
   timer: false,
   timer_clear:true,
   mouse_toggle:true,
+  fading_effects:true,
   tiles: true,
   dev: false,
   death_cooldown: false,

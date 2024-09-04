@@ -208,17 +208,7 @@ class World {
         this.pellet_multiplier = properties.pellet_multiplier;
       }    
       if (properties.texture !== undefined) {
-        switch(properties.texture){
-          case "leaves": this.texture = 1
-            break;
-          case "wooden": this.texture = 2
-            break;
-          case "baguette": this.texture = 3
-            break;
-          case "ice": this.texture = 4
-            break;
-          default: this.texture = 0
-        }
+        this.texture = textureToId(properties.texture);
       }
     }
     const xBase = areas[0].x === "var x" ? 0 : areas[0].x;
@@ -282,6 +272,7 @@ class World {
         if (propertiesC.applies_lantern) area.applies_lantern = true;
         if (propertiesC.pellet_count !== undefined) area.pellet_count = propertiesC.pellet_count;
         if (propertiesC.pellet_multiplier !== undefined) area.pellet_multiplier = propertiesC.multiplier;
+        if (propertiesC.texture !== undefined) area.texture = textureToId(propertiesC.texture);
       }
 
       let lastPosX = 0, lastPosY = 0;
@@ -359,7 +350,13 @@ class World {
               gravity: ['gravity'],
               repelling: ['repulsion'],
               frost_giant: ['angle', 'direction', 'turn_speed', 'shot_interval', 'cone_angle', 'pause_interval', 'pause_duration', 'turn_acceleration', 'shot_acceleration', 'pattern', 'immune', 'projectile_duration', 'projectile_radius', 'projectile_speed', 'precise_movement'],
-              radiating_bullets: ['release_interval', 'release_time']
+              radiating_bullets: ['release_interval', 'release_time'],
+              liquid: ['player_detection_radius'],
+              draining: ['drain'],
+              slowing: ['slow'],
+              charging: ['charge'],
+              burning: ['burn_modifier'],
+              pumpkin: ['player_detection_radius']
             };
 
             if (typeSpecificProps[object.type]) {
@@ -746,15 +743,15 @@ class Area {
       case "homing":
         return new Homing(new Vector(posX, posY), radius / 32, speed, angle, preset.increment);
       case "slowing":
-        return new Slowing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+        return new Slowing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, preset.slow);
       case "draining":
-        return new Draining(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+        return new Draining(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, preset.drain);
       case "oscillating":
         return new Oscillating(new Vector(posX, posY), radius / 32, speed, angle);
       case "turning":
         return new Turning(new Vector(posX, posY), radius / 32, speed, angle, preset.circle_size);
       case "liquid":
-        return new Liquid(new Vector(posX, posY), radius / 32, speed, angle);
+        return new Liquid(new Vector(posX, posY), radius / 32, speed, angle, preset.player_detection_radius);
       case "sizing":
         return new Sizing(new Vector(posX, posY), radius / 32, speed, angle);
       case "switch":
@@ -828,7 +825,7 @@ class Area {
       case "tree":
         return new Tree(new Vector(posX, posY), radius / 32, speed, angle);
       case "pumpkin":
-        return new Pumpkin(new Vector(posX, posY), radius / 32, speed);
+        return new Pumpkin(new Vector(posX, posY), radius / 32, speed, preset.player_detection_radius);
       case "fake_pumpkin":
         return new FakePumpkin(new Vector(posX, posY), radius / 32);
       case "experience_drain":
@@ -841,7 +838,7 @@ class Area {
       case "lava":
         return new Lava(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       case "burning":
-        return new Burning(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+        return new Burning(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, preset.burn_modifier);
       case "sticky_sniper":
         return new StickySniper(new Vector(posX, posY), radius / 32, speed, angle);
       case "ice_ghost":

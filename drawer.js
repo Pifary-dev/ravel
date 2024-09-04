@@ -46,6 +46,7 @@ function renderArea(area, players, focus, areaUpdated) {
       if (player.flashlight_active && player.flashlight && player.energy > 0) {
         const flashlightRadius = (460 / 32) * fov;
         const flashlightAngle = 15;
+        const flashlightAngleIncrement = 9;
         const flashlightDistance = 500 / 32 * fov;
 
         player.inputAng = mouse ? Math.atan2(mousePos.y - playerY, mousePos.x - playerX) * 180 / Math.PI : 
@@ -54,7 +55,7 @@ function renderArea(area, players, focus, areaUpdated) {
         player.inputAng = (player.inputAng + 360) % 360;
         
         const angleDiff = ((player.inputAng - player.lastAng + 540) % 360) - 180;
-        player.lastAng += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 15);
+        player.lastAng += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), flashlightAngleIncrement);
         player.lastAng = (player.lastAng + 360) % 360;
 
         lightCtx.beginPath();
@@ -281,7 +282,17 @@ function renderShatteredEntity(ctx, entity, x, y, radius) {
 }
 
 function renderNormalEntity(ctx, entity, x, y, radius) {
-  ctx.globalAlpha = entity.static ? 1 : (entity.alpha ?? (entity.Harmless || entity.healing > 0 ? 0.4 : 1));
+  let alpha = 1;
+  if(entity.static){
+    alpha = 1;
+  } else if(entity.alpha) {
+    alpha = entity.alpha;
+  } else if(settings.fading_effects && entity.HarmlessEffect > 0 && entity.HarmlessEffect < 1000){
+    alpha = 0.4 + 0.6 * (1-entity.HarmlessEffect/1000);
+  } else if(entity.isHarmless()){
+    alpha = 0.4;
+  }
+  ctx.globalAlpha = alpha;
   ctx.beginPath();
 
   if (entity.color_change) {
@@ -296,6 +307,15 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
   } else {
     ctx.arc(x, y, radius, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  if(settings.fading_effects){
+    const switch_time = entity.switch_total_time - entity.switch_time;
+    if(entity.switching && switch_time <= entity.fading_effects_time){
+      alpha = 0.3 - 0.3 * Math.cos((entity.fading_effects_time-switch_time)/220*Math.PI);
+      entity.disabled ? ctx.fillStyle = `rgba(25,25,25,${alpha})` : ctx.fillStyle = `rgba(147,147,147,${alpha})`;
+      ctx.fill();
+    }
   }
 
   if (entity.decayed) {

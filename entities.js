@@ -1,16 +1,12 @@
 class Entity {
   constructor(pos, radius, color) {
     this.pos = pos;
-    this.radius = radius;
-    this.fixedRadius = radius;
+    this.radius = this.fixedRadius = radius;
     this.color = color;
     this.vel = new Vector(0, 0);
     this.outline = false;
-    this.speedMultiplier = 1;
-    this.radiusMultiplier = 1;
-    this.angle = 0;
-    this.speed = 0;
-    this.friction = 0;
+    this.speedMultiplier = this.radiusMultiplier = 1;
+    this.angle = this.speed = this.friction = 0;
     this.weak = false;
     this.renderFirst = true;
     this.Harmless = false;
@@ -21,23 +17,21 @@ class Entity {
     this.no_collide = false;
     this.returnCollision = false;
   }
-  angleToVel(ang = this.angle) {
-    if(this.useRealVel){
-      this.realVel.x = Math.cos(ang) * this.speed;
-      this.realVel.y = Math.sin(ang) * this.speed;
-      return;
-    }
-    this.vel.x = Math.cos(ang) * this.speed;
-    this.vel.y = Math.sin(ang) * this.speed;  
+
+  angleToVel(angle = this.angle) {
+    const target = this.useRealVel ? this.realVel : this.vel;
+    target.x = Math.cos(angle) * this.speed || 0;
+    target.y = Math.sin(angle) * this.speed || 0;
   }
+
   velToAngle() {
-    if (this.useRealVel) {
-      this.angle = Math.atan2(this.realVel.y, this.realVel.x);
-    } else {
-      this.angle = Math.atan2(this.vel.y, this.vel.x);
-      this.speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.y * this.vel.y);
+    const source = this.useRealVel ? this.realVel : this.vel;
+    this.angle = Math.atan2(source.y, source.x);
+    if (!this.useRealVel) {
+      this.speed = Math.hypot(source.x, source.y);
     }
   }
+
   update(time) {
     const timeFix = time / (1000 / 30);
     
@@ -49,16 +43,13 @@ class Entity {
     this.radius = this.fixedRadius * this.radiusMultiplier;
     this.radiusMultiplier = 1;
     
-    const vel = {
-      x: this.vel.x * this.speedMultiplier,
-      y: this.vel.y * this.speedMultiplier
-    };
+    const speedMult = this.speedMultiplier;
     
     if (this.freeze > 0) {
       this.freeze = Math.max(0, this.freeze - time);
     } else {
-      this.pos.x += vel.x / 32 * timeFix;
-      this.pos.y += vel.y / 32 * timeFix;
+      this.pos.x += this.vel.x * speedMult / 32 * timeFix;
+      this.pos.y += this.vel.y * speedMult / 32 * timeFix;
     }
     
     if (this.sugar_rush > 0) {
@@ -72,16 +63,96 @@ class Entity {
     
     this.speedMultiplier = 1;
   }
+
   collide(boundary) {
-    collisionEnemy(this,boundary,this.vel,this.pos,this.radius,this.returnCollision)
+    collisionEnemy(this, boundary, this.vel, this.pos, this.radius, this.returnCollision);
   }
-  behavior(time, area, offset, players) {
 
-  }
-  interact(player, worldPos) {
-
+  behavior(time, area, offset, players) {}
+  interact(player, worldPos) {}
+  isHarmless(){
+    return this.Harmless || this.disabled || this.clownHarm || this.healing > 0; 
   }
 }
+
+class Enemy extends Entity {
+  constructor(pos, type, radius, speed, angle, color, aura, auraColor, auraSize) {
+    super(pos, radius, color);
+    this.renderFirst = false;
+    this.outline = true;
+    this.type = type;
+    this.aura = aura;
+    this.auraColor = auraColor;
+    this.auraSize = this.auraStaticSize = auraSize || 0;
+    this.speed = speed;
+    this.angle = angle;
+    this.angleToVel((angle !== undefined) ? angle : Math.random() * Math.PI * 2);
+    this.decayed = false;
+    this.repelled = false;
+    this.shatterTime = 0;
+    this.immune = false;
+    this.isEnemy = true;
+    this.self_destruction = false;
+  }
+
+  update(time) {
+    const timeFix = time / (1000 / 30);
+    
+    this.radius = this.fixedRadius * this.radiusMultiplier;
+    this.auraSize = this.auraStaticSize * this.radiusMultiplier;
+    this.radiusMultiplier = 1;
+
+    if (!this.noAngleUpdate) {
+      this.velToAngle();
+      this.angleToVel();
+    }
+
+    if (this.healing > 0) this.healing -= time;
+    if (this.minimized > 0) {
+      this.radiusMultiplier *= 0.5;
+      this.minimized -= time;
+    }
+    if (this.HarmlessEffect > 0) {
+      this.HarmlessEffect -= time;
+      this.Harmless = this.HarmlessEffect > 0;
+    }
+
+    let speedMult = this.speedMultiplier;
+    if (this.slowdown_time > 0) {
+      this.slowdown_time = Math.max(0, this.slowdown_time - time);
+      speedMult *= this.slowdown_amount;
+    }
+    if (this.sugar_rush > 0) {
+      speedMult *= 0.05;
+      this.sugar_rush -= time;
+    }
+
+    if (this.freeze > 0) {
+      this.freeze = Math.max(0, this.freeze - time);
+    } else {
+      this.pos.x += this.vel.x * speedMult / 32 * timeFix;
+      this.pos.y += this.vel.y * speedMult / 32 * timeFix;
+    }
+
+    const dim = 1 - this.friction * timeFix;
+    this.vel.x *= dim;
+    this.vel.y *= dim;
+
+    this.decayed = this.repelled = false;
+    this.shatterTime = Math.max(0, this.shatterTime - time);
+    this.speedMultiplier = 1;
+  }
+
+  interact(player, worldPos, time) {
+    interactionWithEnemy(player, this, worldPos, true, this.corrosive, this.immune);
+    if (this.aura && !player.isEffectImmune()) {
+      this.auraEffect(player, worldPos, time);
+    }
+  }
+
+  auraEffect(player, worldPos) {}
+}
+
 class Pellet extends Entity {
   constructor(pos, power = 1, zones = []) {
     const colors = ["#b84dd4", "#a32dd8", "#3b96fd", "#43c59b", "#f98f6b", "#61c736"];
@@ -691,7 +762,7 @@ class Player {
       this.speedMultiplier *= 3;
     }
     if (this.fusion) this.speedMultiplier *= 0.7;
-    if (this.slowing) this.applySlowness(0.7);
+    if (this.slowing) this.applySlowness(this.slow);
     if (this.freezing) this.applySlowness(0.15);
     
     if (this.web || this.cobweb) {
@@ -740,17 +811,17 @@ class Player {
     }
     
     if (this.charging) {
-      this.energy = Math.min(this.maxEnergy, this.energy + (16 * time / 1000) * this.effectImmune);
+      this.energy = Math.min(this.maxEnergy, this.energy + (this.charge * time / 1000) * this.effectImmune);
       if (this.energy >= this.maxEnergy && !this.draining) {
         this.energy = 0;
         death(this);
       }
     }
     
-    if (this.draining) this.energy = Math.max(0, this.energy - (16 * time / 1000) * this.effectImmune);
+    if (this.draining) this.energy = Math.max(0, this.energy - (this.drain * time / 1000) * this.effectImmune);
     
     if (this.burning) {
-      this.burningTimer += time * this.effectImmune;
+      this.burningTimer += time * this.effectImmune * this.burn_modifier;
       if (this.burningTimer > 1000) death(this);
     } else {
       this.burningTimer = Math.max(0, this.burningTimer - time);
@@ -921,13 +992,17 @@ class Player {
     true : this.cent_accelerating && 2 * this.cent_distance < this.cent_max_distance;
   }
   isDetectable(){
-    return !this.god && !this.isDead && !this.night;
+    return !this.god && !this.isDead && !this.night && !this.safeZone;
   }
   isInvulnerable(){
     return this.god || this.inBarrier || this.shadowed_invulnerability || this.invincible;
   }
   isEffectImmune(){
-    return this.effectImmune === 0 || this.god || this.isDead;
+    return this.effectImmune === 0 || this.god || this.isDead || this.safeZone;
+  }
+  onWallCollision(){
+    this.no_slip = true;
+    this.slippery_wall_speed_multiplier = 2;
   }
 }
 class Basic extends Player {
@@ -981,11 +1056,11 @@ class Jotunn extends Player {
   }
 
   updateSecondAbilityCooldown() {
-    this.secondTotalCooldown = this.secondAbilityCooldown = 9000 - (this.ab2L - 1) * 1000;
+    this.secondTotalCooldown = this.secondAbilityCooldown = 9000 - (this.ab2L) * 1000;
   }
 
   getDecaySlowdown() {
-    return 1 - (this.ab1L - 1) * 0.1;
+    return 1 - (this.ab1L) * 0.1;
   }
 }
 class Burst extends Player {
@@ -2189,7 +2264,7 @@ class Brute extends Player {
 
   handleSecondAbility() {
     if (this.ab2L) {
-      const vigorRadius = [1, 1, 2, 2, 3][this.ab2L - 1];
+      const vigorRadius = [1, 1, 2, 2, 3][this.ab2L];
       this.radiusAdditioner += vigorRadius;
 
       const effectImmunity = 1 - (this.ab2L * 15) / 100;
@@ -2264,7 +2339,7 @@ class Mirage extends Player {
     if (this.secondAbility && this.secondAbilityCooldown == 0 && this.energy >= 15 && this.ab2L) {
       this.energy -= 15;
       this.updateSecondAbilityCooldown();
-      this.spawnBullet(area,'obscure_projectile')
+      this.spawnBullet(area,'obscure_projectile', this)
     }
     this.isObscured = (this.invincible_time>0) ? true : false;
     if(this.isObscured){
@@ -2279,10 +2354,8 @@ class Mirage extends Player {
   spawnBullet(area,bulletType){
       let angle = (this.mouseActive) ? this.mouse_angle : this.previousAngle;
       const world = game.worlds[this.world];
-      const bullet = new ObscureProjectile(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),angle)
-      if(!area.entities[bulletType]){area.entities[bulletType] = []}
-      area.entities[bulletType].push(bullet);
-    
+      const bullet = new ObscureProjectile(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),angle, this)
+      area.addEntity("obscure_projectile", bullet)
   }
   updateFirstAbilityCooldown() {
     this.firstTotalCooldown = 11000 - 1000 * this.ab1L;
@@ -2555,116 +2628,27 @@ class Shield extends Entity {
     }
   }
 }
-class Enemy extends Entity {
-  constructor(pos, type, radius, speed, angle, color, aura, auraColor, auraSize) {
-    super(pos, radius, color);
-    this.renderFirst = false;
-    this.outline = true;
-    this.type = type;
-    this.aura = aura;
-    this.auraColor = auraColor;
-    this.auraSize = auraSize
-    this.auraStaticSize = auraSize+0;
-    if(angle||angle==0){
-      this.angle = angle;
-      this.speed = speed;
-      this.angleToVel();
-    } else {
-      angle = Math.random();
-      let xvel = Math.cos(angle * Math.PI * 2) * speed;
-      let yvel = Math.sin(angle * Math.PI * 2) * speed;
-      this.vel = new Vector(xvel, yvel);
-    }
-    this.decayed = false;
-    this.repelled = false;
-    this.shatterTime = 0;
-    this.immune = false;
-    this.isEnemy = true;
-    this.self_destruction = false;
-  }
-  update(time) {
-    const timeFix = time / (1000 / 30);
-    
-    this.radius = this.fixedRadius * this.radiusMultiplier;
-    this.auraSize = this.auraStaticSize * this.radiusMultiplier;
-    this.radiusMultiplier = 1;
-
-    if (this.color !== "#7e7cd6") {
-      this.velToAngle();
-      this.angleToVel();
-    }
-
-    if (this.healing > 0) this.healing -= time;
-    if (this.minimized > 0) {
-      this.radiusMultiplier *= 0.5;
-      this.minimized -= time;
-    }
-    if (this.HarmlessEffect > 0) {
-      this.HarmlessEffect -= time;
-      this.Harmless = this.HarmlessEffect > 0;
-    }
-
-    if (this.slowdown_time > 0) {
-      this.slowdown_time = Math.max(0, this.slowdown_time - time);
-      this.speedMultiplier *= this.slowdown_amount;
-    }
-    if (this.sugar_rush > 0) {
-      this.speedMultiplier *= 0.05;
-      this.sugar_rush -= time;
-    }
-
-    const vel = new Vector(
-      this.vel.x * this.speedMultiplier,
-      this.vel.y * this.speedMultiplier
-    );
-
-    if (this.freeze > 0) {
-      this.freeze = Math.max(0, this.freeze - time);
-    } else {
-      this.pos.x += vel.x / 32 * timeFix;
-      this.pos.y += vel.y / 32 * timeFix;
-    }
-
-    const dim = 1 - this.friction * timeFix;
-    this.vel.x *= dim;
-    this.vel.y *= dim;
-
-    this.decayed = false;
-    this.repelled = false;
-    this.shatterTime = Math.max(0, this.shatterTime - time);
-    this.speedMultiplier = 1;
-  }
-  interact(player, worldPos, time) {
-    interactionWithEnemy(player,this,worldPos,true,this.corrosive,this.immune)
-    if (this.aura && !player.isEffectImmune()) {
-      if(!player.safeZone)this.auraEffect(player, worldPos, time)
-    }
-  }
-  auraEffect(player, worldPos) {
-
-  }
-}
 class Unknown extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("unknown") - 1, radius, speed, angle, "purple");
+    super(pos, entityTypes.indexOf("unknown"), radius, speed, angle, "purple");
   }
 }
 class Normal extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("normal") - 1, radius, speed, angle, "#939393");
+    super(pos, entityTypes.indexOf("normal"), radius, speed, angle, "#939393");
   }
 }
 
 class Corrosive extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("corrosive") - 1, radius, speed, angle, "#00eb00");
+    super(pos, entityTypes.indexOf("corrosive"), radius, speed, angle, "#00eb00");
     this.corrosive = true;
   }
 }
 
 class Wall extends Enemy {
   constructor(pos, radius, speed, boundary, wallIndex, count, move_clockwise = true, initial_side) {
-    super(pos, entityTypes.indexOf("wall") - 1, radius, speed, undefined,"#222222");
+    super(pos, entityTypes.indexOf("wall"), radius, speed, undefined,"#222222");
     this.speed = speed;
     this.wall = true;
     this.returnCollision = true;
@@ -2787,7 +2771,7 @@ class Wall extends Enemy {
 
 class Dasher extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("dasher") - 1, radius, speed, angle, "#003c66");
+    super(pos, entityTypes.indexOf("dasher"), radius, speed, angle, "#003c66");
     this.speed = speed;
     this.time_to_prepare = 750;
     this.time_to_dash = 3000;
@@ -2845,56 +2829,74 @@ class Dasher extends Enemy {
   }
 }
 class Homing extends Enemy {
-  constructor(pos, radius, speed, angle, increment = 1.28) {
-    super(pos, entityTypes.indexOf("homing") - 1, radius, speed, angle, "#966e14");
-    this.increment = increment / 32;
+  constructor(pos, radius, speed, angle, increment = 0.05, home_range = 200) {
+    super(pos, entityTypes.indexOf("homing"), radius, speed, angle, "#966e14");
+    this.increment = increment;
+    this.home_range = home_range / 32;
     this.velToAngle();
     this.targetAngle = this.angle;
     this.homing = true;
     this.returnCollision = true;
   }
   behavior(time, area, offset, players) {
-    var min = 180 / 32;
-    var index;
-    for (var i in players) {
-      if(!players[i].safeZone&&!players[i].night&&!players[i].god&&!players[i].isDead)if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < min) {
-        min = distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y));
-        index = i;
-      }
-    }
-    this.velToAngle();
-    if (index != undefined) {
-      var dX = (players[index].pos.x - offset.x) - this.pos.x;
-      var dY = (players[index].pos.y - offset.y) - this.pos.y;
+    const closestPlayer = this.findClosestPlayer(players, offset);
+    if (closestPlayer) {
+      const dX = closestPlayer.x - this.pos.x;
+      const dY = closestPlayer.y - this.pos.y;
       this.targetAngle = Math.atan2(dY, dX);
     }
-    var dif = this.targetAngle - this.angle;
-    var angleDif = Math.atan2(Math.sin(dif), Math.cos(dif));
-    var angleIncrement = this.increment;
-    if (Math.abs(angleDif) >= angleIncrement) {
-      if (angleDif < 0) {
-        this.angle -= angleIncrement * (time / 30)
-      } else {
-        this.angle += angleIncrement * (time / 30)
-      }
+    const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
+    const angleIncrement = this.increment * (time / 30);
+    if (Math.abs(angleDiff) >= this.increment) {
+      this.angle += Math.sign(angleDiff) * angleIncrement;
     }
     this.angleToVel();
   }
+  findClosestPlayer(players, offset) {
+    let closestDist = this.home_range;
+    let closestPlayer = null;
+    for (const player of players) {
+      if (player.isDetectable()) {
+        const dist = distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y));
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestPlayer = {x: player.pos.x - offset.x, y: player.pos.y - offset.y};
+        }
+      }
+    }
+    return closestPlayer;
+  }
 }
+
 class Slowing extends Enemy {
-  constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("slowing") - 1, radius, speed, angle, "#ff0000", true, "rgba(255, 0, 0, 0.15)", auraRadius / 32);
+  constructor(pos, radius, speed, angle, auraRadius = 150, slow = 0.3) {
+    super(pos, entityTypes.indexOf("slowing"), radius, speed, angle, "#ff0000", true, "rgba(255, 0, 0, 0.15)", auraRadius / 32);
+    this.slow = slow;
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
       player.slowing = true;
+      player.slow = 1-this.slow;
+    }
+  }
+}
+
+class Draining extends Enemy {
+  constructor(pos, radius, speed, angle, auraRadius = 150, drain = 15) {
+    super(pos, entityTypes.indexOf("draining"), radius, speed, angle, "#0000ff", true, "rgba(0, 0, 255, 0.15)", auraRadius / 32);
+    this.drain = drain;
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      player.draining = true;
+      player.drain = this.drain;
     }
   }
 }
 
 class Reducing extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 140) {
-    super(pos, entityTypes.indexOf("reducing") - 1, radius, speed, angle, "rgb(45, 50, 55)", true, "rgba(45, 50, 55, 0.15)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("reducing"), radius, speed, angle, "rgb(45, 50, 55)", true, "rgba(45, 50, 55, 0.15)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -2905,7 +2907,7 @@ class Reducing extends Enemy {
 
 class Blocking extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("blocking") - 1, radius, speed, angle, "#bf5213", true, "rgba(191, 82, 19, 0.3)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("blocking"), radius, speed, angle, "#bf5213", true, "rgba(191, 82, 19, 0.3)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -2916,7 +2918,7 @@ class Blocking extends Enemy {
 
 class Quicksand extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150, push_direction, strength = 5, immune = false, classic = false) {
-    super(pos, entityTypes.indexOf("quicksand") - 1, radius, speed, angle, "#6c541e", true, "rgba(108, 84, 30, 0.3)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("quicksand"), radius, speed, angle, "#6c541e", true, "rgba(108, 84, 30, 0.3)", auraRadius / 32);
     this.quicksand = push_direction;
     this.quicksand_strength = strength;
     this.immune = immune;
@@ -2942,7 +2944,7 @@ class Quicksand extends Enemy {
 
 class Defender extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("defender") - 1, radius, speed, angle, "#312f40", true, "rgba(0, 0, 0, 0.2)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("defender"), radius, speed, angle, "#312f40", true, "rgba(0, 0, 0, 0.2)", auraRadius / 32);
     this.immune = true;
   }
   behavior(time, area, offset, players) {
@@ -2960,19 +2962,9 @@ class Defender extends Enemy {
     }
   }
 }
-class Draining extends Enemy {
-  constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("draining") - 1, radius, speed, angle, "#0000ff", true, "rgba(0, 0, 255, 0.15)", auraRadius / 32);
-  }
-  auraEffect(player, worldPos) {
-    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
-      player.draining = true;
-    }
-  }
-}
 class Oscillating extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("oscillating") - 1, radius, speed, angle, "#869e0f");
+    super(pos, entityTypes.indexOf("oscillating"), radius, speed, angle, "#869e0f");
     this.clock = 0;
   }
   behavior(time, area, offset, players) {
@@ -2986,7 +2978,7 @@ class Oscillating extends Enemy {
 }
 class Turning extends Enemy {
   constructor(pos, radius, speed, angle, circleSize = 150) {
-    super(pos, entityTypes.indexOf("turning") - 1, radius, speed, angle, "#336600");
+    super(pos, entityTypes.indexOf("turning"), radius, speed, angle, "#336600");
     this.dir = speed / circleSize;
     this.turning = true;
     this.returnCollision = true;
@@ -2998,13 +2990,13 @@ class Turning extends Enemy {
   }
 }
 class Liquid extends Enemy {
-  constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("liquid") - 1, radius, speed, angle, "#6789ef");
+  constructor(pos, radius, speed, angle, player_detection_radius = 160) {
+    super(pos, entityTypes.indexOf("liquid"), radius, speed, angle, "#6789ef");
+    this.player_detection_radius = player_detection_radius / 32;
   }
   behavior(time, area, offset, players) {
-    const activationDistance = 160;
-    for (var i in players) {
-      if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < activationDistance / 32&&!players[i].night&&!players[i].god&&!players[i].safeZone&&!players[i].isDead) {
+    for (const player of players) {
+      if (distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y)) < this.player_detection_radius && player.isDetectable()) {
         this.speedMultiplier *= 5;
       }
     }
@@ -3012,7 +3004,7 @@ class Liquid extends Enemy {
 }
 class Sizing extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("sizing") - 1, radius, speed, angle, "#f27743");
+    super(pos, entityTypes.indexOf("sizing"), radius, speed, angle, "#f27743");
     this.growing = true;
     this.sizing_multiplier = 1;
     this.sizing_bound_multiplier = 2.5;
@@ -3038,30 +3030,27 @@ class Sizing extends Enemy {
 }
 class Switch extends Enemy {
   constructor(pos, radius, speed, angle, index, count) {
-    super(pos, entityTypes.indexOf("switch") - 1, radius, speed, angle, "#565656");
+    super(pos, entityTypes.indexOf("switch"), radius, speed, angle, "#565656");
+    this.switching = true;
     this.disabled = false;
     if (index >= count / 2) {
       this.disabled = true;
     }
-    this.clock = 0;
+    this.switch_time = 0;
+    this.switch_total_time = 3000;
+    this.fading_effects_time = 1500;
   }
   behavior(time, area, offset, players) {
-    this.clock += time;
-    if (this.clock > 3000) {
+    this.switch_time += time;
+    if (this.switch_time > this.switch_total_time) {
       this.disabled = !this.disabled;
+      this.switch_time = this.switch_time % this.switch_total_time;
     }
-    if (this.disabled) {
-      this.Harmless = true;
-    } else {
-      this.Harmless = false;
-    }
-    if(this.clownHarm){this.Harmless = true}
-    this.clock = this.clock % 3000;
   }
 }
 class Sniper extends Enemy {
   constructor(pos, radius, speed, angle, color = "#a05353") {
-    super(pos, entityTypes.indexOf("sniper") - 1, radius, speed, angle, color);
+    super(pos, entityTypes.indexOf("sniper"), radius, speed, angle, color);
     this.releaseTime = 3000;
     this.bulletType = 0;
     this.bulletSpeed = 10;
@@ -3096,16 +3085,14 @@ class Sniper extends Enemy {
   }
 }
 
-class SniperBullet extends Entity {
+class SniperBullet extends Enemy {
   constructor(pos, angle, radius, speed) {
-    super(pos, radius, "#a05353");
-    this.speed = speed;
+    super(pos, entityTypes.indexOf("sniper_bullet"), radius, speed, angle, "#a05353");
     this.clock = 0;
     this.removeTime = 3000;
-    this.angle = angle;
-    this.angleToVel();
     this.immune = true;
     this.weak = true;
+    this.outline = false;
   }
   behavior(time, area, offset, players) {
     this.clock += time;
@@ -3146,22 +3133,11 @@ class StalactiteProjectile extends SniperBullet {
   constructor(pos, radius) {
     super(pos, Math.random() * Math.PI * 2, radius, 3);
     this.color = "#614c37";
-    this.outline = true;
-    this.renderFirst = false;
-    this.decayed = false;
     this.immune = false;
-    this.shatterTime = 0;
-    this.isEnemy = true;
-    this.repelled = false;
+    this.outline = true;
   }
   behavior(time, area, offset, players) {
     super.behavior(time, area, offset, players);
-    this.decayed = false;
-    this.repelled = false;
-    this.shatterTime -= time;
-    if (this.shatterTime < 0) {
-      this.shatterTime = 0;
-    }
     if (this.clock > 1500){
       this.toRemove = true;
     }
@@ -3169,7 +3145,7 @@ class StalactiteProjectile extends SniperBullet {
 }
 
 class ForceSniper extends Sniper {
-  constructor(pos, radius, speed, angle, color) {
+  constructor(pos, radius, speed, angle, color, bulletType) {
     super(pos, radius, speed, angle, color);
     this.bulletType = bulletType;
     this.bulletSpeed = 12;
@@ -3188,6 +3164,7 @@ class ForceSniperABullet extends SniperBullet {
     this.color = "#0a5557";
     this.immune = true;
     this.touched = false;
+    this.outline = false;
   }
   interact(player, worldPos, time) {
     if (!this.touched && distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
@@ -3292,7 +3269,6 @@ class RadarBullet extends SniperBullet {
     this.color = "#c90000";
     this.auraOfSpawner = auraOfSpawner;
     this.spawner = spawner;
-    this.immune = true;
   }
   behavior(time, area, offset, players) {
     super.behavior(time, area, offset, players);
@@ -3313,8 +3289,8 @@ class CorrosiveSniperBullet extends SniperBullet {
   constructor(pos, angle, radius, speed) {
     super(pos, angle, radius, speed);
     this.color = "#61ff61";
-    this.outline = true;
     this.corrosive = true;
+    this.immune = false;
     this.clock = 0;
   }
   behavior(time, area, offset, players) {
@@ -3330,6 +3306,7 @@ class IceSniper extends Sniper {
   constructor(pos, radius, speed, angle) {
     super(pos, radius, speed, angle, "#8300ff");
     this.bulletType = 1;
+    this.bulletRadius = 10 / 32;
   }
 }
 
@@ -3337,7 +3314,6 @@ class IceSniperBullet extends SniperBullet {
   constructor(pos, angle, radius, speed) {
     super(pos, angle, radius, speed);
     this.color = "#8300ff";
-    this.weak = true;
     this.Harmless = true;
   }
   interact(player, worldPos) {
@@ -3362,7 +3338,6 @@ class PoisonSniperBullet extends SniperBullet {
   constructor(pos, angle, radius, speed) {
     super(pos, angle, radius, speed);
     this.color = "#8c01b7";
-    this.weak = true;
     this.Harmless = true;
   }
   interact(player, worldPos) {
@@ -3376,7 +3351,7 @@ class PoisonSniperBullet extends SniperBullet {
 
 class SpeedGhost extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("speed_ghost") - 1, radius, speed, angle, "#fca330");
+    super(pos, entityTypes.indexOf("speed_ghost"), radius, speed, angle, "#fca330");
     this.Harmless = true;
     this.immune = true;
     this.radius = radius;
@@ -3390,7 +3365,7 @@ class SpeedGhost extends Enemy {
 
 class RegenGhost extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("regen_ghost") - 1, radius, speed, angle, "#32e3ae");
+    super(pos, entityTypes.indexOf("regen_ghost"), radius, speed, angle, "#32e3ae");
     this.Harmless = true;
     this.immune = true;
     this.radius = radius;
@@ -3528,7 +3503,7 @@ class LeadSniperBullet extends SniperBullet {
 }
 class Freezing extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 100) {
-    super(pos, entityTypes.indexOf("freezing") - 1, radius, speed, angle, "#64c1b9", true, "rgba(58, 117, 112, 0.3)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("freezing"), radius, speed, angle, "#64c1b9", true, "rgba(58, 117, 112, 0.3)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -3539,7 +3514,7 @@ class Freezing extends Enemy {
 
 class Web extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 110) {
-    super(pos, entityTypes.indexOf("web") - 1, radius, speed, angle, "#4a4a4a", true, "rgba(255, 255, 255, 0.6)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("web"), radius, speed, angle, "#4a4a4a", true, "rgba(255, 255, 255, 0.6)", auraRadius / 32);
     this.immune = true;
   }
   auraEffect(player, worldPos) {
@@ -3551,7 +3526,7 @@ class Web extends Enemy {
 
 class Cobweb extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("cobweb") - 1, radius, speed, angle, "#e4e4e4");
+    super(pos, entityTypes.indexOf("cobweb"), radius, speed, angle, "#e4e4e4");
     this.Harmless = true;
     this.immune = true;
     this.outline = false;
@@ -3565,7 +3540,7 @@ class Cobweb extends Enemy {
 
 class Teleporting extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("teleporting") - 1, radius, speed, angle,"#ecc4ef");
+    super(pos, entityTypes.indexOf("teleporting"), radius, speed, angle,"#ecc4ef");
     this.clock = 0;
     this.teleportInterval = 1000;
   }
@@ -3591,7 +3566,7 @@ class Teleporting extends Enemy {
 
 class Star extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("star") - 1, radius, speed, angle, "#faf46e");
+    super(pos, entityTypes.indexOf("star"), radius, speed, angle, "#faf46e");
     this.clock = 0;
     this.starPos = true;
     this.immune = false;
@@ -3622,14 +3597,14 @@ class Star extends Enemy {
 
 class Immune extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("immune") - 1, radius, speed, angle, "#000000");
+    super(pos, entityTypes.indexOf("immune"), radius, speed, angle, "#000000");
     this.immune = true;
   }
 }
 
 class Ice extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("ice_ghost") - 1, radius, speed, angle, "#be89ff");
+    super(pos, entityTypes.indexOf("ice_ghost"), radius, speed, angle, "#be89ff");
     this.immune = true;
     this.Harmless = true;
   }
@@ -3644,7 +3619,7 @@ class Ice extends Enemy {
 
 class PositiveMagneticGhost extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("positive_magnetic_ghost") - 1, radius, speed, angle, "#e3001e");
+    super(pos, entityTypes.indexOf("positive_magnetic_ghost"), radius, speed, angle, "#e3001e");
     this.immune = true;
     this.Harmless = true;
   }
@@ -3657,7 +3632,7 @@ class PositiveMagneticGhost extends Enemy {
 
 class NegativeMagneticGhost extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("negative_magnetic_ghost") - 1, radius, speed, angle, "#6f59ff");
+    super(pos, entityTypes.indexOf("negative_magnetic_ghost"), radius, speed, angle, "#6f59ff");
     this.immune = true;
     this.Harmless = true;
   }
@@ -3670,7 +3645,7 @@ class NegativeMagneticGhost extends Enemy {
 
 class Disabling extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("disabling") - 1, radius, speed, angle, "#a87c86", true, "rgba(255, 191, 206, 0.5)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("disabling"), radius, speed, angle, "#a87c86", true, "rgba(255, 191, 206, 0.5)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -3681,7 +3656,7 @@ class Disabling extends Enemy {
 
 class DisablingGhost extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("disabling_ghost") - 1, radius, speed, angle, "rgba(255, 191, 206, 0.5)");
+    super(pos, entityTypes.indexOf("disabling_ghost"), radius, speed, angle, "rgba(255, 191, 206, 0.5)");
     this.Harmless = true;
     this.immune = true;
     this.radius = radius;
@@ -3695,7 +3670,7 @@ class DisablingGhost extends Enemy {
 
 class Toxic extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("toxic") - 1, radius, speed, angle, "#00c700", true, "rgba(0, 199, 0, 0.2)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("toxic"), radius, speed, angle, "#00c700", true, "rgba(0, 199, 0, 0.2)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -3707,7 +3682,7 @@ class Toxic extends Enemy {
 
 class Enlarging extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("toxic") - 1, radius, speed, angle, "#4d0163", true, "rgba(77, 1, 99, 0.3)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("toxic"), radius, speed, angle, "#4d0163", true, "rgba(77, 1, 99, 0.3)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -3718,7 +3693,7 @@ class Enlarging extends Enemy {
 
 class Icicle extends Enemy {
   constructor(pos, radius, speed, angle, horizontal) {
-    super(pos, entityTypes.indexOf("icicle") - 1, radius, speed, angle, "#adf8ff");
+    super(pos, entityTypes.indexOf("icicle"), radius, speed, angle, "#adf8ff");
     const velChange = random_between([-1, 1]) * speed;
     this.clock = 0
     this.wallHit = false;
@@ -3749,7 +3724,7 @@ class Icicle extends Enemy {
 }
 class Spiral extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("spiral") - 1, radius, speed, angle, "#e8b500");
+    super(pos, entityTypes.indexOf("spiral"), radius, speed, angle, "#e8b500");
     this.angleIncrement = 0.15;
     this.angleIncrementChange = 0.004;
     this.angleAdd = false;
@@ -3781,7 +3756,7 @@ class Spiral extends Enemy {
 }
 class Gravity extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150, gravity = 6) {
-    super(pos, entityTypes.indexOf("gravity") - 1, radius, speed, angle, "#78148c", true, "rgba(60, 0, 115, 0.15)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("gravity"), radius, speed, angle, "#78148c", true, "rgba(60, 0, 115, 0.15)", auraRadius / 32);
     this.gravity = gravity / 32;
   }
   auraEffect(player, worldPos, time) {
@@ -3800,10 +3775,11 @@ class Gravity extends Enemy {
 
 class Gravity_Ghost extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("gravity_ghost") - 1, radius, speed, angle, "#78148c");
+    super(pos, entityTypes.indexOf("gravity_ghost"), radius, speed, angle, "#78148c");
     this.gravity = 12 / 32;
     this.radius = radius;
     this.Harmless = true;
+    this.immune = true;
   }
   interact(player, worldPos, time) {
     if (player.isEffectImmune() || player.isInvulnerable()) return;
@@ -3821,7 +3797,7 @@ class Gravity_Ghost extends Enemy {
 
 class Repelling extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150, repulsion = 6) {
-    super(pos, entityTypes.indexOf("repelling") - 1, radius, speed, angle, "#7b9db2", true, "rgba(210, 228, 239, 0.2)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("repelling"), radius, speed, angle, "#7b9db2", true, "rgba(210, 228, 239, 0.2)", auraRadius / 32);
     this.repulsion = repulsion / 32;
   }
   auraEffect(player, worldPos, time) {
@@ -3841,9 +3817,10 @@ class Repelling extends Enemy {
 
 class Repelling_Ghost extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("repelling_ghost") - 1, radius, speed, angle, "#7b9db2");
+    super(pos, entityTypes.indexOf("repelling_ghost"), radius, speed, angle, "#7b9db2");
     this.repulsion = 12 / 32;
     this.Harmless = true;
+    this.immune = true;
   }
   interact(player, worldPos, time) {
     if (player.isEffectImmune() || player.isInvulnerable()) return;
@@ -3861,7 +3838,7 @@ class Repelling_Ghost extends Enemy {
 }
 class Wavy extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("wavy") - 1, radius, speed, angle, "#dd2606");
+    super(pos, entityTypes.indexOf("wavy"), radius, speed, angle, "#dd2606");
     this.velToAngle();
     this.angle = Math.PI / 2;
     this.angleToVel();
@@ -3887,7 +3864,7 @@ class Wavy extends Enemy {
 }
 class Zigzag extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("zigzag") - 1, radius, speed, angle, "#b371f2");
+    super(pos, entityTypes.indexOf("zigzag"), radius, speed, angle, "#b371f2");
     this.switchInterval = 500;
     this.switchTime = 500;
     this.switchAdd = false;
@@ -3914,11 +3891,11 @@ class Zigzag extends Enemy {
 }
 class Zoning extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("zoning") - 1, radius, speed, angle, "#a03811");
+    super(pos, entityTypes.indexOf("zoning"), radius, speed, angle, "#a03811");
     this.switchInterval = 1000;
     this.switchTime = Math.random() * this.switchInterval;
     this.turnAngle = Math.PI / 2
-    this.turnAngle *= (Math.floor(Math.random() * 2) * 2) - 1
+    this.turnAngle *= (Math.floor(Math.random() * 2) * 2)
   }
   behavior(time, area, offset, players) {
     if (this.switchTime > 0) {
@@ -3933,7 +3910,7 @@ class Zoning extends Enemy {
 }
 class Radiating extends Enemy {
   constructor(pos, radius, speed, angle, releaseInterval = 4000, releaseTime) {
-    super(pos, entityTypes.indexOf("radiating_bullets") - 1, radius, speed, angle, "#d3134f");
+    super(pos, entityTypes.indexOf("radiating_bullets"), radius, speed, angle, "#d3134f");
     this.releaseTime = releaseInterval;
     this.clock = releaseTime || Math.random() * this.releaseTime;
   }
@@ -3969,13 +3946,14 @@ class RadiatingBullet extends Entity {
 }
 class FrostGiant extends Enemy {
   constructor(pos, radius, speed = 0, angle = Math.floor(Math.random()*360), direction = 1, turn_speed = 2, shot_interval = 200, cone_angle = 45, pause_interval = 0, pause_duration = 0, turn_acceleration = 0, shot_acceleration = 0, pattern, immune = true, projectile_duration = 4000,projectile_radius = 10,projectile_speed = 4,precise_movement = false) {
-    super(pos, entityTypes.indexOf("frost_giant") - 1, radius, speed, angle,"#7e7cd6");
+    super(pos, entityTypes.indexOf("frost_giant"), radius, speed, angle,"#7e7cd6");
     this.immune = immune;
     this.entityAngle = angle;
     this.angle = angle;
     this.tick_time = 1000/30;
     this.rotation = false;
     this.precise_movement = precise_movement;
+    this.noAngleUpdate = true;
     if(speed>0){this.velToAngle();}
 
     this.pattern_generator = this.get_pattern_generator(pattern)
@@ -4184,7 +4162,7 @@ class frost_giant_ice_bullet extends Entity {
 
 class Fire_Trail extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("fire_trail") - 1, radius, speed, angle, "#cf5504");
+    super(pos, entityTypes.indexOf("fire_trail"), radius, speed, angle, "#cf5504");
     this.lightCount=this.radius*32+40;
     this.isLight = true;
     this.clock = 0;
@@ -4204,7 +4182,7 @@ class Fire_Trail extends Enemy {
 
 class Trail extends Enemy {
   constructor(pos, radius) {
-    super(pos, entityTypes.indexOf("trail") - 1, radius, 0, undefined,"#cf5504");
+    super(pos, entityTypes.indexOf("trail"), radius, 0, undefined,"#cf5504");
     this.lightCount=this.radius*32+40;
     this.isLight = true;
     this.clock = 0;
@@ -4224,35 +4202,54 @@ class Trail extends Enemy {
 
 class Tree extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("tree") - 1, radius, speed, angle, "#4e2700");
-    this.originalSpeed = speed;
-    this.totalReleaseTime = 4000;
-    this.shotTimer = Math.random() * this.totalReleaseTime;
-    this.movementTimer = Math.random() * 500;
-    this.totalShakeTime = 400;
-    this.waiting = true;
+    super(pos, entityTypes.indexOf("tree"), radius, speed, angle, "#4e2700");
+    this.original_speed = speed;
+    this.reset_parameters();
   }
   behavior(time, area, offset, players) {
-    this.shotTimer += time;
-    this.movementTimer += time;
-    if (this.shotTimer > this.totalReleaseTime) {
-      var count = Math.floor(Math.random()*6)+2
-      for (var i = 0; i < count; i++) {
+    this.movement_time += time;
+    
+    if(!this.shaking){
+      this.base_speed = this.original_speed * Math.max(
+        Math.sin(this.movement_time/200), 0
+      );
+      this.time_since_shake += time;
+      if(this.time_since_shake > this.shake_interval){
+        this.shaking = true;
+        this.time_since_shake = 0;
+      }
+    } else {
+      this.base_speed = this.original_speed * Math.sin(this.movement_time / 20)
+      this.shake_time += time;
+      if (this.shake_time >= this.total_shake_time) {
+        this.release_ready = true;
+        this.generate_entities(area);
+        this.shaking = false;
+        this.shake_time = 0;
+      }
+    }
+    this.compute_negative_speed();
+  }
+  compute_negative_speed(){
+    this.speed = this.base_speed;
+    this.angleToVel();
+  }
+  generate_entities(area){
+    if (this.release_ready) {
+      const count = min_max(2,8)
+      for (let i = 0; i < count; i++) {
         area.addSniperBullet(10, this.pos, i * Math.PI / (count/2), 12 / 32, 6)
       }
-      this.shotTimer = 0;
     }
-    if(this.movementTimer>500){
-      this.waiting=!this.waiting;
-      this.movementTimer = 0;
-    }
-    if(this.shotTimer>this.totalReleaseTime-this.totalShakeTime){
-      this.speedMultiplier *= Math.sin(this.movementTimer / 20)
-    } else if(this.waiting){
-      this.speedMultiplier *= 0;
-    } else {
-      this.speedMultiplier *= Math.max(Math.sin(this.movementTimer / 200),0)
-    }
+  }
+  reset_parameters(){
+    this.shake_interval = 4000;
+    this.time_since_shake = min_max(1,this.shake_interval);
+    this.shaking = false;
+    this.total_shake_time = 400;
+    this.shake_time = 0;
+    this.movement_time = 0;
+    this.release_ready = false;
   }
 }
 
@@ -4292,10 +4289,10 @@ class leaf_projectile extends Entity {
 }
 
 class Pumpkin extends Enemy {
-  constructor(pos, radius, speed) {
-    super(pos, entityTypes.indexOf("pumpkin") - 1, radius, speed, undefined,"#e26110");
+  constructor(pos, radius, speed, player_detection_radius = 240) {
+    super(pos, entityTypes.indexOf("pumpkin"), radius, speed, undefined,"#e26110");
     this.texture = "pumpkinOff"
-    this.staticVel = {x:this.vel.x,y:this.vel.y}
+    this.staticVel = new Vector(this.vel.x,this.vel.y);
     this.nextAngle = 0;
     this.clock = 0;
     this.nextAngleDetected = false;
@@ -4303,49 +4300,68 @@ class Pumpkin extends Enemy {
     this.isLight = false;
     this.lightCount = this.radius*32+30;
     this.outline = true;
+    this.player_detection_radius = player_detection_radius / 32;
+    this.last_detected_angle = undefined;
+    this.totalShakeTime = 1000;
+    this.totalAttackTime = 2000;
+    this.shakeTimer = 0;
+    this.attackTimer = 0;
+    this.state = "idle";
+    this.stopMovement();
   }
   behavior(time,area,offset,players){
-    if(this.texture=="pumpkinOff"){
-      this.vel.x = 0; this.vel.y = 0;
-      this.isLight = false;
-    }
-    var min = 7.5;
-    var index;
-    var boundary = area.getActiveBoundary();
-    for (var i in players) {
-      if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < min &&!players[i].god&&!players[i].isDead&&!players[i].night && pointInRectangle(new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y), new Vector(boundary.x, boundary.y), new Vector(boundary.w, boundary.h))) {
-        min = distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y));
+    let minimalDistance = this.player_detection_radius;
+    let index;
+    const boundary = area.getActiveBoundary();
+    for (let i = 0; i < players.length; i++) {
+      const player = players[i];
+      if (distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y)) < minimalDistance && player.isDetectable() && pointInRectangle(new Vector(player.pos.x - offset.x, player.pos.y - offset.y), new Vector(boundary.x, boundary.y), new Vector(boundary.w, boundary.h))) {
+        minimalDistance = distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y));
         index = i;
       }
     }
-    if (index != undefined) {
-      this.texture = "pumpkinOn"
-    }
-    if(this.texture == "pumpkinOn"){
+    if (index !== undefined && this.state == "idle") {
+      const player = players[index];
+      this.last_detected_angle = Math.atan2(player.pos.y - offset.y - this.pos.y, player.pos.x - offset.x - this.pos.x);
+      this.texture = "pumpkinOn";
       this.isLight = true;
-      this.clock+=time;
-      if(this.clock>3000){
-        this.texture = "pumpkinOff";
-        this.nextAngleDetected = false;
-        this.clock = 0;
+      this.state = "shaking";
+    }
+
+    if(this.state == "shaking"){
+      this.shakeTimer += time;
+      this.angle = Math.random();
+      const xvel = Math.cos(this.angle * Math.PI * 2) * 4
+      const yvel = Math.sin(this.angle * Math.PI * 2) * 4
+      this.vel = new Vector(xvel, yvel);
+      if(index !== undefined){
+        const player = players[index];
+        const dX = (player.pos.x - offset.x) - this.pos.x;
+        const dY = (player.pos.y - offset.y) - this.pos.y;
+        this.last_detected_angle = Math.atan2(dY,dX);
       }
-      if(this.clock<1000){
-        this.angle = Math.random()
-        let xvel = Math.cos(this.angle * Math.PI * 2) * 4
-        let yvel = Math.sin(this.angle * Math.PI * 2) * 4
-        this.vel = new Vector(xvel, yvel);
-      } else {
-        if(!this.nextAngleDetected){
-          var dX = (players[0].pos.x - offset.x) - this.pos.x;
-          var dY = (players[0].pos.y - offset.y) - this.pos.y;
-          this.nextAngle = Math.atan2(dY, dX);
-          this.nextAngleDetected = true;
-          let xvel = Math.cos(this.nextAngle) * this.staticSpeed;
-          let yvel = Math.sin(this.nextAngle) * this.staticSpeed;
-          this.vel = new Vector(xvel, yvel);
-        }
+      if(this.shakeTimer > this.totalShakeTime){
+        this.state = "attacking";
+        this.angle = this.last_detected_angle;
+        this.speed = this.staticSpeed;
+        this.angleToVel();
+        this.shakeTimer = 0;
       }
     }
+
+    if(this.state == "attacking"){
+      this.attackTimer += time;
+      if(this.attackTimer > this.totalAttackTime){
+        this.state = "idle";
+        this.attackTimer = 0;
+        this.texture = "pumpkinOff";
+        this.isLight = false;
+        this.stopMovement();
+      }
+    }
+  }
+  stopMovement(){
+    this.vel = new Vector(0,0);
   }
 }
 class FakePumpkin extends Entity {
@@ -4361,7 +4377,7 @@ class FakePumpkin extends Entity {
 
 class Snowman extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("snowman") - 1, radius, speed, angle, "#ffffff");
+    super(pos, entityTypes.indexOf("snowman"), radius, speed, angle, "#ffffff");
     this.wallHit = false;
     this.snowmanRadiusMultiplier = 1;
     this.growthRate = 0.05 / 2//32;
@@ -4402,7 +4418,7 @@ class Snowman extends Enemy {
 }
 class Slippery extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 180) {
-    super(pos, entityTypes.indexOf("slippery") - 1, radius, speed, angle, "#1aacbf", true, "rgba(33, 161, 165, 0.3)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("slippery"), radius, speed, angle, "#1aacbf", true, "rgba(33, 161, 165, 0.3)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -4414,7 +4430,7 @@ class Slippery extends Enemy {
 
 class MagneticReduction extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 125) {
-    super(pos, entityTypes.indexOf("magnetic_reduction") - 1, radius, speed, angle, "#bd67d2", true, "rgba(189, 103, 210, 0.25)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("magnetic_reduction"), radius, speed, angle, "#bd67d2", true, "rgba(189, 103, 210, 0.25)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -4425,7 +4441,7 @@ class MagneticReduction extends Enemy {
 
 class MagneticNullification extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 125) {
-    super(pos, entityTypes.indexOf("magnetic_nullification") - 1, radius, speed, angle, "#642374", true, "rgba(100, 35, 116, 0.3)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("magnetic_nullification"), radius, speed, angle, "#642374", true, "rgba(100, 35, 116, 0.3)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -4436,7 +4452,7 @@ class MagneticNullification extends Enemy {
 
 class ExperienceDraining extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("experience_draining") - 1, radius, speed, angle, "#b19cd9", true, "rgba(60, 0, 0, 0.2)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("experience_draining"), radius, speed, angle, "#b19cd9", true, "rgba(60, 0, 0, 0.2)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -4446,7 +4462,7 @@ class ExperienceDraining extends Enemy {
 }
 class Wind extends Enemy {
   constructor(pos, radius, speed, angle, ignore_invulnerability = false) {
-    super(pos, entityTypes.indexOf("wind_ghost") - 1, radius, speed, angle, "#cfffeb");
+    super(pos, entityTypes.indexOf("wind_ghost"), radius, speed, angle, "#cfffeb");
     this.Harmless = true;
     this.immune = true;
     this.gravity = 16 / 32;
@@ -4458,15 +4474,15 @@ class Wind extends Enemy {
       const maxIterations = 100; // Prevent infinite loop
       let iterations = 0;
       while(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && iterations < maxIterations) {
-        var dx = player.pos.x - (this.pos.x + worldPos.x);
-        var dy = player.pos.y - (this.pos.y + worldPos.y);
-        var dist = distance(new Vector(0, 0), new Vector(dx, dy));
-        var attractionAmplitude = Math.pow(2, -(dist / (this.radius/2)));
-        var moveDist = this.gravity * attractionAmplitude;
-        var angleToPlayer = Math.atan2(dy, dx);
+        const dx = player.pos.x - (this.pos.x + worldPos.x);
+        const dy = player.pos.y - (this.pos.y + worldPos.y);
+        const dist = Math.hypot(dx, dy);
+        const attractionAmplitude = Math.pow(2, -(dist / (this.radius/2)));
+        const moveDist = this.gravity * attractionAmplitude;
+        const angleToPlayer = Math.atan2(dy, dx);
         player.pos.x += (moveDist * Math.cos(angleToPlayer)) * timeFix;
         player.pos.y += (moveDist * Math.sin(angleToPlayer)) * timeFix;
-        game.worlds[game.players[0].world].collisionPlayer(game.players[0].area, game.players[0]);
+        game.worlds[player.world].collisionPlayer(player.area, player);
         iterations++;
       }
     }
@@ -4475,7 +4491,7 @@ class Wind extends Enemy {
 
 class Grass extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("grass") - 1, radius, speed, angle, "#75eb26");
+    super(pos, entityTypes.indexOf("grass"), radius, speed, angle, "#75eb26");
     this.active = false;
     this.activation_complete = false;
     this.canKill = false;
@@ -4483,8 +4499,6 @@ class Grass extends Enemy {
     this.clock = 0;
   }
   behavior(time,area,offset,players){
-    const player = players[0];
-
     if(!this.active){
       this.reset();
     } else {
@@ -4522,7 +4536,7 @@ class Grass extends Enemy {
 
 class Glowy extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("glowy") - 1, radius, speed, angle, "#ede658");
+    super(pos, entityTypes.indexOf("glowy"), radius, speed, angle, "#ede658");
     this.invisible_timing = 500;
     this.brightness = 1;
     this.mode = true;
@@ -4532,7 +4546,7 @@ class Glowy extends Enemy {
   }
   behavior(time,area,offset){
     const timeFix = time / (1000 / 30);
-    this.lightCount=3*this.radius*this.brightness*32;
+    this.lightCount = 3 * this.radius * this.brightness * 32;
 
     if(this.mode && this.timer <= 0){
       this.brightness -= this.brightness_tick * timeFix;
@@ -4550,7 +4564,7 @@ class Glowy extends Enemy {
       }
     }
 
-    if (this.timer>0){
+    if (this.timer > 0){
       this.timer -= time;
     }
 
@@ -4560,7 +4574,7 @@ class Glowy extends Enemy {
 
 class Firefly extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("firefly") - 1, radius, speed, angle, "#f0841f");
+    super(pos, entityTypes.indexOf("firefly"), radius, speed, angle, "#f0841f");
     this.invisible_timing = 500;
     this.brightness = Math.random();
     this.mode = true;
@@ -4570,7 +4584,7 @@ class Firefly extends Enemy {
   }
   behavior(time,area,offset){
     const timeFix = time / (1000 / 30);
-    this.lightCount=3*this.radius*this.brightness*32
+    this.lightCount = 3 * this.radius * this.brightness * 32;
 
     if(this.mode && this.timer <= 0){
       this.brightness -= this.brightness_tick * timeFix;
@@ -4588,7 +4602,7 @@ class Firefly extends Enemy {
       }
     }
 
-    if (this.timer>0){
+    if (this.timer > 0){
       this.timer -= time;
     }
 
@@ -4598,7 +4612,7 @@ class Firefly extends Enemy {
 
 class Mist extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("mist") - 1, radius, speed, angle, "#b686db");
+    super(pos, entityTypes.indexOf("mist"), radius, speed, angle, "#b686db");
     this.brightness = 1;
     this.mode = true;
     this.visibility_radius = 200;
@@ -4607,36 +4621,50 @@ class Mist extends Enemy {
   }
   behavior(time,area,offset,players){
     const timeFix = time / (1000 / 30);
-    this.lightCount=3*this.radius*this.brightness*32;
+    this.lightCount = 3 * this.radius * this.brightness * 32;
 
-    const player = players[0];
-    const worldPos = game.worlds[player.world].pos;
-    const position = {x: worldPos.x+area.pos.x, y: worldPos.y+area.pos.y}
-    let close_enough = false;
+    const closestPlayer = this.getClosestPlayer(players, area);
+    if (closestPlayer) {
+      const distToPlayer = distance(closestPlayer.pos, new Vector(this.pos.x + closestPlayer.worldPos.x, this.pos.y + closestPlayer.worldPos.y));
+      const close_enough = distToPlayer < closestPlayer.radius + this.visibility_radius / 32;
 
-    if(distance(player.pos, new Vector(this.pos.x + position.x, this.pos.y + position.y)) < player.radius + this.visibility_radius / 32) {
-      close_enough = true;
-    }
-
-    if(close_enough){
-      this.brightness -= this.brightness_tick * timeFix;
-      if(this.brightness <= 0){
-        this.brightness = 0.00001;
-      }
-    } else {
-      this.brightness += this.brightness_tick * timeFix;
-      if(this.brightness >= 1){
-        this.brightness = 1;
+      if(close_enough){
+        this.brightness -= this.brightness_tick * timeFix;
+        if(this.brightness <= 0){
+          this.brightness = 0.00001;
+        }
+      } else {
+        this.brightness += this.brightness_tick * timeFix;
+        if(this.brightness >= 1){
+          this.brightness = 1;
+        }
       }
     }
 
     this.alpha = this.brightness;
   }
+
+  getClosestPlayer(players, area) {
+    let closestPlayer = null;
+    let minDistance = Infinity;
+    for (const player of players) {
+      const worldPos = game.worlds[player.world].pos;
+      const position = {x: worldPos.x + area.pos.x, y: worldPos.y + area.pos.y};
+      const dist = distance(player.pos, new Vector(this.pos.x + position.x, this.pos.y + position.y));
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestPlayer = player;
+        closestPlayer.worldPos = position;
+      }
+    }
+
+    return closestPlayer;
+  }
 }
 
 class Phantom extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("phantom") - 1, radius, speed, angle, "#86d7db");
+    super(pos, entityTypes.indexOf("phantom"), radius, speed, angle, "#86d7db");
     this.brightness = 0;
     this.mode = true;
     this.visibility_radius = 300;
@@ -4645,36 +4673,51 @@ class Phantom extends Enemy {
   }
   behavior(time,area,offset,players){
     const timeFix = time / (1000 / 30);
-    this.lightCount=3*this.radius*this.brightness*32;
+    this.lightCount = 3 * this.radius * this.brightness * 32;
     
-    const player = players[0];
-    const worldPos = game.worlds[player.world].pos;
-    const position = {x: worldPos.x+area.pos.x, y: worldPos.y+area.pos.y}
-    let close_enough = false;
+    const closestPlayer = this.getClosestPlayer(players, area);
+    if (closestPlayer) {
+      const distToPlayer = distance(closestPlayer.pos, new Vector(this.pos.x + closestPlayer.worldPos.x, this.pos.y + closestPlayer.worldPos.y));
+      const close_enough = distToPlayer < closestPlayer.radius + this.visibility_radius / 32;
 
-    if(distance(player.pos, new Vector(this.pos.x + position.x, this.pos.y + position.y)) < player.radius + this.visibility_radius / 32) {
-      close_enough = true;
-    }
-
-    if(!close_enough){
-      this.brightness -= this.brightness_tick * timeFix;
-      if(this.brightness <= 0){
-        this.brightness = 0.00001;
-      }
-    } else {
-      this.brightness += this.brightness_tick * timeFix;
-      if(this.brightness >= 1){
-        this.brightness = 1;
+      if(!close_enough){
+        this.brightness -= this.brightness_tick * timeFix;
+        if(this.brightness <= 0){
+          this.brightness = 0.00001;
+        }
+      } else {
+        this.brightness += this.brightness_tick * timeFix;
+        if(this.brightness >= 1){
+          this.brightness = 1;
+        }
       }
     }
 
     this.alpha = this.brightness;
   }
+
+  getClosestPlayer(players, area) {
+    let closestPlayer = null;
+    let minDistance = Infinity;
+
+    for (const player of players) {
+      const worldPos = game.worlds[player.world].pos;
+      const position = {x: worldPos.x + area.pos.x, y: worldPos.y + area.pos.y};
+      const dist = distance(player.pos, new Vector(this.pos.x + position.x, this.pos.y + position.y));
+      if (dist < minDistance) {
+        minDistance = dist;
+        closestPlayer = player;
+        closestPlayer.worldPos = position;
+      }
+    }
+
+    return closestPlayer;
+  }
 }
 
 class Poison_Ghost extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("poison_ghost") - 1, radius, speed, angle, "#590174");
+    super(pos, entityTypes.indexOf("poison_ghost"), radius, speed, angle, "#590174");
     this.Harmless = true;
     this.immune = true;
   }
@@ -4688,32 +4731,36 @@ class Poison_Ghost extends Enemy {
 }
 
 class Burning extends Enemy {
-  constructor(pos, radius, speed, angle, auraRadius = 120) {
-    super(pos, entityTypes.indexOf("burning") - 1, radius, speed, angle, "#FFA500", true, "rgba(255, 165, 0, 0.3)", auraRadius / 32);
+  constructor(pos, radius, speed, angle, auraRadius = 120, burn_modifier = 1) {
+    super(pos, entityTypes.indexOf("burning"), radius, speed, angle, "#FFA500", true, "rgba(255, 165, 0, 0.3)", auraRadius / 32);
     this.isLight = true;
     this.lightCount = auraRadius+60;
+    this.burn_modifier = burn_modifier;
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
       player.burning = true;
+      player.burn_modifier = this.burn_modifier;
     }
   }
 }
 
 class Lava extends Enemy {
-  constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("lava") - 1, radius, speed, angle, "#f78306", true, "rgba(247, 131, 6, 0.3)", auraRadius / 32);
+  constructor(pos, radius, speed, angle, auraRadius = 150, charge = 15) {
+    super(pos, entityTypes.indexOf("lava"), radius, speed, angle, "#f78306", true, "rgba(247, 131, 6, 0.3)", auraRadius / 32);
+    this.charge = charge;
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
       player.charging = true;
+      player.charge = this.charge;
     }
   }
 }
 
 class Barrier extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 100) {
-    super(pos, entityTypes.indexOf("barrier") - 1, radius, speed, angle, "#29ffc6", true, "rgba(41, 255, 198, 0.3)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("barrier"), radius, speed, angle, "#29ffc6", true, "rgba(41, 255, 198, 0.3)", auraRadius / 32);
     this.immune = true;
   }
   auraEffect(player, worldPos) {
@@ -4725,9 +4772,11 @@ class Barrier extends Enemy {
 
 class Lunging extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("lunging") - 1, radius, speed, angle, "#c88250");
+    super(pos, entityTypes.indexOf("lunging"), radius, speed, angle, "#c88250");
     this.base_speed = speed;
     this.reset_parameters();
+    this.player_detection_radius = 250 / 32;
+    this.noAngleUpdate = true;
   }
   reset_parameters(){
     this.lunge_speed = this.base_speed;
@@ -4753,19 +4802,20 @@ class Lunging extends Enemy {
     const timeFix = time / (1000 / 30);
     let closest_entity = undefined;
     let closest_entity_distance = undefined;
-    var min = 250/32;
-    var dX;
-    var dY;
-    for (var i in players) {
-      if(!players[i].safeZone && !players[i].night && !players[i].god && !players[i].isDead) if (distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y)) < min) {
-        min = distance(this.pos, new Vector(players[i].pos.x - offset.x, players[i].pos.y - offset.y));
-        closest_entity = i;
-        dX = (players[closest_entity].pos.x - offset.x) - this.pos.x;
-        dY = (players[closest_entity].pos.y - offset.y) - this.pos.y;
-        closest_entity_distance = dX ** 2 + dY ** 2;
+    let min = this.player_detection_radius;
+    let dX;
+    let dY;
+    for (const player of players) {
+      if(player.isDetectable() && distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y)) < min) {
+        min = distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y));
+        closest_entity = player;
       }
     }
-
+    if (closest_entity !== undefined) {
+      dX = (closest_entity.pos.x - offset.x) - this.pos.x;
+      dY = (closest_entity.pos.y - offset.y) - this.pos.y;
+      closest_entity_distance = dX ** 2 + dY ** 2;
+    }
     if (this.time_during_lunge>0){
       if(this.time_during_lunge >= this.max_lunge_time){
         this.time_during_lunge = 0;
@@ -4788,7 +4838,7 @@ class Lunging extends Enemy {
     }
     else {
       let lunge_time_ratio = this.lunge_timer / this.time_to_lunge;
-      if(closest_entity != undefined){
+      if(closest_entity !== undefined){
         let target_angle = Math.atan2(dY,dX);
         target_angle += Math.random() * Math.PI/8 - Math.PI/16;
         if (this.time_during_lunge == 0){
@@ -4821,8 +4871,8 @@ class Lunging extends Enemy {
   }
 
   compute_speed(){
-    this.vel.x = Math.cos(this.angle) * this.base_speed;
-    this.vel.y = Math.sin(this.angle) * this.base_speed;
+    this.speed = this.base_speed;
+    this.angleToVel();
   }
 
   change_angle(angle){
@@ -4838,7 +4888,7 @@ class Lunging extends Enemy {
 
 class Sand extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("sand") - 1, radius, speed, angle, "#d5ae7f");
+    super(pos, entityTypes.indexOf("sand"), radius, speed, angle, "#d5ae7f");
     this.realVel = new Vector(this.vel.x, this.vel.y);
     this.collision = false;
     this.friction = 1;
@@ -4863,7 +4913,7 @@ class Sand extends Enemy {
 
 class Sandrock extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("sandrock") - 1, radius, speed, angle, "#a57a6d");
+    super(pos, entityTypes.indexOf("sandrock"), radius, speed, angle, "#a57a6d");
     this.realVel = new Vector(this.vel.x, this.vel.y);
     this.minimum_speed = 0.1;
     this.collision = false;
@@ -4891,7 +4941,7 @@ class Sandrock extends Enemy {
 
 class Crumbling extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("crumbling") - 1, radius, speed, angle, "#bd9476");
+    super(pos, entityTypes.indexOf("crumbling"), radius, speed, angle, "#bd9476");
     this.collision = false;
     this.staticRadius = radius;
     this.staticSpeed = speed;
@@ -4930,7 +4980,7 @@ class Crumbling extends Enemy {
 
 class Residue extends Enemy {
   constructor(pos, angle, radius, speed) {
-    super(pos, entityTypes.indexOf("residue") - 1, radius, speed, angle, "#675327");
+    super(pos, entityTypes.indexOf("residue"), radius, speed, angle, "#675327");
     this.clock=0;
   }
   behavior(time, area, offset, players) {
@@ -4942,10 +4992,11 @@ class Residue extends Enemy {
 }
 
 class Flower extends Enemy {
-  constructor(pos, radius, speed, angle, growthMultiplayer) { 
-    super(pos, entityTypes.indexOf("flower") - 1, radius, speed, angle, "#e8e584");
+  constructor(pos, radius, speed, angle, growthMultiplayer = 1, player_detection_radius = 200) { 
+    super(pos, entityTypes.indexOf("flower"), radius, speed, angle, "#e8e584");
     this.id = 1;
     this.growthMultiplayer = growthMultiplayer
+    this.player_detection_radius = player_detection_radius / 32;
   }
   behavior(time, area, offset, players) {
     while(this.id<=5){
@@ -4954,26 +5005,27 @@ class Flower extends Enemy {
     }
   }
   spawnFlower(area, id){
-    const flower_projectile = new FlowerProjectile(new Vector(this.pos.x,this.pos.y),this.radius,id,this,this.growthMultiplayer);
+    const flower_projectile = new FlowerProjectile(new Vector(this.pos.x,this.pos.y),this.radius,id,this);
     area.addEntity("flower_projectile",flower_projectile);
   }
 }
 
 class FlowerProjectile extends Entity {
-  constructor(pos, radius, id, spawner, growthMultiplayer = 1) {
+  constructor(pos, radius, id, spawner) {
     super(pos, radius, "#e084e8");
     this.id = id;
     this.spawner = spawner;
     this.no_collide = true;
-    this.triggerZone = 150/32;
+    this.triggerZone = spawner.player_detection_radius;
+    this.growthMultiplayer = spawner.growthMultiplayer;
     this.radiusRatio = 1;
-    this.growthMultiplayer = growthMultiplayer;
     this.immune = true;
     this.Harmless = false;
   }
   behavior(time, area, offset, players) {
     const timeFix = time / (1000 / 30);
     const growth = this.radius/20*this.growthMultiplayer;
+    const player = this.closestPlayer(players, offset);
     switch(this.id){
       case 1:
         this.pos = this.newPosition(1,-0.25);
@@ -4991,7 +5043,7 @@ class FlowerProjectile extends Entity {
         this.pos = this.newPosition(-0.6,0.9);
         break;
     }
-    if (distance(players[0].pos, new Vector(this.spawner.pos.x + offset.x, this.spawner.pos.y + offset.y)) < players[0].radius + this.triggerZone && !players[0].safeZone && !players[0].night) {
+    if (player != undefined) {
       this.radiusRatio -= growth / 2 * timeFix;
     } else {
       this.radiusRatio += growth / 2 * timeFix;
@@ -4999,7 +5051,7 @@ class FlowerProjectile extends Entity {
     if(this.radiusRatio>1){
       this.radiusRatio = 1;
     }
-    this.radius *= this.radiusRatio;
+    this.radius *= Math.max(0,this.radiusRatio);
   }
   interact(player, worldPos) {
     this.updateHarmlessState();
@@ -5015,11 +5067,22 @@ class FlowerProjectile extends Entity {
       this.Harmless = false;
     }
   }
+  closestPlayer(players, offset){
+    let min = this.triggerZone;
+    let closest_entity = undefined;
+    for (const player of players) {
+      if(player.isDetectable()) if (distance(this.spawner.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y)) < min) {
+        min = distance(this.spawner.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y));
+        closest_entity = player;
+      }
+    }
+    return closest_entity;
+  }
 }
 
 class Seedling extends Enemy {
   constructor(pos, radius, speed, angle, growthMultiplayer) { 
-    super(pos, entityTypes.indexOf("seedling") - 1, radius, speed, angle, "#259c55");
+    super(pos, entityTypes.indexOf("seedling"), radius, speed, angle, "#259c55");
     this.spawnedProjectile = false;
     this.immune = true;
   }
@@ -5064,7 +5127,7 @@ class SeedlingProjectile extends Entity {
 
 class Cactus extends Enemy {
   constructor(pos, radius, speed, angle) { 
-    super(pos, entityTypes.indexOf("cactus") - 1, radius, speed, angle, "#5b8e28");
+    super(pos, entityTypes.indexOf("cactus"), radius, speed, angle, "#5b8e28");
     this.immune = true;
     this.push_time = 200;
     this.staticRadius = this.realRadius = radius;
@@ -5088,7 +5151,7 @@ class Cactus extends Enemy {
 
 class Charging extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("charging") - 1, radius, speed, angle, "#374037");
+    super(pos, entityTypes.indexOf("charging"), radius, speed, angle, "#374037");
     this.realVel = new Vector(this.vel.x, this.vel.y);
     this.collision = false;
     this.friction = 1;
@@ -5143,7 +5206,7 @@ class Charging extends Enemy {
 
 class StickySniper extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("sticky_sniper") - 1, radius, speed, angle, "#000037");
+    super(pos, entityTypes.indexOf("sticky_sniper"), radius, speed, angle, "#000037");
     this.releaseTime = 2000;
     this.clock = Math.random() * this.releaseTime;
   }
@@ -5159,7 +5222,7 @@ class StickySniper extends Enemy {
           index = i;
         }
       }
-      if (index != undefined&&!players[0].night&&!players[0].god&&!players[0].isDead) {
+      if (index != undefined && !players[index].isDetectable()) {
         var dX = (players[index].pos.x - offset.x) - this.pos.x;
         var dY = (players[index].pos.y - offset.y) - this.pos.y;
         area.addSniperBullet(11, this.pos, Math.atan2(dY, dX), this.radius / 2, 10)
@@ -5190,7 +5253,7 @@ class StickySniperBullet extends Entity {
 
 class StickyTrail extends Enemy {
   constructor(pos) {
-    super(pos, entityTypes.indexOf("sticky_trail") - 1, 0, 0, undefined,"rgb(0,0,69,0.5)");
+    super(pos, entityTypes.indexOf("sticky_trail"), 0, 0, undefined,"rgb(0,0,69,0.5)");
     this.clock = 0;
     this.alpha = 1;
     this.radius = 8/32;
@@ -5216,7 +5279,7 @@ class StickyTrail extends Enemy {
 
 class ClownTrail extends Enemy {
   constructor(pos,radius,angle,color) {
-    super(pos, entityTypes.indexOf("clown_trail") - 1, radius, 12, undefined,color);
+    super(pos, entityTypes.indexOf("clown_trail"), radius, 12, undefined,color);
     this.clock = 0;
     this.alpha = 1;
     this.radius = radius;
@@ -5282,7 +5345,7 @@ class SweetTooth extends Entity {
 
 class ReverseProjectile extends Enemy {
   constructor(pos,angle) {
-    super(pos, entityTypes.indexOf("reverse_projectile") - 1, 30/32, undefined, undefined, "#00dd00");
+    super(pos, entityTypes.indexOf("reverse_projectile"), 30/32, undefined, undefined, "#00dd00");
     this.clock = 0;
     this.angle = angle;
     this.no_collide = true;
@@ -5314,8 +5377,8 @@ class ReverseProjectile extends Enemy {
 }
 
 class ObscureProjectile extends Enemy {
-  constructor(pos,angle) {
-    super(pos, entityTypes.indexOf("obscure_projectile") - 1, 15/32, undefined, undefined, "#020fa2");
+  constructor(pos,angle,player) {
+    super(pos, entityTypes.indexOf("obscure_projectile"), 15/32, undefined, undefined, "#020fa2");
     this.clock = 0;
     this.angle = angle;
     this.immune = true;
@@ -5349,7 +5412,7 @@ class ObscureProjectile extends Enemy {
 
 class MinimizeProjectile extends Enemy {
   constructor(pos,angle) {
-    super(pos, entityTypes.indexOf("minimize_projectile") - 1, 11/32, undefined, undefined, "#ff0000");
+    super(pos, entityTypes.indexOf("minimize_projectile"), 11/32, undefined, undefined, "#ff0000");
     this.clock = 0;
     this.angle = angle;
     this.no_collide = true;
