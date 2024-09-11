@@ -916,6 +916,14 @@ class Area {
         return new ForceSniperA(new Vector(posX, posY), radius / 32, speed, angle);
       case "force_sniper_b":
         return new ForceSniperB(new Vector(posX, posY), radius / 32, speed, angle);
+      case "wavy_switch":
+        return switchCombiner(Wavy, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#fa5336");
+      case "spiral_switch":
+        return switchCombiner(Spiral, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#f5e199");
+      case "zoning_switch":
+        return switchCombiner(Zoning, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#b35f40");
+      case "oscillating_switch":
+        return switchCombiner(Oscillating, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#b6c46f");
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }

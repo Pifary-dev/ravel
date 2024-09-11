@@ -85,14 +85,17 @@ class Enemy extends Entity {
     this.auraColor = auraColor;
     this.auraSize = this.auraStaticSize = auraSize || 0;
     this.speed = speed;
-    this.angle = angle;
-    this.angleToVel((angle !== undefined) ? angle : Math.random() * Math.PI * 2);
+    this.angle = angle === undefined ? this.getRandomAngle() : angle;
+    this.angleToVel(angle)
     this.decayed = false;
     this.repelled = false;
     this.shatterTime = 0;
     this.immune = false;
     this.isEnemy = true;
     this.self_destruction = false;
+  }
+  getRandomAngle(){
+    return Math.random() * Math.PI * 2;
   }
 
   update(time) {
@@ -2964,20 +2967,6 @@ class Defender extends Enemy {
     }
   }
 }
-class Oscillating extends Enemy {
-  constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("oscillating"), radius, speed, angle, "#869e0f");
-    this.clock = 0;
-  }
-  behavior(time, area, offset, players) {
-    this.clock += time;
-    if (this.clock > 1000) {
-      this.vel.x = -this.vel.x;
-      this.vel.y = -this.vel.y;
-    }
-    this.clock = this.clock % 1000;
-  }
-}
 class Turning extends Enemy {
   constructor(pos, radius, speed, angle, circleSize = 150) {
     super(pos, entityTypes.indexOf("turning"), radius, speed, angle, "#336600");
@@ -3038,15 +3027,24 @@ class Switch extends Enemy {
     if (index >= count / 2) {
       this.disabled = true;
     }
-    this.switch_time = 0;
+    this.switch_clock = 0;
     this.switch_total_time = 3000;
     this.fading_effects_time = 1500;
+
+    // evades code
+    if (radius == 1919){
+      this.switch_total_time = 5500;
+      this.switch_clock = 5500 - 2000;
+    } else if(radius == 159){
+      this.switch_total_time = 3000;
+      this.switch_clock = 3000 - 250;
+    }
   }
   behavior(time, area, offset, players) {
-    this.switch_time += time;
-    if (this.switch_time > this.switch_total_time) {
+    this.switch_clock += time;
+    if (this.switch_clock > this.switch_total_time) {
       this.disabled = !this.disabled;
-      this.switch_time = this.switch_time % this.switch_total_time;
+      this.switch_clock = this.switch_clock % this.switch_total_time;
     }
   }
 }
@@ -3853,75 +3851,227 @@ class Repelling_Ghost extends Enemy {
 class Wavy extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("wavy"), radius, speed, angle, "#dd2606");
-    this.velToAngle();
-    this.angle = Math.PI / 2;
-    this.angleToVel();
-    this.circleSize = 100;
+    this.change_angle(0); // but why???
+    this.angle_increment = parseFloat((0.0175 * speed).toFixed(4));
     this.dir = 1;
-    this.switchInterval = 800;
-    this.switchTime = 400;
-    this.angleIncrement = (this.speed + 6) / this.circleSize;
+    this.switch_interval = 3200 / (speed / 2);
+    this.switch_time = this.switch_interval;
     this.turning = true;
     this.returnCollision = true;
   }
   behavior(time, area, offset, players) {
-    if (this.switchTime > 0) {
-      this.switchTime -= time
+    const timeFix = time / (1000 / 30);
+    if(this.switch_time > 0){
+      this.switch_time -= time;
     } else {
-      this.switchTime = this.switchInterval
+      this.switch_time = this.switch_interval;
       this.dir *= -1;
     }
+    this.change_angle(this.angle + this.angle_increment * timeFix * this.dir)
+  }
+  change_angle(change){
     this.velToAngle();
-    this.angle += this.angleIncrement * this.dir * (time / (1000 / 30));
+    this.angle = change;
     this.angleToVel();
   }
 }
 class Zigzag extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("zigzag"), radius, speed, angle, "#b371f2");
-    this.switchInterval = 500;
-    this.switchTime = 500;
-    this.switchAdd = false;
-    this.turnAngle = Math.PI / 2
+    const random_angle = random_between([0,90,180,270]);
+    this.change_angle(degrees_to_radians(random_angle));
+    console.log(degrees_to_radians(random_angle))
+    this.dir = 1;
+    this.switch_interval = 500;
+    this.switch_time = this.switch_interval;
+    this.turn_angle = Math.PI / 2;
+    this.maximum_speed = speed * 1.5;
+    this.base_speed = speed;
+    this.switch_add = false;
+    this.noAngleUpdate = true;
+    this.turning = true;
+    this.returnCollision = true;
   }
   behavior(time, area, offset, players) {
-    if (this.switchTime > 0) {
-      this.switchTime -= time
-    } else {
-      this.switchTime = this.switchInterval
-      if (!this.switchAdd) {
-        this.velToAngle();
-        this.angle -= this.turnAngle
-        this.angleToVel();
-        this.switchAdd = true;
-      } else {
-        this.velToAngle();
-        this.angle += this.turnAngle
-        this.angleToVel();
-        this.switchAdd = false;
+    const timeFix = time / (1000 / 30);
+    const amaster = 28 / 60 * timeFix * 60;
+    if (this.switch_time > 0) {
+      this.switch_time -= time;
+      this.compute_speed();
+      if(this.switch_time < this.switch_interval * 0.5 && this.base_speed > 0){
+        this.base_speed -= this.maximum_speed / amaster;
+        if(this.base_speed < 0){
+          this.base_speed = 0;
+        }
       }
+      if(this.switch_time >= this.switch_interval * 0.5 && this.base_speed < this.maximum_speed){
+        this.base_speed += this.maximum_speed / amaster;
+        if(this.base_speed > this.maximum_speed){
+          this.base_speed = this.maximum_speed;
+        }
+      }
+    } else {
+      this.switch_time = this.switch_interval;
+      if(!this.switch_add){
+        this.angle -= this.turn_angle * this.dir;
+        this.change_angle(this.angle);
+        this.switch_add = true;
+      } else {
+        this.angle += this.turn_angle * this.dir;
+        this.change_angle(this.angle);
+        this.switch_add = false;
+      };
     }
+  }
+  change_angle(change){
+    this.velToAngle();
+    this.angle = change;
+    this.compute_speed();
+  }
+  compute_speed(){
+    this.speed = this.base_speed;
+    this.angleToVel();
   }
 }
 class Zoning extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("zoning"), radius, speed, angle, "#a03811");
-    this.switchInterval = 1000;
-    this.switchTime = Math.random() * this.switchInterval;
-    this.turnAngle = Math.PI / 2
-    this.turnAngle *= (Math.floor(Math.random() * 2) * 2)
+    const random_angle = random_between([0,90,180,270]);
+    this.change_angle(degrees_to_radians(random_angle));
+    this.base_speed = speed;
+    this.noAngleUpdate = true;
+
+    this.turn_coin = Math.random();
+    this.dir = 1;
+
+    this.switch_interval = 1000;
+    this.switch_time = Math.random() * this.switch_interval;
+    this.turn_angle = Math.PI / 2;
+    this.maximum_speed = this.base_speed * 1.4;
+    this.turning = true;
+    this.returnCollision = true;
   }
   behavior(time, area, offset, players) {
-    if (this.switchTime > 0) {
-      this.switchTime -= time
+    const timeFix = time / (1000 / 30);
+    const amaster = 28 / 30 * timeFix * 60;
+    if (this.switch_time > 0) {
+      this.switch_time -= time;
+      this.compute_speed();
+      if(this.switch_time < this.switch_interval * 0.5 && this.base_speed > 0){
+        this.base_speed -= this.maximum_speed / amaster;
+        if(this.base_speed < 0){
+          this.base_speed = 0;
+        }
+      }
+      if(this.switch_time >= this.switch_interval * 0.5 && this.base_speed < this.maximum_speed){
+        this.base_speed += this.maximum_speed / amaster;
+        if(this.base_speed > this.maximum_speed){
+          this.base_speed = this.maximum_speed;
+        }
+      }
     } else {
-      this.switchTime = this.switchInterval
-      this.velToAngle();
-      this.angle += this.turnAngle
-      this.angleToVel();
+      this.switch_time = this.switch_interval;
+      if(this.turn_coin < 0.5){
+        this.angle += this.turn_angle * this.dir;
+      } else {
+        this.angle -= this.turn_angle * this.dir;
+      }
+      this.change_angle(this.angle);
     }
   }
+  change_angle(change){
+    this.velToAngle();
+    this.angle = change;
+    this.compute_speed();
+  }
+  compute_speed(){
+    this.speed = this.base_speed;
+    this.angleToVel();
+  }
 }
+
+class Oscillating extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("oscillating"), radius, speed, angle, "#869e0f");
+    this.change_angle(this.angle);
+    this.base_speed = speed;
+    this.noAngleUpdate = true;
+
+    this.switch_interval = 1000;
+    this.switch_time = Math.random() * this.switch_interval;
+    this.turn_angle = Math.PI;
+    this.maximum_speed = this.base_speed * 1.4;
+  }
+  behavior(time, area, offset, players) {
+    const timeFix = time / (1000 / 30);
+    const amaster = 28 / 30 * timeFix * 60;
+    if (this.switch_time > 0) {
+      this.switch_time -= time;
+      this.compute_speed();
+      if(this.switch_time < this.switch_interval * 0.5 && this.base_speed > 0){
+        this.base_speed -= this.maximum_speed / amaster;
+        if(this.base_speed < 0){
+          this.base_speed = 0;
+        }
+      }
+      if(this.switch_time >= this.switch_interval * 0.5 && this.base_speed < this.maximum_speed){
+        this.base_speed += this.maximum_speed / amaster;
+        if(this.base_speed > this.maximum_speed){
+          this.base_speed = this.maximum_speed;
+        }
+      }
+    } else {
+      this.switch_time = this.switch_interval;
+      this.angle += this.turn_angle;
+      this.change_angle(this.angle)
+    }
+  }
+  change_angle(change){
+    this.velToAngle();
+    this.angle = change;
+    this.compute_speed();
+  }
+  compute_speed(){
+    this.speed = this.base_speed;
+    this.angleToVel();
+  }
+}
+
+function switchCombiner (parentClass, ...properties) {
+  return new class SwitchCombiner extends parentClass {
+    constructor(pos, radius, speed, angle, index, count){
+      super(pos, radius, speed, angle);
+      this.switching = true;
+      this.disabled = false;
+      if (index >= count / 2) {
+        this.disabled = true;
+      }
+      this.switch_clock = 0;
+      this.switch_total_time = 3000;
+      this.fading_effects_time = 1500;
+
+      // evades code
+      if (radius == 1919){
+        this.switch_total_time = 5500;
+        this.switch_clock = 5500 - 2000;
+      } else if(radius == 159){
+        this.switch_total_time = 3000;
+        this.switch_clock = 3000 - 250;
+      }
+      // still better than doing extra million classes :)
+      this.color = properties[properties.length-1];
+    }
+    behavior(time, area, offset, players){
+      this.switch_clock += time;
+      if (this.switch_clock > this.switch_total_time) {
+        this.disabled = !this.disabled;
+        this.switch_clock = this.switch_clock % this.switch_total_time;
+      }
+      super.behavior(time, area, offset, players);
+    }
+  }(...properties)
+}
+
 class Radiating extends Enemy {
   constructor(pos, radius, speed, angle, releaseInterval = 4000, releaseTime) {
     super(pos, entityTypes.indexOf("radiating_bullets"), radius, speed, angle, "#d3134f");

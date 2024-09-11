@@ -309,7 +309,7 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
   }
 
   if(settings.fading_effects){
-    const switch_time = entity.switch_total_time - entity.switch_time;
+    const switch_time = entity.switch_total_time - entity.switch_clock;
     if(entity.switching && switch_time <= entity.fading_effects_time){
       alpha = 0.3 - 0.3 * Math.cos((entity.fading_effects_time-switch_time)/220*Math.PI);
       entity.disabled ? ctx.fillStyle = `rgba(25,25,25,${alpha})` : ctx.fillStyle = `rgba(147,147,147,${alpha})`;
