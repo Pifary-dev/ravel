@@ -167,19 +167,18 @@ function renderEntities(area, players, focus) {
   const areaY = area.pos.y;
   const focusX = focus.x;
   const focusY = focus.y;
-
   // Render effects first
-  for (const entityType in area.entities) {
-    const entities = area.entities[entityType];
+  for (const entityType in { ...area.entities, ...area.effects}) {
+    const entities = area.entities[entityType] ? area.entities[entityType] : area.effects[entityType];
     if (!entities[0]) continue;
-    if (!entities[0].aura) continue;
+    if (!entities[0].aura && !entities[0].isEffect) continue;
     const len = entities.length;
     for (let i = 0; i < len; i++) {
       const entity = entities[i];
 
       const effectX = halfWidth + (areaX + entity.pos.x - focusX) * fov;
       const effectY = halfHeight + (areaY + entity.pos.y - focusY) * fov;
-      const effectRadius = entity.auraSize * fov;
+      const effectRadius = (entity.isEffect ? entity.radius : entity.auraSize) * fov;
 
       // Check if the entity is within the visible range
       if (effectX + effectRadius < 0 || effectX - effectRadius > width || 
@@ -189,7 +188,7 @@ function renderEntities(area, players, focus) {
 
       // Render effect
       ctx.beginPath();
-      ctx.fillStyle = entity.auraColor;
+      ctx.fillStyle = entity.isEffect ? entity.color : entity.auraColor;
       ctx.arc(effectX, effectY, effectRadius, 0, Math.PI * 2);
       ctx.fill();
     }
@@ -401,7 +400,7 @@ function renderPlayers(area, players, focus) {
       context.fill();
       if (!player.isUnbandaging) {
         context.strokeStyle = "#aaa791";
-        context.lineWidth = 1;
+        context.lineWidth = 1 / (32 / fov);
         context.stroke();
       }
     }

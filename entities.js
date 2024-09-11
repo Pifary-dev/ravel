@@ -2311,9 +2311,9 @@ class Morfe extends Player {
       angle += shooting_angle*(i+1);
       angle = degrees_to_radians(angle);
       const world = game.worlds[this.world];
-      const bullet = (bulletType == 'reverse_projectile') ? new ReverseProjectile(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),angle) : new MinimizeProjectile(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),angle)
-      if(!area.entities[bulletType]){area.entities[bulletType] = []}
-      area.entities[bulletType].push(bullet);
+      const bullet_class = (bulletType == 'reverse_projectile') ? ReverseProjectile : MinimizeProjectile;
+      const bullet = new bullet_class(new Vector(this.pos.x-world.pos.x-area.pos.x,this.pos.y-world.pos.y-area.pos.y),angle) 
+      area.addEntity(bulletType,bullet)
     }
   }
 }
@@ -2421,11 +2421,13 @@ class Candy extends Player {
       this.secondAbilityActivated = !this.secondAbilityActivated;
       this.energy -= 5;
       const angle = this.mouseActive ? this.mouse_angle : this.previousAngle;
+      const distance = 64 / 32;
       const candy = new Vector(
-        this.pos.x + (64 / 32) * Math.cos(angle),
-        this.pos.y + (64 / 32) * Math.sin(angle)
+        this.pos.x + distance * Math.cos(angle),
+        this.pos.y + distance * Math.sin(angle)
       );
-      area.addEffect(0, new Vector(candy.x - offset.x, candy.y - offset.y), this.ab2L);
+      const effect = new SweetTooth(new Vector(candy.x - offset.x, candy.y - offset.y),this.ab2L)
+      area.addEntitiesBehind("SweetTooth",effect,1);
       this.secondAbilityCooldown = this.secondTotalCooldown;
     }
 
@@ -3057,6 +3059,7 @@ class Sniper extends Enemy {
     this.bulletRadius = this.radius / 2;
     this.clock = Math.random() * this.releaseTime;
     this.detectionDistance = 600 / 32;
+    this.additionalProperties = [];
   }
   behavior(time, area, offset, players) {
     this.clock += time;
@@ -3064,7 +3067,7 @@ class Sniper extends Enemy {
       const target = this.findClosestPlayer(players, offset, area.getActiveBoundary());
       if (target && target.isDetectable()) {
         const angle = Math.atan2((target.pos.y - offset.y) - this.pos.y, (target.pos.x - offset.x) - this.pos.x);
-        area.addSniperBullet(this.bulletType, this.pos, angle, this.bulletRadius, this.bulletSpeed);
+        area.addSniperBullet(this.bulletType, this.pos, angle, this.bulletRadius, this.bulletSpeed, ...this.additionalProperties);
         this.clock = 0;
       }
     }
@@ -3143,59 +3146,57 @@ class StalactiteProjectile extends SniperBullet {
     }
   }
 }
-
-class ForceSniper extends Sniper {
-  constructor(pos, radius, speed, angle, color, bulletType) {
-    super(pos, radius, speed, angle, color);
-    this.bulletType = bulletType;
+class ForceSniperA extends Sniper {
+  constructor(pos, radius, speed, angle) {
+    super(pos, radius, speed, angle, "#0a5557");
+    this.bulletType = 17;
     this.bulletSpeed = 12;
   }
 }
-
-class ForceSniperA extends ForceSniper {
+class ForceSniperB extends Sniper {
   constructor(pos, radius, speed, angle) {
-    super(pos, radius, speed, angle, "#0a5557", 17);
+    super(pos, radius, speed, angle, "#914d83");
+    this.bulletType = 18;
+    this.bulletSpeed = 12;
   }
 }
-
-class ForceSniperABullet extends SniperBullet {
-  constructor(pos, angle, radius, speed) {
+class ForceSniperBullet extends SniperBullet {
+  constructor(pos, angle, radius, speed, color) {
     super(pos, angle, radius, speed);
-    this.color = "#0a5557";
-    this.immune = true;
+    this.color = color;
     this.touched = false;
-    this.outline = false;
   }
   interact(player, worldPos, time) {
     if (!this.touched && distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
-      player.firstAbility = true;
-      const world = game.worlds[player.world];
-      const area = world.areas[player.area];
-      player.abilities(time, area, {x: worldPos.x + area.pos.x, y: worldPos.y + area.pos.y});
-      this.touched = true;
+      this.useAbility(player)
+      this.updateAbilities(player,worldPos)
     }
   }
-}
+  useAbility(player){
 
-class ForceSniperB extends ForceSniper {
-  constructor(pos, radius, speed, angle) {
-    super(pos, radius, speed, angle, "#914d83", 18);
+  }
+  updateAbilities(player,worldPos){
+    const world = game.worlds[player.world];
+    const area = world.areas[player.area];
+    player.abilities(0, area, worldPos);
+    this.touched = true;
   }
 }
 
-class ForceSniperBBullet extends ForceSniperABullet {
+class ForceSniperABullet extends ForceSniperBullet {
   constructor(pos, angle, radius, speed) {
-    super(pos, angle, radius, speed);
-    this.color = "#914d83";
+    super(pos, angle, radius, speed, "#0a5557");
   }
-  interact(player, worldPos, time) {
-    if (!this.touched && distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
-      player.secondAbility = true;
-      const world = game.worlds[player.world];
-      const area = world.areas[player.area];
-      player.abilities(time, area, {x: worldPos.x + area.pos.x, y: worldPos.y + area.pos.y});
-      this.touched = true;
-    }
+  useAbility(player){
+    player.firstAbility = true;
+  }
+}
+class ForceSniperBBullet extends ForceSniperBullet {
+  constructor(pos, angle, radius, speed) {
+    super(pos, angle, radius, speed, "#914d83");
+  }
+  useAbility(player){
+    player.secondAbility = true;
   }
 }
 
@@ -3291,6 +3292,7 @@ class CorrosiveSniperBullet extends SniperBullet {
     this.color = "#61ff61";
     this.corrosive = true;
     this.immune = false;
+    this.outline = true;
     this.clock = 0;
   }
   behavior(time, area, offset, players) {
@@ -3307,6 +3309,7 @@ class IceSniper extends Sniper {
     super(pos, radius, speed, angle, "#8300ff");
     this.bulletType = 1;
     this.bulletRadius = 10 / 32;
+    this.bulletSpeed = 16;
   }
 }
 
@@ -3382,6 +3385,9 @@ class SpeedSniper extends Sniper {
     super(pos, radius, speed, angle, "#ff9000");
     this.bulletType = 3;
     this.speedLoss = speedLoss;
+    this.bulletRadius = 10 / 32;
+    this.bulletSpeed = 16;
+    this.additionalProperties.push(speedLoss);
   }
 }
 
@@ -3410,6 +3416,9 @@ class RegenSniper extends Sniper {
     super(pos, radius, speed, angle, "#00cc8e");
     this.bulletType = 4;
     this.regenLoss = regenLoss;
+    this.bulletRadius = 10 / 32;
+    this.bulletSpeed = 16;
+    this.additionalProperties.push(regenLoss);
   }
 }
 
@@ -3435,6 +3444,8 @@ class PositiveMagneticSniper extends Sniper {
   constructor(pos, radius, speed, angle) {
     super(pos, radius, speed, angle, "#ff3852");
     this.bulletType = 7;
+    this.bulletRadius = 10 / 32;
+    this.bulletSpeed = 16;
   }
 }
 
@@ -3457,6 +3468,8 @@ class NegativeMagneticSniper extends Sniper {
   constructor(pos, radius, speed, angle) {
     super(pos, radius, speed, angle, "#a496ff");
     this.bulletType = 8;
+    this.bulletRadius = 10 / 32;
+    this.bulletSpeed = 16;
   }
 }
 
@@ -3479,6 +3492,7 @@ class LeadSniper extends Sniper {
   constructor(pos, radius, speed, angle) {
     super(pos, radius, speed, angle, "#788898");
     this.bulletType = 16;
+    this.bulletSpeed = 16;
   }
 }
 
@@ -4204,6 +4218,8 @@ class Tree extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("tree"), radius, speed, angle, "#4e2700");
     this.original_speed = speed;
+    this.noAngleUpdate = true;
+    this.velToAngle();
     this.reset_parameters();
   }
   behavior(time, area, offset, players) {
@@ -4236,9 +4252,11 @@ class Tree extends Enemy {
   }
   generate_entities(area){
     if (this.release_ready) {
-      const count = min_max(2,8)
+      const count = min_max(2,8);
+      const radius = 12 / 32;
+      const speed = 6;
       for (let i = 0; i < count; i++) {
-        area.addSniperBullet(10, this.pos, i * Math.PI / (count/2), 12 / 32, 6)
+        area.addSniperBullet(10, this.pos, i * Math.PI / (count/2), radius, speed)
       }
     }
   }
@@ -5006,7 +5024,7 @@ class Flower extends Enemy {
   }
   spawnFlower(area, id){
     const flower_projectile = new FlowerProjectile(new Vector(this.pos.x,this.pos.y),this.radius,id,this);
-    area.addEntity("flower_projectile",flower_projectile);
+    area.addEffect("flower_projectile",flower_projectile);
   }
 }
 
@@ -5021,10 +5039,14 @@ class FlowerProjectile extends Entity {
     this.radiusRatio = 1;
     this.immune = true;
     this.Harmless = false;
+    this.isEffect = true;
   }
   behavior(time, area, offset, players) {
+    this.radius = this.fixedRadius * this.radiusMultiplier;
+    this.radiusMultiplier = 1;
+
     const timeFix = time / (1000 / 30);
-    const growth = this.radius/20*this.growthMultiplayer;
+    const growth = this.radius/32 * this.growthMultiplayer;
     const player = this.closestPlayer(players, offset);
     switch(this.id){
       case 1:
@@ -5044,9 +5066,9 @@ class FlowerProjectile extends Entity {
         break;
     }
     if (player != undefined) {
-      this.radiusRatio -= growth / 2 * timeFix;
+      this.radiusRatio -= growth * timeFix;
     } else {
-      this.radiusRatio += growth / 2 * timeFix;
+      this.radiusRatio += growth * timeFix;
     }
     if(this.radiusRatio>1){
       this.radiusRatio = 1;

@@ -136,6 +136,7 @@ class Game {
     obj.assets = area.assets;
     obj.entities = area.entities;
     obj.static_entities = area.static_entities;
+    obj.effects = area.effects;
     obj.background_color = area.background_color;
     obj.lighting = area.lighting;
     obj.texture = area.texture||0;
@@ -425,6 +426,7 @@ class Area {
     this.assets = [];
     this.entities = {};
     this.static_entities = {};
+    this.effects = {};
     this.preset = [];
     this.background_color = "rgba(255,255,255,0)";
     this.name = "undefined";
@@ -491,6 +493,16 @@ class Area {
           }
         }
         return false;
+      });
+    }
+
+    // Update effects
+    for (const effectType in this.effects) {
+      this.effects[effectType].forEach(entity => {
+        entity.behavior(time, this, areaOffset, players);
+        for (const player of players) {
+          if(!player.god) entity.interact(player, areaOffset, time);
+        }
       });
     }
     
@@ -615,6 +627,7 @@ class Area {
   load() {
     this.entities = {};
     this.static_entities = {};
+    this.effects = {};
     const boundary = this.getActiveBoundary();
     const variables = this.variables || {};
     const currentVariables = [];
@@ -910,10 +923,10 @@ class Area {
   addEffect(type,pos,power){
     if(type == 0){
       var effect = new SweetTooth(new Vector(pos.x,pos.y),power)
-      this.addEntity("SweetTooth", effect);
+      this.addEntitiesBehind("SweetTooth", effect,1);
     }
   }
-  addSniperBullet(type, pos, angle, radius, speed, duration = 4000, spawner) {
+  addSniperBullet(type, pos, angle, radius, speed, ...properties) {
     const bulletTypes = {
       0: { name: "SniperProjectile", class: SniperBullet },
       1: { name: "IceSniperProjectile", class: IceSniperBullet },
@@ -938,32 +951,34 @@ class Area {
 
     if (bulletTypes[type]) {
       const { name, class: BulletClass } = bulletTypes[type];
-      if (!this.entities[name]) {
-        this.entities[name] = [];
-      }
-      const bulletArgs = [new Vector(pos.x, pos.y), angle, radius, speed];
-      if (type === 3 || type === 4 || type === 9 || type === 12) {
-        bulletArgs.push(duration);
-      }
-      if (type === 12) {
-        bulletArgs.push(spawner);
-      }
-      if (type === 15) {
-        bulletArgs.pop(); // Remove speed for StalactiteProjectile
-        bulletArgs.pop(); // Remove angle for StalactiteProjectile
-      }
+      const bulletArgs = [new Vector(pos.x, pos.y), angle, radius, speed, ...properties];
       const bullet = new BulletClass(...bulletArgs);
       this.addEntity(name, bullet);
     }
   }
 
-  addEntity(entityName, entity) {
-    this.entities[entityName] = this.entities[entityName] || [];
-    this.entities[entityName].push(entity);
+  addEntity(name, entity) {
+    if(this.entities[name] === undefined) this.entities[name] = [];
+    this.entities[name].push(entity);
   }
-  addStaticEntity(entityName, entity) {
-    this.static_entities[entityName] = this.static_entities[entityName] || [];
-    this.static_entities[entityName].push(entity);
+  addEntitiesBehind(name, entity, amount){ // ¯\_(ツ)_/¯
+    const isExists = this.entities[name] !== undefined;
+    const newEntities = isExists ? this.entities[name] : [];
+    for(let i = 0; i<amount; i++){
+      newEntities.push(entity);
+    }
+    const entObj = {[name] : newEntities};
+    const oldEntites = this.entities;
+    this.entities = entObj;
+    Object.assign(this.entities, oldEntites)
+  }
+  addStaticEntity(name, entity) {
+    if(this.static_entities[name] === undefined) this.static_entities[name] = [];
+    this.static_entities[name].push(entity);
+  }
+  addEffect(name, entity) {
+    if(this.effects[name] === undefined) this.effects[name] = [];
+    this.effects[name].push(entity);
   }
 }
 class Zone {
