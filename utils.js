@@ -73,13 +73,21 @@ var entityTypes = [
   "lead_sniper",
   "reducing",
   "blocking",
+  "blind",
+  "withering",
+  "void_crawler",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",
   "cobweb",
   "defender",
   "burning",
-  "sticky_sniper"
+  "sticky_sniper",
+
+  // og evades
+  "vary",
+  "invisible",
+  "halfwall"
 
   /* Those cannot be spawned by area spawner
   "reverse_projectile",
@@ -494,7 +502,7 @@ function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive
         player.invincible_time = 1000;
       }
   }
-    if((player.invincible&&!corrosive)||Harmless){
+    if((player.invincible&&!corrosive)||Harmless||!enemy.able_to_kill){
       dead = false;
     }
     if(dead && !player.isDead){

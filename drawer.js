@@ -304,7 +304,11 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
   if (entity.texture) {
     renderTexturedEntity(ctx, entity, x, y, radius);
   } else {
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    if(entity.isHalf){
+      ctx.arc(x, y, radius, 0, Math.PI, entity.orientation);
+    } else {
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+    }
     ctx.fill();
   }
 
@@ -330,11 +334,19 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     ctx.fill();
   }
 
-  if (entity.outline && settings.outline) {
+  const isOutline = (settings.outline && entity.outline);
+  const isProjectile = (settings.projectile_outline && !entity.static && !entity.texture);
+
+  if(isOutline || isProjectile) {
     if (entity.texture) ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.lineWidth = 2 / (32/fov);
-    ctx.strokeStyle = "black";
-    ctx.stroke();
+
+    if (isOutline) ctx.lineWidth = 2 / (32 / fov);
+    else if (!entity.outline) ctx.lineWidth = 1 / (32 / fov);
+
+    if (isOutline || !entity.outline) {
+      ctx.strokeStyle = entity.whiteOutline ? "white" : "black";
+      ctx.stroke();
+    }
   }
 
   if (entity.releaseTime > 1000 && entity.clock >= entity.releaseTime - 500) {
@@ -464,6 +476,12 @@ function renderPlayers(area, players, focus) {
     // Render effects (poison, frozen, burning, lead)
     if (player.poison) {
       context.fillStyle = `rgba(140, 1, 183,${(player.poisonTimeLeft-player.poisonTime)/player.poisonTimeLeft})`;
+      context.beginPath();
+      context.arc(playerX, playerY, (player.radius + 0.5/32) * fov, 0, Math.PI * 2);
+      context.fill();
+    }
+    if (player.lava) {
+      context.fillStyle = `rgba(247, 131, 6, ${(player.lavaTimeLeft-player.lavaTime)/player.lavaTimeLeft})`;
       context.beginPath();
       context.arc(playerX, playerY, (player.radius + 0.5/32) * fov, 0, Math.PI * 2);
       context.fill();

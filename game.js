@@ -272,7 +272,7 @@ class World {
         if (propertiesC.partial_magnetism) area.partial_magnetism = true;
         if (propertiesC.applies_lantern) area.applies_lantern = true;
         if (propertiesC.pellet_count !== undefined) area.pellet_count = propertiesC.pellet_count;
-        if (propertiesC.pellet_multiplier !== undefined) area.pellet_multiplier = propertiesC.multiplier;
+        if (propertiesC.pellet_multiplier !== undefined) area.pellet_multiplier = propertiesC.pellet_multiplier;
         if (propertiesC.texture !== undefined) area.texture = textureToId(propertiesC.texture);
       }
 
@@ -332,12 +332,9 @@ class World {
               count: values.count || 1,
               x: values.x,
               y: values.y,
-              angle: values.angle
+              angle: values.angle,
+              auraRadius: values.effect_radius
             };
-
-            if (values[`${object.type}_radius`] !== undefined) {
-              object.auraRadius = values[`${object.type}_radius`];
-            }
 
             // Add specific properties based on object type
             const typeSpecificProps = {
@@ -357,13 +354,21 @@ class World {
               slowing: ['slow'],
               charging: ['charge'],
               burning: ['burn_modifier'],
-              pumpkin: ['player_detection_radius']
+              pumpkin: ['player_detection_radius'],
+              vary: ['vary_modifier', 'opacity_modifier'],
+              invisible: ['opacity_modifier'],
+              turning: ['circle_size','turn_speed']
             };
 
-            if (typeSpecificProps[object.type]) {
-              typeSpecificProps[object.type].forEach(prop => {
-                if (values[prop] !== undefined) object[prop] = values[prop];
-              });
+            for (const type of object.type) {
+              if(values[`${type}_radius`] !== undefined){
+                object[`${type}_radius`] = values[`${type}_radius`];
+              }
+              if (typeSpecificProps[type]) {
+                for (const prop of typeSpecificProps[type]) {
+                  if (values[prop] !== undefined) object[prop] = values[prop];
+                }
+              }
             }
 
             ['move_clockwise', 'initial_side', 'horizontal', 'pattern_id'].forEach(prop => {
@@ -585,7 +590,9 @@ class Area {
     player.collides = Math.abs(fixed.x - player.pos.x) + Math.abs(fixed.y - player.pos.y) !== 0;
     player.pos = fixed;
 
+    player.no_slip = false;
     this.checkAssetCollisions(player, worldPos);
+    if (player.collides) player.onWallCollision();
   }
 
   checkAssetCollisions(player, worldPos) {
@@ -666,6 +673,7 @@ class Area {
         if (pattern_amount && pattern_amount[preset.pattern_id] !== undefined) {
           pattern_amount[preset.pattern_id]--;
         }
+
         const {
           pattern_id, auraRadius: auraRadiusRaw, count: countRaw, radius: radiusRaw,
           speed: speedRaw, x: xRaw, y: yRaw, angle: angleRaw, type: enemyTypes
@@ -708,6 +716,10 @@ class Area {
         for (let index = 0; index < count; index++) {
           const rand = Math.floor(Math.random() * (enemyTypes?.length || 1));
           const currentEnemyType = enemyTypes?.[rand];
+          let currentAuraRadius = auraRadius;
+          if(preset[`${currentEnemyType}_radius`]){
+            currentAuraRadius = preset[`${currentEnemyType}_radius`];
+          }
 
           let posX, posY;
           if (x !== undefined) {
@@ -726,7 +738,7 @@ class Area {
             posY = Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
           }
 
-          let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, angle, preset, auraRadius, index, count);
+          let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, angle, preset, currentAuraRadius, index, count);
           enemy.isSpawned = true;
           this.addEntity(entityTypes[enemy.type],enemy);
         }
@@ -762,7 +774,7 @@ class Area {
       case "oscillating":
         return new Oscillating(new Vector(posX, posY), radius / 32, speed, angle);
       case "turning":
-        return new Turning(new Vector(posX, posY), radius / 32, speed, angle, preset.circle_size);
+        return new Turning(new Vector(posX, posY), radius / 32, speed, angle, preset.circle_size, preset.turn_speed);
       case "liquid":
         return new Liquid(new Vector(posX, posY), radius / 32, speed, angle, preset.player_detection_radius);
       case "sizing":
@@ -916,6 +928,12 @@ class Area {
         return new ForceSniperA(new Vector(posX, posY), radius / 32, speed, angle);
       case "force_sniper_b":
         return new ForceSniperB(new Vector(posX, posY), radius / 32, speed, angle);
+      case "infectious":
+        return new Infectious(new Vector(posX, posY), radius / 32, speed, angle);
+      case "penny":
+        return new Penny(new Vector(posX, posY), radius / 32, speed, angle);
+      case "penny_switch":
+        return switchCombiner(Penny, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#d9b67f");
       case "wavy_switch":
         return switchCombiner(Wavy, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#fa5336");
       case "spiral_switch":
@@ -924,6 +942,18 @@ class Area {
         return switchCombiner(Zoning, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#b35f40");
       case "oscillating_switch":
         return switchCombiner(Oscillating, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#b6c46f");
+      case "vary":
+        return new Vary(new Vector(posX, posY), radius / 32, speed, angle, preset.vary_modifier, preset.opacity_modifier)
+      case "invisible":
+        return new Invisible(new Vector(posX, posY), radius / 32, speed, angle, preset.opacity_modifier);
+      case "halfwall":
+        return new HalfWall(new Vector(posX, posY), radius / 32, speed, this.getActiveBoundary(), j, count);
+      case "blind":
+        return new Blind(new Vector(posX, posY), radius / 32, speed, angle);
+      case "withering":
+        return new Withering(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "void_crawler":
+        return new VoidCrawler(new Vector(posX, posY), radius / 32, speed, angle);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }

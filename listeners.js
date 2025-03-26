@@ -3,13 +3,14 @@ let inMenu = true;
 let keys = [];
 
 const settings = {
-  outline:true,
-  cooldown:true,
+  outline: true,
+  projectile_outline: true,
+  cooldown: true,
   fps_limit: "60",
   timer: false,
-  timer_clear:true,
-  mouse_toggle:true,
-  fading_effects:true,
+  timer_clear: true,
+  mouse_toggle: true,
+  fading_effects: true,
   tiles: true,
   dev: false,
   death_cooldown: false,
