@@ -3199,8 +3199,6 @@ class Draining extends Enemy {
 class Withering extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 100) {
     super(pos, entityTypes.indexOf("withering"), radius, speed, angle, "rgb(117, 38, 86)", true, "rgba(117, 38, 86, 0.15)", auraRadius / 32);
-    this.slow = slow;
-    this.drain = drain;
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -5025,7 +5023,7 @@ class Snowman extends Enemy {
   }
 }
 class Slippery extends Enemy {
-  constructor(pos, radius, speed, angle, auraRadius = 180) {
+  constructor(pos, radius, speed, angle, auraRadius = 165) {
     super(pos, entityTypes.indexOf("slippery"), radius, speed, angle, "#1aacbf", true, "rgba(33, 161, 165, 0.3)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
