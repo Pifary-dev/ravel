@@ -503,7 +503,7 @@ class Player {
       this.input_angle = Math.atan2(this.dirY, this.dirX);
 
     }
-    if(this.shouldCentMove() && this.cent_can_change_input_angle()){
+    if(this.shouldCentMove() && this.cent_can_change_input_angle() && (this.isMovementKeyPressed(input) || input.isMouse)){
       this.cent_saved_angle = this.input_angle;
       this.cent_input_ready = false;
       this.cent_is_moving = true;
@@ -514,7 +514,7 @@ class Player {
   shouldCentMove(){
     //special case for harden
     if (this.harden) return false;
-    return (this.className == "Cent" && this.leadTimeLeft <= 0) || (this.className != "Cent" && this.leadTimeLeft > 0);
+    return ((this.className == "Cent" && this.leadTimeLeft <= 0) || (this.className != "Cent" && this.leadTimeLeft > 0));
   }
   isMovementKeyPressed(input){
     return (input.keys[87] || input.keys[38] || input.keys[65] || input.keys[37] || input.keys[83] || input.keys[40] || input.keys[68] || input.keys[39]);
@@ -613,7 +613,7 @@ class Player {
       this.updateExperience(12*(parseInt(this.area)));
     }
     this.distance_movement *= speed;
-    if(this.shouldCentMove() && (this.collides)){
+    if(this.shouldCentMove() && (!this.slippery || this.collides)){
       this.cent_max_distance = this.distance_movement * 2;
       if(this.cent_is_moving){
         if(this.cent_accelerating){
