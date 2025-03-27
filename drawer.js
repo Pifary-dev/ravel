@@ -350,7 +350,7 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     else if (!entity.outline) ctx.lineWidth = 1 / (32 / fov);
 
     if (isOutline || !entity.outline) {
-      ctx.strokeStyle = entity.whiteOutline ? "white" : "black";
+      ctx.strokeStyle = entity.whiteOutline && settings.different_outlines ? "white" : "black";
       ctx.stroke();
     }
   }

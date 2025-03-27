@@ -5,6 +5,7 @@ let keys = [];
 const settings = {
   outline: true,
   projectile_outline: true,
+  different_outlines: false,
   cooldown: true,
   fps_limit: "60",
   timer: false,
