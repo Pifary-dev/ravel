@@ -59,6 +59,8 @@ const images = {
   magnetUp: new Image(),
   pumpkinOn: new Image(),
   pumpkinOff: new Image(),
+  lotusOn: new Image(),
+  lotusOff: new Image(),
   torch: new Image(),
   torchUp: new Image(),
   flashlight_item: new Image(),

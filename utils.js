@@ -74,6 +74,7 @@ var entityTypes = [
   "reducing",
   "blocking",
   "blind",
+  "lotus_flower",
   "withering",
   "void_crawler",
   // Not in evades
@@ -665,7 +666,9 @@ function loadImages(character) {
     pumpkinOff: "pumpkin_off",
     pumpkinOn: "pumpkin_on",
     magnetUp: "magnetism_up",
-    magnetDown: "magnetism_down"
+    magnetDown: "magnetism_down",
+    lotusOn: "lotus_flower_on",
+    lotusOff: "lotus_flower_off"
   };
 
   for (const [key, imageName] of Object.entries(imageNames)) {

@@ -284,7 +284,7 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
   let alpha = 1;
   if(entity.static){
     alpha = 1;
-  } else if(entity.alpha) {
+  } else if(entity.alpha){ 
     alpha = entity.alpha;
   } else if(settings.fading_effects && entity.HarmlessEffect > 0 && entity.HarmlessEffect < 1000){
     alpha = 0.4 + 0.6 * (1-entity.HarmlessEffect/1000);
@@ -334,8 +334,14 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     ctx.fill();
   }
 
+  if (entity.releaseTime > 1000 && entity.clock >= entity.releaseTime - 500) {
+    ctx.fillStyle = `rgba(1, 1, 1, ${(500 - Math.max(entity.releaseTime - entity.clock, 0)) / 500 * 0.2 + 0.05})`;
+    ctx.fill();
+  }
+
   const isOutline = (settings.outline && entity.outline);
-  const isProjectile = (settings.projectile_outline && !entity.static && !entity.texture);
+  const isProjectile = (settings.projectile_outline && !entity.static && !entity.texture && entity.projectile_outline);
+  if(entity.outlineAlpha || entity.outlineAlpha === 0) ctx.globalAlpha = entity.outlineAlpha;
 
   if(isOutline || isProjectile) {
     if (entity.texture) ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -349,17 +355,18 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     }
   }
 
-  if (entity.releaseTime > 1000 && entity.clock >= entity.releaseTime - 500) {
-    ctx.fillStyle = `rgba(1, 1, 1, ${(500 - Math.max(entity.releaseTime - entity.clock, 0)) / 500 * 0.2 + 0.05})`;
-    ctx.fill();
-  }
-
   ctx.globalAlpha = 1;
 }
 
 function renderTexturedEntity(ctx, entity, x, y, radius) {
   let texture;
   switch (entity.texture) {
+    case "lotusOn":
+      texture = images.lotusOn;
+      break;
+    case "lotusOff":
+      texture = images.lotusOff;
+      break;
     case "pumpkinOn":
       texture = images.pumpkinOn;
       break;

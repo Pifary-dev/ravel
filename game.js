@@ -950,6 +950,8 @@ class Area {
         return new HalfWall(new Vector(posX, posY), radius / 32, speed, this.getActiveBoundary(), j, count);
       case "blind":
         return new Blind(new Vector(posX, posY), radius / 32, speed, angle);
+      case "lotus_flower":
+        return new LotusFlower(new Vector(posX, posY), radius / 32, speed, angle);
       case "withering":
         return new Withering(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       case "void_crawler":

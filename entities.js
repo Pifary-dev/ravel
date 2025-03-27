@@ -16,6 +16,7 @@ class Entity {
     this.toRemove = false;
     this.no_collide = false;
     this.returnCollision = false;
+    this.projectile_outline = true;
   }
 
   angleToVel(angle = this.angle) {
@@ -94,6 +95,7 @@ class Enemy extends Entity {
     this.isEnemy = true;
     this.able_to_kill = true;
     this.self_destruction = false;
+    this.projectile_outline = true;
   }
   getRandomAngle(){
     return Math.random() * Math.PI * 2;
@@ -405,7 +407,6 @@ class Player {
 
     // Reset state
     this.isStanding = (this.isMovementKeyPressed(input) || input.isMouse) ? false : true;
-    console.log(this.isStanding);
     this.mouseActive = false;
     this.distance_movement = this.isDead ? 0 : 1;
     this.firstAbility = this.secondAbility = this.shift = false;
@@ -1189,6 +1190,7 @@ class Dynamite extends Entity {
     this.owner = id;
     this.wall_push = false;
     this.no_collide = true;
+    this.projectile_outline = false;
   }
 }
 
@@ -1198,6 +1200,7 @@ class ExplosionParticle extends Entity {
     this.g = 255;
     this.a = 1;
     this.wall_push = false;
+    this.projectile_outline = false;
   }
 
   behavior(time) {
@@ -1289,6 +1292,7 @@ class MonoPole extends Entity {
     this.clock = 0;
     this.gravity = 5 / 32;
     this.a = 1;
+    this.projectile_outline = false;
   }
 
   behavior(time, area) {
@@ -1418,6 +1422,7 @@ class Follower extends Entity {
     this.clock = 0;
     this.wall_push = false;
     this.lifespan = 1;
+    this.projectile_outline = false;
   }
 
   behavior(time, area, offset, players) {
@@ -1451,6 +1456,7 @@ class Shrinker extends Entity {
     this.clock = 0;
     this.wall_push = false;
     this.lifespan = 3;
+    this.projectile_outline = false;
   }
 
   behavior(time, area, offset, players) {
@@ -1465,7 +1471,7 @@ class Shrinker extends Entity {
 
   shrinkPlayers(players, offset) {
     players.forEach(player => {
-      if (this.isPlayerInRange(player, offset)) {
+      if (this.isPlayerInRange(player, offset) && !player.shrinked) {
         player.radiusMultiplier *= 0.5;
         player.shrinked = true;
       }
@@ -2331,7 +2337,7 @@ class Morfe extends Player {
     }
   }
   spawnBullet(area,bulletType){
-    let projectile_amount = (bulletType == 'reverse_projectile') ? this.ab1L : 1+this.ab2L;
+    let projectile_amount = (bulletType == 'reverse_projectile') ? [1,3,5,7,9][this.ab1L - 1] : [1,3,5,7,9][this.ab2L - 1];
     let static_shooting_angle = 90;
     let shooting_angle = static_shooting_angle/(projectile_amount+1);
     for(let i = 0; i < projectile_amount; i++){
@@ -2641,6 +2647,8 @@ class Shield extends Entity {
     this.size = new Vector(2,0.3);
     this.wall_push = false;
     this.isEnemy = false;
+    this.projectile_outline = false;
+    this.outline = false;
   }
   behavior(time, area, offset, players) {
     for (var j in area.entities) {
@@ -4900,6 +4908,70 @@ class Pumpkin extends Enemy {
     this.vel = new Vector(0,0);
   }
 }
+
+class LotusFlower extends Enemy {
+  constructor(pos, radius, speed, player_detection_radius = 240) {
+    super(pos, entityTypes.indexOf("lotus_flower"), radius, speed, undefined,"#dedede");
+    this.texture = "lotusOff"
+    this.staticVel = new Vector(this.vel.x,this.vel.y);
+    this.nextAngle = 0;
+    this.clock = 0;
+    this.nextAngleDetected = false;
+    this.staticSpeed = speed + 0;
+    this.player_detection_radius = player_detection_radius / 32;
+    this.last_detected_angle = undefined;
+    this.totalShakeTime = 1000;
+    this.totalAttackTime = 2000;
+    this.shakeTimer = 0;
+    this.attackTimer = 0;
+    this.state = "idle";
+    this.stopMovement();
+    this.alpha = 0.4;
+    this.outlineAlpha = 0;
+  }
+  behavior(time,area,offset,players){
+    let minimalDistance = this.player_detection_radius;
+    let index;
+    const boundary = area.getActiveBoundary();
+    for (let i = 0; i < players.length; i++) {
+      const player = players[i];
+      if (distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y)) < minimalDistance && player.isDetectable() && pointInRectangle(new Vector(player.pos.x - offset.x, player.pos.y - offset.y), new Vector(boundary.x, boundary.y), new Vector(boundary.w, boundary.h))) {
+        minimalDistance = distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y));
+        index = i;
+      }
+    }
+    if (index !== undefined && this.state == "idle") {
+      const player = players[index];
+      this.last_detected_angle = Math.atan2(player.pos.y - offset.y - this.pos.y, player.pos.x - offset.x - this.pos.x);
+      this.state = "shaking";
+    }
+
+    if(this.state == "shaking"){
+      this.shakeTimer += time;
+      this.alpha = Math.min(0.4 + 0.6 * (this.shakeTimer/this.totalShakeTime),1);
+      this.outlineAlpha = Math.min(this.shakeTimer/this.totalShakeTime,1);
+      if(index !== undefined){
+        const player = players[index];
+        const dX = (player.pos.x - offset.x) - this.pos.x;
+        const dY = (player.pos.y - offset.y) - this.pos.y;
+        this.last_detected_angle = Math.atan2(dY,dX);
+      }
+      if(this.shakeTimer > this.totalShakeTime){
+        this.texture = "lotusOn"
+        this.state = "attacking";
+        this.angle = this.last_detected_angle;
+        this.speed = this.staticSpeed;
+        this.angleToVel();
+        this.shakeTimer = 0;
+      }
+    }
+  }
+
+  stopMovement(){
+    this.vel = new Vector(0,0);
+  }
+}
+
 class FakePumpkin extends Entity {
   constructor(pos, radius) {
     super(pos, radius, "#e26110");
@@ -5862,13 +5934,14 @@ class SweetTooth extends Entity {
 
 class ReverseProjectile extends Enemy {
   constructor(pos,angle) {
-    super(pos, entityTypes.indexOf("reverse_projectile"), 30/32, undefined, undefined, "#00dd00");
+    super(pos, entityTypes.indexOf("reverse_projectile"), 11/32, undefined, undefined, "#00dd00");
     this.clock = 0;
     this.angle = angle;
     this.no_collide = true;
     this.immune = true;
-    this.speed = 30;
+    this.speed = 15;
     this.outline = false;
+    this.projectile_outline = false;
     this.angleToVel();
   }
   behavior(time, area, offset, players) {
@@ -5902,7 +5975,8 @@ class ObscureProjectile extends Enemy {
     this.speed = 50;
     this.outline = false;
     this.angleToVel();
-    this.obscure = true
+    this.obscure = true;
+    this.projectile_outline = false;
     this.area_collide = true;
   }
   behavior(time, area, offset, players) {
@@ -5936,6 +6010,7 @@ class MinimizeProjectile extends Enemy {
     this.immune = true;
     this.speed = 15;
     this.outline = false;
+    this.projectile_outline = false;
     this.angleToVel();
   }
   behavior(time, area, offset, players) {
