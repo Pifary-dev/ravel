@@ -211,7 +211,9 @@ function renderEntities(area, players, focus) {
       }
 
       // Render entity
-      if (entity.shatterTime > 0) {
+      if (entity.isShield) {
+        renderShieldEntity(ctx, entity, entityX, entityY);
+      } else if (entity.shatterTime > 0) {
         renderShatteredEntity(ctx, entity, entityX, entityY, radius);
       } else {
         renderNormalEntity(ctx, entity, entityX, entityY, radius);
@@ -278,6 +280,20 @@ function renderShatteredEntity(ctx, entity, x, y, radius) {
     }
   }
   ctx.globalAlpha = 1;
+}
+
+function renderShieldEntity(ctx, entity, x, y) {
+  if(entity.isShield){
+    ctx.save()
+    ctx.translate(x,y)
+    ctx.rotate(entity.rot)
+    ctx.beginPath();
+    ctx.fillStyle = "black";
+    ctx.fillRect(-entity.size.x*fov,-entity.size.y*fov, entity.size.x*fov*2, entity.size.y*fov*2);
+    ctx.fill();
+    ctx.closePath();
+    ctx.restore();
+  }
 }
 
 function renderNormalEntity(ctx, entity, x, y, radius) {

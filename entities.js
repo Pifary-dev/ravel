@@ -1096,10 +1096,12 @@ class Jotunn extends Player {
 class Burst extends Player {
   constructor(pos, speed) {
     super(pos, 2, speed, "#AA3333", "Burst");
-    this.firstAbilityCost = 5;
-    this.secondAbilityCost = 20;
-    this.firstAbilityCooldown = 500;
-    this.secondAbilityCooldown = 1000;
+    this.firstAbilityCost = 1;
+    this.secondAbilityCost = 7;
+    this.firstAbilityCooldown = 0;
+    this.secondAbilityCooldown = 0;
+    this.firstAbilityTotalCooldown = 250;
+    this.secondAbilityTotalCooldown = 750;
   }
 
   abilities(time, area, offset) {
@@ -1110,11 +1112,11 @@ class Burst extends Player {
   useFirstAbility(area, offset) {
     if (this.canUseAbility(this.firstAbilityCost, this.firstAbilityCooldown)) {
       this.energy -= this.firstAbilityCost;
-      this.firstAbilityCooldown = 500;
+      this.firstAbilityCooldown = this.firstAbilityTotalCooldown;
       const velocity = this.calculateVelocity();
       const dynamite = new Dynamite(
         new Vector(this.pos.x - offset.x, this.pos.y - offset.y),
-        new Vector(velocity.x * 50, velocity.y * 50),
+        new Vector(velocity.x * 75, velocity.y * 75),
         this.id
       );
       area.addEntity("dynamites", dynamite);
@@ -1124,7 +1126,7 @@ class Burst extends Player {
   useSecondAbility(area) {
     if (this.canUseAbility(this.secondAbilityCost, this.secondAbilityCooldown)) {
       this.energy -= this.secondAbilityCost;
-      this.secondAbilityCooldown = 1000;
+      this.secondAbilityCooldown = this.secondAbilityTotalCooldown;
       this.detonateDynamites(area);
     }
   }
@@ -1145,6 +1147,7 @@ class Burst extends Player {
 
   detonateDynamites(area) {
     const newDynamites = [];
+    if(!area.entities["dynamites"]) return;
     area.entities["dynamites"].forEach(dynamite => {
       if (dynamite.owner === this.id) {
         this.applyExplosionEffect(area, dynamite);
@@ -1750,8 +1753,10 @@ class Cent extends Player {
     this.firstTime=0;
     this.secondTime=0;
     this.hasAB = true; 
-    this.ab1L = 5; 
-    this.ab2L = 5; 
+    this.ab1L = (settings.max_abilities) ? 5 : 0; 
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
     this.firstTotalCooldown = 1000;
     this.secondTotalCooldown = 10000;
     this.mortarTime = 0;
@@ -1768,18 +1773,20 @@ class Cent extends Player {
       }
     }
     if(this.firstAbility){
-      if(this.firstAbilityCooldown==0){
+      if(this.firstAbilityCooldown==0 && this.ab1L>0){
         this.fusion = true;
         this.fusionTime = 700;
+        this.firstTotalCooldown = this.getFirstAbilityCooldown(this.ab1L);
         this.firstAbilityCooldown = this.firstTotalCooldown;
         this.mortarTime = 0;
       }
     }
     if (this.secondAbility||this.onDeathSecondAb) {
-      if(this.energy>=20&&this.secondAbilityCooldown==0){
+      if(this.energy>=40 && this.secondAbilityCooldown==0 && this.ab2L>0){
         this.onDeathSecondAb = false;
+        this.firstTotalCooldown = this.getSecondAbilityCooldown(this.ab2L);
         this.secondAbilityCooldown = this.secondTotalCooldown;
-        this.energy-=20;
+        this.energy-=40;
         this.mortarTime = 4000;
         this.mortar = true;
       }
@@ -1787,6 +1794,14 @@ class Cent extends Player {
     if(this.god) this.mortarTime = 0;
     if(this.fusionTime>0||this.mortarTime>0){this.invincible = true}else{this.invincible = false;}
     if(this.fusionTime>0){this.fusionTime-=time;if(this.fusionTime<=0){this.fusion = false;}}
+    if(this.mortarTime<=0){this.mortar = false;}
+  }
+
+  getFirstAbilityCooldown(level) {
+    return [1400,1300,1200,1100,1000][level-1];
+  }
+  getSecondAbilityCooldown(level) {
+    return [18000,16000,14000,12000,10000][level-1];
   }
 }
 class Rameses extends Player {
@@ -2599,17 +2614,37 @@ class Polygon extends Player {
   constructor(pos, speed) {
     super(pos, 7, speed, "#000000", "Polygon");
     this.shape = 0;
+    this.firstAbilityCooldown = 0;
+    this.firstTotalCooldown = 2000;
   }
   abilities(time, area, offset) {
-    if (this.firstAbility) {
+    const previous = this.shape;
+    if (this.firstAbility && this.firstAbilityCooldown <= 0) {
       this.shape++;
       this.shape = this.shape%4;
     }
     if (this.shape==1) {
-      this.speedAdditioner+=2;
+      this.speedAdditioner += 4;
+    } else if(this.shape==2) {
+      if(previous!=2) this.night = true;
+      if(this.night === false) {
+        this.firstAbilityCooldown = this.firstTotalCooldown;
+        this.shape = 0;
+      }
     }
     if (this.shape==3) {
-      this.radiusMultiplier = 0.75;
+      this.radiusMultiplier *= 0.5;
+    }
+    if(this.shape === 0) {
+      this.effectImmune = 0.5;
+    } else {
+      this.effectImmune = 1;
+    }
+
+    if(this.shape !== 2) this.night = false;
+
+    if(this.firstAbilityCooldown > 0){
+      this.firstAbilityCooldown -= time;
     }
   }
 }
@@ -2621,8 +2656,13 @@ class Poop extends Player {
   }
   abilities(time, area, offset) {
     if (this.firstAbility) {
-      this.shields.push(new Shield(new Vector(this.pos.x - offset.x,this.pos.y - offset.y),this.id))
-      area.addEntity("shield",this.shields[this.shields.length-1])
+      if(this.shields.length === 0){
+        this.shields.push(new Shield(new Vector(this.pos.x - offset.x,this.pos.y - offset.y),this.id))
+        area.addEntity("shield",this.shields[this.shields.length-1])
+      } else {
+        this.shields[0].toRemove = true;
+        this.shields.pop();
+      }
     }
     for (var i in area.entities["shield"]) {
       if (area.entities["shield"][i].owner==this.id) {
@@ -2644,6 +2684,7 @@ class Shield extends Entity {
     super(pos, 0.7, "black");
     this.owner = owner;
     this.rot = 0
+    this.isShield = true;
     this.size = new Vector(2,0.3);
     this.wall_push = false;
     this.isEnemy = false;
