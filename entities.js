@@ -3966,23 +3966,14 @@ class Cobweb extends Enemy {
 class Teleporting extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("teleporting"), radius, speed, angle,"#ecc4ef");
-    this.clock = 0;
-    this.teleportInterval = 1000;
-  }
-  update(time) {
-    const timeFix = time / (1000 / 30);
-    this.speedMultiplier /= timeFix;
-    const oldPos = new Vector(this.pos.x, this.pos.y);
-    super.update(time);
-    if (this.clock >= this.teleportInterval) {
-      this.pos = oldPos;
-    }
+    this.pause_interval = 1400 / ((settings.convert_to_legacy_speed) ? speed : speed / 21);
+    this.pause_time = this.pause_interval;
   }
   behavior(time, area, offset, players) {
-    this.clock += time;
-    if (this.clock >= this.teleportInterval) {
-      this.speedMultiplier = 1;
-      this.clock = 0;
+    this.pause_time -= time;
+    if (this.pause_time <= 0) {
+      this.pause_time = this.pause_interval;
+      this.speedMultiplier *= (settings.convert_to_legacy_speed) ? 42 / 2 : 1;
     } else {
       this.speedMultiplier = 0;
     }
@@ -3995,7 +3986,7 @@ class Star extends Enemy {
     this.clock = 0;
     this.starPos = true;
     this.immune = false;
-    this.moveMultiplier = 2;
+    this.moveMultiplier = (settings.convert_to_legacy_speed) ? 42 : 2;
   }
   update(time) {
     const timeFix = time / (1000 / 30);
