@@ -354,7 +354,7 @@ class Player {
     this.cent_max_distance = 10;
     this.cent_distance = 0;
     this.cent_input_ready = true;
-    this.cent_acceleration = 7.5/32;
+    this.cent_acceleration = 7.5 / 30;
     this.cent_deceleration = this.cent_acceleration * 4;
     this.cent_accelerating = false;
     this.cent_is_moving = false;
@@ -633,7 +633,6 @@ class Player {
             this.cent_input_ready = true;
           }
         }
-        if(this.cent_distance<0){this.cent_distance = 0;}
       }
       this.distance_movement = this.cent_distance;
     }
@@ -1018,8 +1017,8 @@ class Player {
     this.pos.y = y;
   }
   cent_can_change_input_angle(){
-    return (this.cent_input_ready) ? 
-    true : this.cent_accelerating && 2 * this.cent_distance < this.cent_max_distance;
+    return this.cent_input_ready/*(this.cent_input_ready) ? 
+    true : this.cent_accelerating && 2 * this.cent_distance < this.cent_max_distance;*/
   }
   isDetectable(){
     return !this.god && !this.isDead && !this.night && !this.safeZone;
