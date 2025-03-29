@@ -494,7 +494,7 @@ function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive
     }
     if(dead){
       if(player.className == "Cent" && !player.invincible){
-        if(player.energy >= 40 && player.secondAbilityCooldown==0 && player.mortarTime<=0){
+        if(player.energy >= 40 && player.secondAbilityCooldown==0 && player.mortarTime<=0 && player.ab2L>0){
           player.onDeathSecondAb=true;
           player.invincible=true;
         }
