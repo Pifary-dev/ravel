@@ -346,6 +346,14 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     }
   }
 
+  if(entity.sugar_rush>0){
+    const sugarRushMaxTime = 2000;
+    const highestAlpha=0.7;
+    const adjustedAlpha=Math.min(Math.max(highestAlpha-highestAlpha*((sugarRushMaxTime-entity.sugar_rush)/sugarRushMaxTime),0),highestAlpha);
+    ctx.fillStyle=`rgba(255, 128, 189, ${adjustedAlpha})`;
+    ctx.fill();
+  }
+
   if (entity.decayed) {
     ctx.fillStyle = "rgba(0, 0, 128, 0.2)";
     ctx.fill();

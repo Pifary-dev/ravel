@@ -695,8 +695,6 @@ class Area {
           speed: speedRaw, x: xRaw, y: yRaw, angle: angleRaw, type: enemyTypes
         } = preset;
 
-        console.log(spawner)
-
         const processVariable = (value) => {
           if (this.variables && typeof value === "string" && value.startsWith("var") && currentVariables.length > 0) {
             return find_variable(value, currentVariables, hashVariables, pattern_id, pattern_amount);
