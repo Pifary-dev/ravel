@@ -13,7 +13,7 @@ class Game {
 
     for (const player of this.players) {
       player.update(time, this.worlds[player.world].friction);
-      if (!player.ghost) {
+      if (!player.ghost && !player.reaperShade) {
         this.teleport(player);
         this.worlds[player.world].collisionPlayer(player.area, player);
       }

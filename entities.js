@@ -17,6 +17,7 @@ class Entity {
     this.no_collide = false;
     this.returnCollision = false;
     this.projectile_outline = true;
+    this.able_to_kill = true;
   }
 
   angleToVel(angle = this.angle) {
