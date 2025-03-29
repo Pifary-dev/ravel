@@ -69,6 +69,7 @@ const images = {
   abilityTwo: new Image(),
   sweet_tooth_item: new Image(),
   vengeance_projectile: new Image(),
+  ninja_star_sniper_projectile: new Image(),
   gate: new Image(),
   lantern: new Image()
 };

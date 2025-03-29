@@ -77,6 +77,9 @@ var entityTypes = [
   "lotus_flower",
   "withering",
   "void_crawler",
+  "ninja_star_sniper",
+  "summoner",
+  "slasher",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",
@@ -668,7 +671,8 @@ function loadImages(character) {
     magnetUp: "magnetism_up",
     magnetDown: "magnetism_down",
     lotusOn: "lotus_flower_on",
-    lotusOff: "lotus_flower_off"
+    lotusOff: "lotus_flower_off",
+    ninja_star_sniper_projectile: "ninja_star_sniper_projectile",
   };
 
   for (const [key, imageName] of Object.entries(imageNames)) {

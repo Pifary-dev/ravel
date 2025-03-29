@@ -298,12 +298,13 @@ function renderShieldEntity(ctx, entity, x, y) {
 
 function renderNormalEntity(ctx, entity, x, y, radius) {
   let alpha = 1;
+  const harmlessDuration = (entity.appearing) ? 450 : 1000;
   if(entity.static){
     alpha = 1;
   } else if(entity.alpha){ 
     alpha = entity.alpha;
-  } else if(settings.fading_effects && entity.HarmlessEffect > 0 && entity.HarmlessEffect < 1000){
-    alpha = 0.4 + 0.6 * (1-entity.HarmlessEffect/1000);
+  } else if(settings.fading_effects && entity.HarmlessEffect > 0 && entity.HarmlessEffect < harmlessDuration){
+    alpha = 0.4 + 0.6 * (1-entity.HarmlessEffect/harmlessDuration);
   } else if(entity.isHarmless()){
     alpha = 0.4;
   }
@@ -315,6 +316,14 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     ctx.fillStyle = `rgb(${r + entity.color_change},${g - 1.45 * entity.color_change},${b - 1.3 * entity.color_change})`;
   } else {
     ctx.fillStyle = entity.healing > 0 ? "rgb(0, 221, 0)" : entity.color;
+  }
+  if(entity.slashTime>=200 && entity.slashTime<=600 && settings.fading_effects){
+    const slash=(entity.slashTime-200)/400;
+    const color=Math.floor(54+66*slash);
+    ctx.fillStyle=`rgba(${color}, ${color}, ${color}, 1)`;
+  }
+  if(entity.slashing) {
+    ctx.fillStyle = "rgb(190, 190, 190)";
   }
 
   if (entity.texture) {
@@ -377,6 +386,9 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
 function renderTexturedEntity(ctx, entity, x, y, radius) {
   let texture;
   switch (entity.texture) {
+    case "ninja_star_sniper_projectile":
+      texture = images.ninja_star_sniper_projectile;
+      break;
     case "lotusOn":
       texture = images.lotusOn;
       break;

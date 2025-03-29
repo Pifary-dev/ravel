@@ -174,6 +174,66 @@ class World {
   collisionPlayer(area, players) {
     this.areas[area].collisionPlayer(players, this.pos)
   }
+  processSpawner(spawner){
+    const preset = [];
+    for (const k in spawner) {
+      const values = spawner[k];
+      const object = {
+        type: values.types,
+        radius: values.radius || 0,
+        speed: values.speed || 0,
+        count: values.count || 1,
+        x: values.x,
+        y: values.y,
+        angle: values.angle,
+        auraRadius: values.effect_radius
+      };
+
+      // Add specific properties based on object type
+      const typeSpecificProps = {
+        quicksand: ['push_direction', 'quicksand_strength', 'immune', 'classic'],
+        flower: ['growth_multiplayer'],
+        wind: ['ignore_invulnerability'],
+        wind_ghost: ['ignore_invulnerability'],
+        homing: ['increment'],
+        speed_sniper: ['speed_loss'],
+        regen_sniper: ['regen_loss'],
+        gravity: ['gravity'],
+        repelling: ['repulsion'],
+        frost_giant: ['angle', 'direction', 'turn_speed', 'shot_interval', 'cone_angle', 'pause_interval', 'pause_duration', 'turn_acceleration', 'shot_acceleration', 'pattern', 'immune', 'projectile_duration', 'projectile_radius', 'projectile_speed', 'precise_movement'],
+        radiating_bullets: ['release_interval', 'release_time'],
+        liquid: ['player_detection_radius'],
+        draining: ['drain'],
+        slowing: ['slow'],
+        charging: ['charge'],
+        burning: ['burn_modifier'],
+        pumpkin: ['player_detection_radius'],
+        vary: ['vary_modifier', 'opacity_modifier'],
+        invisible: ['opacity_modifier'],
+        turning: ['circle_size','turn_speed'],
+        summoner: ['spawner'],
+        slasher: ['slash_radius']
+      };
+
+      for (const type of object.type) {
+        if(values[`${type}_radius`] !== undefined){
+          object[`${type}_radius`] = values[`${type}_radius`];
+        }
+        if (typeSpecificProps[type]) {
+          for (const prop of typeSpecificProps[type]) {
+            if (values[prop] !== undefined) object[prop] = values[prop];
+          }
+        }
+      }
+
+      ['move_clockwise', 'initial_side', 'horizontal', 'pattern_id'].forEach(prop => {
+        if (values[prop] !== undefined) object[prop] = values[prop];
+      });
+
+      preset.push(object);
+    }
+    return preset;
+  }
   fromJson(json) {
     this.name = json.name
     const areas = json.areas;
@@ -192,6 +252,9 @@ class World {
       }
       if (properties.lighting !== undefined) {
         this.lighting = properties.lighting;
+      }
+      if (properties.all_enemies_immune !== undefined) {
+        this.all_enemies_immune = properties.all_enemies_immune;
       }
       if (properties.magnetism !== undefined) {
         this.magnetism = properties.magnetism;
@@ -266,6 +329,7 @@ class World {
         }
         if (propertiesC.title_stroke_color) area.title_stroke_color = propertiesC.title_stroke_color;
         if (propertiesC.lighting !== undefined) area.lighting = propertiesC.lighting;
+        if (propertiesC.all_enemies_immune !== undefined) area.all_enemies_immune = propertiesC.all_enemies_immune;
         if (propertiesC.variables !== undefined) area.variables = propertiesC.variables;
         if (propertiesC.pattern_amount !== undefined) area.pattern_amount = propertiesC.pattern_amount;
         if (propertiesC.magnetism) area.magnetism = true;
@@ -323,60 +387,7 @@ class World {
         }
 
         if (zone.spawner) {
-          for (const k in zone.spawner) {
-            const values = zone.spawner[k];
-            const object = {
-              type: values.types,
-              radius: values.radius || 0,
-              speed: values.speed || 0,
-              count: values.count || 1,
-              x: values.x,
-              y: values.y,
-              angle: values.angle,
-              auraRadius: values.effect_radius
-            };
-
-            // Add specific properties based on object type
-            const typeSpecificProps = {
-              quicksand: ['push_direction', 'quicksand_strength', 'immune', 'classic'],
-              flower: ['growth_multiplayer'],
-              wind: ['ignore_invulnerability'],
-              wind_ghost: ['ignore_invulnerability'],
-              homing: ['increment'],
-              speed_sniper: ['speed_loss'],
-              regen_sniper: ['regen_loss'],
-              gravity: ['gravity'],
-              repelling: ['repulsion'],
-              frost_giant: ['angle', 'direction', 'turn_speed', 'shot_interval', 'cone_angle', 'pause_interval', 'pause_duration', 'turn_acceleration', 'shot_acceleration', 'pattern', 'immune', 'projectile_duration', 'projectile_radius', 'projectile_speed', 'precise_movement'],
-              radiating_bullets: ['release_interval', 'release_time'],
-              liquid: ['player_detection_radius'],
-              draining: ['drain'],
-              slowing: ['slow'],
-              charging: ['charge'],
-              burning: ['burn_modifier'],
-              pumpkin: ['player_detection_radius'],
-              vary: ['vary_modifier', 'opacity_modifier'],
-              invisible: ['opacity_modifier'],
-              turning: ['circle_size','turn_speed']
-            };
-
-            for (const type of object.type) {
-              if(values[`${type}_radius`] !== undefined){
-                object[`${type}_radius`] = values[`${type}_radius`];
-              }
-              if (typeSpecificProps[type]) {
-                for (const prop of typeSpecificProps[type]) {
-                  if (values[prop] !== undefined) object[prop] = values[prop];
-                }
-              }
-            }
-
-            ['move_clockwise', 'initial_side', 'horizontal', 'pattern_id'].forEach(prop => {
-              if (values[prop] !== undefined) object[prop] = values[prop];
-            });
-
-            area.preset.push(object);
-          }
+          area.preset = area.preset.concat(this.processSpawner(zone.spawner));
         }
 
         area.preset.sort((a, b) => b.radius - a.radius);
@@ -636,11 +647,16 @@ class Area {
     this.static_entities = {};
     this.effects = {};
     const boundary = this.getActiveBoundary();
+    this.spawnPellets(boundary);
+    this.spawnEnemies();
+  }
+
+  spawnEnemies(extraSpawner, extraSpawnerProps) {
+    const spawner = extraSpawner ? extraSpawner : this.preset;
+    const boundary = this.getActiveBoundary();
     const variables = this.variables || {};
     const currentVariables = [];
     const hashVariables = [];
-    this.spawnPellets(boundary);
-
     // Process variables only if they exist
     if (this.variables || this.pattern_amount) {
       // Process variables
@@ -667,7 +683,7 @@ class Area {
     }
 
     // Process presets
-    for (const preset of this.preset || []) {
+    for (const preset of spawner || []) {
       let pattern_amount = this.pattern_amount ? [...this.pattern_amount] : [];
       do {
         if (pattern_amount && pattern_amount[preset.pattern_id] !== undefined) {
@@ -679,6 +695,8 @@ class Area {
           speed: speedRaw, x: xRaw, y: yRaw, angle: angleRaw, type: enemyTypes
         } = preset;
 
+        console.log(spawner)
+
         const processVariable = (value) => {
           if (this.variables && typeof value === "string" && value.startsWith("var") && currentVariables.length > 0) {
             return find_variable(value, currentVariables, hashVariables, pattern_id, pattern_amount);
@@ -686,7 +704,7 @@ class Area {
           return value;
         };
 
-        const count = processVariable(countRaw);
+        const count = (typeof countRaw === 'object') ? random_between(countRaw) : processVariable(countRaw);
         const radius = processVariable(radiusRaw);
         const speed = processVariable(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1);
         const x = processVariable(xRaw);
@@ -727,7 +745,8 @@ class Area {
               ? min_max(...x.split(',').map(parseFloat)) / 32
               : x / 32;
           } else {
-            posX = Math.random() * (boundary.w - radius / 16) + boundary.x + radius / 32;
+            posX = (extraSpawner) ? extraSpawnerProps.pos.x + Math.cos(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius//Math.cos(360 / (index + 1)) * radius / 32 + extraSpawnerPos.x
+            : Math.random() * (boundary.w - radius / 16) + boundary.x + radius / 32;
           }
 
           if (y !== undefined) {
@@ -735,11 +754,22 @@ class Area {
               ? min_max(...y.split(',').map(parseFloat)) / 32
               : y / 32;
           } else {
-            posY = Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
+            posY = (extraSpawner) ? extraSpawnerProps.pos.y + Math.sin(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
+            : Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
           }
 
-          let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, angle, preset, currentAuraRadius, index, count);
+          let changing_angle = angle;
+          if(extraSpawner && angle === undefined) {
+            changing_angle = (extraSpawnerProps.angle + Math.PI * 2 / count * index) + degrees_to_radians(Math.random() * 45);
+          }
+          let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, changing_angle, preset, currentAuraRadius, index, count);
           enemy.isSpawned = true;
+          if(this.all_enemies_immune) enemy.immune = true;
+          if(extraSpawner){
+            enemy.Harmless = true;
+            enemy.HarmlessEffect = 450;
+            enemy.appearing = true;
+          }
           this.addEntity(entityTypes[enemy.type],enemy);
         }
       } while ((pattern_amount[preset.pattern_id])>0);
@@ -952,6 +982,12 @@ class Area {
         return new Blind(new Vector(posX, posY), radius / 32, speed, angle);
       case "lotus_flower":
         return new LotusFlower(new Vector(posX, posY), radius / 32, speed, angle);
+      case "ninja_star_sniper":
+        return new NinjaStarSniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "summoner":
+        return new Summoner(new Vector(posX, posY), radius / 32, speed, angle, preset.spawner);
+      case "slasher":
+        return new Slasher(new Vector(posX, posY), radius / 32, speed, angle, preset.slash_radius);
       case "withering":
         return new Withering(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       case "void_crawler":
@@ -986,7 +1022,8 @@ class Area {
       15: { name: "stalactite_projectile", class: StalactiteProjectile },
       16: { name: "LeadSniperProjectile", class: LeadSniperBullet },
       17: { name: "ForceSniperAProjectile", class: ForceSniperABullet },
-      18: { name: "ForceSniperBProjectile", class: ForceSniperBBullet }
+      18: { name: "ForceSniperBProjectile", class: ForceSniperBBullet },
+      19: { name: "NinjaStarSniperProjectile", class: NinjaStarSniperBullet }
     };
 
     if (bulletTypes[type]) {

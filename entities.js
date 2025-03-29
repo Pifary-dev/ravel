@@ -121,6 +121,11 @@ class Enemy extends Entity {
     if (this.HarmlessEffect > 0) {
       this.HarmlessEffect -= time;
       this.Harmless = this.HarmlessEffect > 0;
+      if(this.appearing){
+        if(this.HarmlessEffect <= 0){
+          this.appearing = false;
+        }
+      }
     }
 
     let speedMult = this.speedMultiplier;
@@ -385,7 +390,6 @@ class Player {
     this.collidedPrev = false;
     this.knockback_limit_count = 0;
     this.isDead = false;
-    this.isStanding = true;
   }
   input(input) {
     // Dev overlay ping calculation
@@ -406,7 +410,6 @@ class Player {
     }
 
     // Reset state
-    this.isStanding = (this.isMovementKeyPressed(input) || input.isMouse) ? false : true;
     this.mouseActive = false;
     this.distance_movement = this.isDead ? 0 : 1;
     this.firstAbility = this.secondAbility = this.shift = false;
@@ -509,8 +512,6 @@ class Player {
       this.cent_is_moving = true;
     }
   }
-  //returns true if the player should be using cent's movement system.
-  //returns true if player is cent with specifically no lead effect or non-cent with lead effect
   shouldCentMove(){
     //special case for harden
     if (this.harden) return false;
@@ -2736,10 +2737,41 @@ class Blind extends Enemy {
     super(pos, entityTypes.indexOf("blind"), radius, speed, angle, "#96c6ec");
   }
   beforeInteract(player, worldPos, time) {
-    if (player.isStanding){
+    if (player.d_x === 0 && player.d_y === 0) {
       this.able_to_kill = false;
     } else {
       this.able_to_kill = true;
+    }
+  }
+}
+
+class Summoner extends Enemy {
+  constructor(pos, radius, speed, angle, spawner) {
+    super(pos, entityTypes.indexOf("summoner"), radius, speed, angle, "#91bbff");
+    this.spawner = spawner;
+    this.radius = radius;
+    this.Harmless = true;
+    this.immune = true;
+    this.disappearing = false;
+    this.time_to_dissapear = 500;
+    this.timer = this.time_to_dissapear;
+  }
+  interact(player, worldPos, time) {
+    const dx = player.pos.x - (this.pos.x + worldPos.x);
+    const dy = player.pos.y - (this.pos.y + worldPos.y);
+    const dist = Math.hypot(dx, dy);
+    if(this.disappearing) {
+      this.alpha = 0.4 - 0.4 * (1-this.timer/this.time_to_dissapear);
+      this.timer -= time;
+      if(this.timer <= 0) {
+        this.toRemove = true;
+      }
+    }
+    if (dist > player.radius + this.radius) return;
+    if (!this.disappearing){
+      this.disappearing = true;
+      const area = game.worlds[player.world].areas[player.area];
+      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), {pos: this.pos, angle: this.angle, radius: this.radius});
     }
   }
 }
@@ -3210,6 +3242,49 @@ class Homing extends Enemy {
   }
 }
 
+class Slasher extends Enemy {
+  constructor(pos, radius, speed, angle, slash_radius = 200) {
+    super(pos, entityTypes.indexOf("slasher"), radius, speed, angle, "#363636");
+    this.slashInterval = 3000;
+    this.slashTime = 1500;
+    this.slashRadius = slash_radius / 32;
+    this.slashing = false;
+    this.slashBreak = 0;
+  }
+  behavior(time, area, offset, players) {
+    const closestPlayer = this.findClosestPlayer(players, offset);
+    if (closestPlayer && this.slashTime <= 0) {
+      this.slashTime = this.slashInterval;
+      const dX = closestPlayer.x - this.pos.x;
+      const dY = closestPlayer.y - this.pos.y;
+      this.targetAngle = Math.atan2(dY, dX);
+      this.angle = this.targetAngle;
+      this.angleToVel();
+      this.slashing = true;
+      this.slashBreak = 150;
+    }
+    if(this.slashBreak>0) this.slashBreak -= time;
+    else if(this.slashTime > 0){
+      this.slashing = false;
+      this.slashTime -= time;
+    }
+  }
+  findClosestPlayer(players, offset) {
+    let closestDist = this.slashRadius;
+    let closestPlayer = null;
+    for (const player of players) {
+      if (player.isDetectable()) {
+        const dist = distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y));
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestPlayer = {x: player.pos.x - offset.x, y: player.pos.y - offset.y};
+        }
+      }
+    }
+    return closestPlayer;
+  }
+}
+
 class Slowing extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150, slow = 0.3) {
     super(pos, entityTypes.indexOf("slowing"), radius, speed, angle, "#ff0000", true, "rgba(255, 0, 0, 0.15)", auraRadius / 32);
@@ -3499,7 +3574,6 @@ class Sniper extends Enemy {
     return closestPlayer;
   }
 }
-
 class SniperBullet extends Enemy {
   constructor(pos, angle, radius, speed) {
     super(pos, entityTypes.indexOf("sniper_bullet"), radius, speed, angle, "#a05353");
@@ -3520,6 +3594,58 @@ class SniperBullet extends Enemy {
   }
 }
 
+class NinjaStarSniper extends Sniper {
+  constructor(pos, radius, speed, angle, color = "#dedede") {
+    super(pos, radius, speed, angle, color);
+    this.type = entityTypes.indexOf("ninja_star_sniper");
+    this.releaseTime = 4500;
+    this.bulletType = 19;
+    this.bulletSpeed = 8;
+    this.bulletRadius = this.radius / 2;
+    this.clock = Math.random() * this.releaseTime;
+    this.detectionDistance = 600 / 32;
+    this.additionalProperties = [];
+  }
+  behavior(time, area, offset, players) {
+    this.clock += time;
+    if (this.clock > this.releaseTime) {
+      const target = this.findClosestPlayer(players, offset, area.getActiveBoundary());
+      if (target && target.isDetectable()) {
+        const angle = Math.atan2((target.pos.y - offset.y) - this.pos.y, (target.pos.x - offset.x) - this.pos.x);
+        let projectile_amount = 3;
+        let static_shooting_angle = 90;
+        let shooting_angle = static_shooting_angle/(projectile_amount+1);
+        for(let i = 0; i < projectile_amount; i++){
+          let new_angle = angle;
+          new_angle = radians_to_degrees(new_angle)-static_shooting_angle/2;
+          new_angle += shooting_angle*(i+1);
+          new_angle = degrees_to_radians(new_angle);
+          area.addSniperBullet(this.bulletType, this.pos, new_angle, this.bulletRadius, this.bulletSpeed, ...this.additionalProperties);
+        }
+        this.clock = 0;
+      }
+    }
+  }
+}
+class NinjaStarSniperBullet extends SniperBullet {
+  constructor(pos, angle, radius, speed) {
+    super(pos, angle, radius, speed);
+    this.color = "#dedede";
+    this.removeTime = 3000;
+    this.immune = false;
+    this.weak = false;
+    this.outline = true;
+    this.wallHit = false;
+    this.texture = "ninja_star_sniper_projectile";
+  }
+  behavior(time, area, offset, players) {
+    super.behavior(time, area, offset, players);
+    if(this.wallHit)this.vel = new Vector(0,0);
+  }
+  collide(boundary) {
+    if(collisionEnemy(this,boundary,this.vel,this.pos,this.radius,true).col)this.wallHit=true;
+  }
+}
 class Stalactite extends Sniper {
   constructor(pos, radius, speed, angle) {
     super(pos, radius, speed, angle, "#302519");
