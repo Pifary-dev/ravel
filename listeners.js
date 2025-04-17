@@ -115,6 +115,13 @@ window.onload = () => {
     
     loadImages(game.players[0].className);
     if(game.worlds.length == 0) game.worlds.push(missing_world);
+
+    if (game.worlds[0].name.startsWith("Endless Echo")) {
+      game.echoManagers[game.worlds[0].name.endsWith("Hard") ? "hard" : "normal"].create_areas([], player.area);
+      // Generate random enemies on load
+      new RandomEnemyGenerator(game.worlds[0].areas[0], game.worlds[0].name.endsWith("Hard")).generate_random_enemies(player.area);
+    }
+
     game.worlds[0].areas[0].load();
     startAnimation();
     menu.remove();
@@ -142,6 +149,7 @@ function keydownKeys(e) {
   }
   applyInputDelay(settings.input_delay,()=>{
     const code = e.keyCode;
+    const isEndless=game.worlds[player.world].name.startsWith("Endless Echo");
     if(keys[code] !== false) keys[e.keyCode] = true;
     /*if(settings.dev){
       ping.keysArray.push({inputKeys:getInputKeys(keys),timestamp:new Date().getTime()});
@@ -153,17 +161,26 @@ function keydownKeys(e) {
       if (e.keyCode == 84) {
         player.hasCheated = true;
         player.area++
-        if (player.area>=game.worlds[player.world].areas.length-1) {
-          player.area=game.worlds[player.world].areas.length-1
+        if (player.area >= game.worlds[player.world].areas.length - 1 && !isEndless) {
+          player.area = game.worlds[player.world].areas.length - 1
+        } else if (isEndless) {
+          game.echoManagers[game.worlds[player.world].name.endsWith("Hard") ? "hard" : "normal"].create_areas([], player.area);
+          // Generate random enemies on load
+          new RandomEnemyGenerator(game.worlds[player.world].areas[player.area], game.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
         }
+
         game.worlds[player.world].areas[player.area].load();
         tilesCanvas = null;
       }
       if (e.keyCode == 82) {
         player.hasCheated = true;
         player.area = Number(player.area) + 10;
-        if (player.area>=game.worlds[player.world].areas.length-1) {
-          player.area=game.worlds[player.world].areas.length-1
+        if (player.area >= game.worlds[player.world].areas.length - 1 && !isEndless) {
+          player.area = game.worlds[player.world].areas.length - 1
+        } else if (isEndless) {
+          game.echoManagers[game.worlds[player.world].name.endsWith("Hard") ? "hard" : "normal"].create_areas([], player.area);
+          // Generate random enemies on load
+          new RandomEnemyGenerator(game.worlds[player.world].areas[player.area], game.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
         }
         game.worlds[player.world].areas[player.area].load();
         tilesCanvas = null;
@@ -173,6 +190,10 @@ function keydownKeys(e) {
         player.area = Number(player.area) - 1;
         if (player.area<0) {
           player.area=0;
+        }
+
+        if(this.worlds[player.world].name.startsWith("Endless Echo")) {
+          GenerateEnemiesOnLoad(player)
         }
         game.worlds[player.world].areas[player.area].load();
         tilesCanvas = null;
