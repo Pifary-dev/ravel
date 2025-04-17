@@ -2,6 +2,7 @@ const staticWidth = width,
   staticHeight = height;
 const game = new Game();
 const inputArray = [];
+let isCustomWorld = true;
 let mousePos = new Vector(0, 0);
 let mouse = false;
 let loaded = false;
@@ -9,6 +10,7 @@ let lastRender = 0;
 let fov = 32;
 
 function loadMain() {
+  isCustomWorld = false;
   game.worlds.push(
     new World(new Vector(0, 0), 0, CENTRAL_CORE),
     new World(new Vector(7399, 0), 1, CENTRL_CORE_HARD),
@@ -67,6 +69,7 @@ function loadMain() {
 }
 
 function loadHard() {
+  isCustomWorld = false;
   game.worlds.push(
     new World(new Vector(0, 0), 0, CENTRAL_CORE_FAST),
     new World(new Vector(-61, 1440), 1, ASSORTED_ALCOVE),
@@ -76,6 +79,7 @@ function loadHard() {
 }
 
 function loadSecondary() {
+  isCustomWorld = false;
   game.worlds.push(
     new World(new Vector(0, 0), 0, TRANSFORMING_TURBIDITY),
     new World(new Vector(0, 65 * (32 / 18)), 1, UNEXPLORED_UTOPIA),

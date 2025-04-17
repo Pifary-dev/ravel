@@ -61,7 +61,7 @@ class Game {
         player.area = 0;
         player.pos = new Vector(6, 9);
 
-        if(this.worlds[player.world].name.startsWith("Endless Echo")) {
+        if(this.worlds[player.world].name.startsWith("Endless Echo") && !isCustomWorld) {
           this.echoManagers[this.worlds[player.world].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
           // Generate random enemies on load
           new RandomEnemyGenerator(this.worlds[player.world].areas[player.area],this.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
@@ -93,7 +93,7 @@ class Game {
 
           player.pos = targetPoint;
 
-          if(this.worlds[player.world].name.startsWith("Endless Echo")) {
+          if(this.worlds[player.world].name.startsWith("Endless Echo") && !isCustomWorld) {
             this.echoManagers[this.worlds[player.world].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
             // Generate random enemies on load
             new RandomEnemyGenerator(this.worlds[player.world].areas[player.area],this.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
