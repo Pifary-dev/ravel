@@ -35,7 +35,7 @@ class Entity {
   }
 
   update(time) {
-    const timeFix = time / (1000 / 30);
+    const timeFix = this.teleporting ? 1 : time / (1000 / 30);
     
     if (!this.noAngleUpdate) {
       this.velToAngle();
@@ -103,7 +103,7 @@ class Enemy extends Entity {
   }
 
   update(time) {
-    const timeFix = time / (1000 / 30);
+    const timeFix = this.teleporting ? 1 : time / (1000 / 30);
     
     this.radius = this.fixedRadius * this.radiusMultiplier;
     this.auraSize = this.auraStaticSize * this.radiusMultiplier;
@@ -3784,18 +3784,22 @@ class Radar extends Sniper {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
     super(pos, radius, speed, angle, "#c90000");
     this.aura = true;
+    this.type = entityTypes.indexOf("radar");
     this.auraColor = "rgba(153, 153, 153, 0.2)";
     this.auraRadius = auraRadius / 32;
+    this.auraSize = this.auraStaticSize = auraRadius / 32 || 0;
+    this.detectionDistance = this.auraRadius;
     this.releaseTime = 250;
     this.base_speed = 5;
     this.bulletType = 12;
+    this.speed = speed;
   }
   behavior(time, area, offset, players) {
     this.clock += time;
     if (this.clock > this.releaseTime) {
       const closestPlayer = this.findClosestPlayer(players, offset, area.getActiveBoundary(), this.auraRadius);
       if (closestPlayer && closestPlayer.isDetectable()) {
-        const angle = Math.atan2(closestPlayer.y - this.pos.y, closestPlayer.x - this.pos.x);
+        const angle = Math.atan2((closestPlayer.pos.y - offset.y) - this.pos.y, (closestPlayer.pos.x - offset.x) - this.pos.x);
         area.addSniperBullet(this.bulletType, this.pos, angle, this.auraRadius, this.radius / 3, this.speed + this.base_speed, this);
         this.clock = 0;
       }
@@ -4095,6 +4099,7 @@ class Teleporting extends Enemy {
     super(pos, entityTypes.indexOf("teleporting"), radius, speed, angle,"#ecc4ef");
     this.pause_interval = 1400 / ((settings.convert_to_legacy_speed) ? speed : speed / 21);
     this.pause_time = this.pause_interval;
+    this.teleporting = true;
   }
   behavior(time, area, offset, players) {
     this.pause_time -= time;
