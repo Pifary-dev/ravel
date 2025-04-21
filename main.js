@@ -18,15 +18,14 @@ function loadMain() {
     new World(new Vector(-110, -22), 3, STELLAR_SQUARE),
     new World(new Vector(-110, -356), 4, STELLAR_SQUARE_HARD),
     new World(new Vector(0, 80), 5, HAUNTED_HALLS),
-    new World(new Vector(14904, 2392), 6, MYSTERIOUS_MANSION), // 14905, 2311
-    new World(new Vector(16468, 2480), 7, COUPLED_CORRIDORS),
+    new World(new Vector(14904, 2392), 6, MYSTERIOUS_MANSION),
+    new World(new Vector(16770, 2480), 7, COUPLED_CORRIDORS),
     new World(new Vector(0, 240), 8, PECULIAR_PYRAMID),
     new World(new Vector(15719, 240), 9, PECULIAR_PYRAMID_HARD),
     new World(new Vector(100, 240), 10, SHIFTING_SANDS),
     new World(new Vector(2290, 418), 11, DUSTY_DEPTHS),
     new World(new Vector(0, 889), 12, WACKY_WONDERLAND),
     new World(new Vector(14900, 889), 13, WACKY_WONDERLAND_HARD),
-    //new World(new Vector(0, 969), 14, SWITCH_STATION),
     new World(new Vector(0, 969), 14, GLACIAL_GORGE),
     new World(new Vector(7397, 969), 15, GLACIAL_GORGE_HARD),
     new World(new Vector(0, 1049), 16, VICIOUS_VALLEY),
@@ -42,15 +41,12 @@ function loadMain() {
     new World(new Vector(0, 1450), 26, QUIET_QUARRY),
     new World(new Vector(7397, 1450), 27, QUIET_QUARRY_HARD),
     new World(new Vector(0, 1529), 28, MONUMENTAL_MIGRATION),
-    //new World(new Vector(85373, 1529), 29, MONUMENTAL_MIGRATION_HARD),
     new World(new Vector(0, 1609), 29, OMINOUS_OCCULT),
     new World(new Vector(7397, 1609), 30, OMINOUS_OCCULT_HARD),
     new World(new Vector(0, 1770), 31, FROZEN_FJORD),
     new World(new Vector(7397, 1770), 32, FROZEN_FJORD_HARD),
     new World(new Vector(-108.4, 2392), 33, RESTLESS_RIDGE),
     new World(new Vector(7397, 2392), 34, RESTLESS_RIDGE_HARD),
-    //new World(new Vector(0, 5947), 35, ASSORTED_ALCOVE),
-    //new World(new Vector(0, 1400), 36, ASSORTED_ALCOVE_HARD),
     new World(new Vector(0, 5947), 35, TOXIC_TERRITORY),
     new World(new Vector(5260, 5947), 36, TOXIC_TERRITORY_HARD),
     new World(new Vector(0, 6027), 37, MAGNETIC_MONOPOLE),
@@ -72,9 +68,16 @@ function loadHard() {
   isCustomWorld = false;
   game.worlds.push(
     new World(new Vector(0, 0), 0, CENTRAL_CORE_FAST),
-    new World(new Vector(-61, 1440), 1, ASSORTED_ALCOVE),
-    new World(new Vector(5194, 0), 2, ASSORTED_ALCOVE_HARD),
-    new World(new Vector(-61, -15), 2, STELLAR_SQUARE_HARD)
+    //new World(new Vector(85373, 1529), 1, CENTRAL_CORE_50),
+    //new World(new Vector(85373, 1529), 2, CENTRAL_CORE_ROUTE_2),
+    new World(new Vector(-61, -15), 2, STELLAR_SQUARE_HARD),
+    //new World(new Vector(0, 80), 4, ASSORTED_ALCOVE_OLD),
+    new World(new Vector(-61, 1440), 3, ASSORTED_ALCOVE),
+    new World(new Vector(5194, 0), 4, ASSORTED_ALCOVE_HARD),
+    //new World(new Vector(85373, 1529), 5, MONUMENTAL_MIGRATION_HARD),
+    //new World(new Vector(0, 0), 6, TRANSFORMING_TURBIDITY),
+    //new World(new Vector(0, 357 * (32 / 18)), 7, BALLISTIC_BATTLEFIELD),
+    //new World(new Vector(0, 969), 8, SWITCH_STATION),
   );
 }
 
@@ -82,7 +85,7 @@ function loadSecondary() {
   isCustomWorld = false;
   game.worlds.push(
     new World(new Vector(0, 0), 0, TRANSFORMING_TURBIDITY),
-    new World(new Vector(0, 65 * (32 / 18)), 1, UNEXPLORED_UTOPIA),
+    new World(new Vector(0, 45 * (32 / 18)), 1, UNEXPLORED_UTOPIA),
     new World(new Vector(0, 90 * (32 / 18)), 2, LITTLE_LANDSCAPE),
     new World(new Vector(0, 132 * (32 / 18)), 3, DARKNESS_DIMENSION),
     new World(new Vector(0, 177 * (32 / 18)), 4, CROWDED_CAVERN),

@@ -556,10 +556,3 @@ class RandomEnemyGenerator{
 		}
 	}
 }
-
-function GenerateEnemiesOnLoad(player)
-{
-    // Generate random enemies on load
-    this.echoManagers[this.worlds[player.world].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
-    new RandomEnemyGenerator(this.worlds[player.world].areas[player.area],this.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
-}
