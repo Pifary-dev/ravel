@@ -7,6 +7,7 @@ let mouse = false;
 let loaded = false;
 let lastRender = 0;
 let fov = 32;
+changeResolution(1920,1080);
 
 function loadMain() {
   game.worlds.push(new World(new Vector(0, 0), 0, centralCore),

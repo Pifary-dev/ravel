@@ -303,11 +303,13 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     alpha = 1;
   } else if(entity.alpha){ 
     alpha = entity.alpha;
+  } else if(entity.star_visibility>0){
+    alpha = entity.star_visibility / entity.wall_time;
   } else if(settings.fading_effects && entity.HarmlessEffect > 0 && entity.HarmlessEffect < harmlessDuration){
     alpha = 0.4 + 0.6 * (1-entity.HarmlessEffect/harmlessDuration);
   } else if(entity.isHarmless()){
     alpha = 0.4;
-  }
+  } 
   ctx.globalAlpha = alpha;
   ctx.beginPath();
 
@@ -953,7 +955,6 @@ function renderTiles(area, players, focus) {
     drawTiles(area, focus);
     return;
   }
-  
   if(!shouldRenderPartially){
     const { boundary, zones, assets, texture, background_color } = area;
     const { w, h } = boundary;
@@ -975,7 +976,7 @@ function renderTiles(area, players, focus) {
     }
 
     // Render zones (floor tiles)
-    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingEnabled = false//true;
     zones.forEach(zone => {
       const textureType = zone.type === 6 ? 0 : (zone.type === 4 ? 2 : (zone.type === 5 ? 4 : zone.type));
       ctx.fillStyle = patterns[textureType];
@@ -1020,7 +1021,7 @@ function renderTiles(area, players, focus) {
     const halfHeight = height / 2;
 
     // Render zones (floor tiles)
-    context.imageSmoothingEnabled = true;
+    context.imageSmoothingEnabled = false;
     zones.forEach(zone => {
       const zoneStartX = Math.max(startX, zone.pos.x + areaX);
       const zoneStartY = Math.max(startY, zone.pos.y + areaY);

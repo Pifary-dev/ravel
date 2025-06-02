@@ -193,8 +193,8 @@ class Pellet extends Entity {
   }
 
   getRandomPosition(zone) {
-    const x = Math.random() * (zone.w - 2 * this.radius) + zone.x + this.radius;
-    const y = Math.random() * (zone.h - 2 * this.radius) + zone.y + this.radius;
+    const x = Math.random() * (zone.w - 2 * this.radius * 1.2) + zone.x + this.radius * 1.2;
+    const y = Math.random() * (zone.h - 2 * this.radius * 1.2) + zone.y + this.radius * 1.2;
     return new Vector(x, y);
   }
 
@@ -2772,7 +2772,33 @@ class Summoner extends Enemy {
     if (!this.disappearing){
       this.disappearing = true;
       const area = game.worlds[player.world].areas[player.area];
-      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), {pos: this.pos, angle: this.angle, radius: this.radius});
+      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), {pos: this.pos, angle: this.angle, radius: this.radius}, true);
+    }
+  }
+}
+
+class GlobalSpawner extends Enemy {
+  constructor(pos, radius, speed, angle, spawner, cooldown, initial_spawner) {
+    super(pos, entityTypes.indexOf("global_spawner"), radius, speed, angle, "#91bbff");
+    this.spawner = spawner;
+    this.radius = radius;
+    this.Harmless = true;
+    this.immune = true;
+    this.spawn_cooldown = cooldown;
+    this.spawn_time = 0;
+    this.initial_spawner = initial_spawner;
+    this.initialized = false;
+  }
+  behavior(time, area, offset, players) {
+    this.spawn_time += time;
+    const player = players[0];
+    if(!this.initialized && this.initial_spawner){
+      this.initialized = true;
+      area.spawnEnemies(game.worlds[player.world].processSpawner(this.initial_spawner), {pos: this.pos, angle: this.angle, radius: this.radius}, false);
+    }
+    if(this.spawn_time > this.spawn_cooldown){
+      this.spawn_time = 0;
+      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), {pos: this.pos, angle: this.angle, radius: this.radius}, false);
     }
   }
 }
@@ -4096,8 +4122,9 @@ class Cobweb extends Enemy {
 
 class Teleporting extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("teleporting"), radius, speed, angle,"#ecc4ef");
-    this.pause_interval = 1400 / ((settings.convert_to_legacy_speed) ? speed : speed / 21);
+    super(pos, entityTypes.indexOf("teleporting"), radius, 42, angle,"#ecc4ef");
+    const teleport_speed = (settings.convert_to_legacy_speed) ? speed : speed / 21;
+    this.pause_interval = 1400 / teleport_speed;
     this.pause_time = this.pause_interval;
     this.teleporting = true;
   }
@@ -4105,7 +4132,6 @@ class Teleporting extends Enemy {
     this.pause_time -= time;
     if (this.pause_time <= 0) {
       this.pause_time = this.pause_interval;
-      this.speedMultiplier *= (settings.convert_to_legacy_speed) ? 42 / 2 : 1;
     } else {
       this.speedMultiplier = 0;
     }
@@ -4269,6 +4295,98 @@ class Icicle extends Enemy {
         this.speedMultiplier = 0;
       }
     } 
+  }
+}
+
+class Dripping extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("dripping"), radius, speed, angle, "#100812");
+    this.wall_time = 1000;
+    this.wall_hit = false;
+    this.star_visibility = 500;
+    this.movement_immune = true;
+    this.stored_radius = this.radius;
+    this.max_radius_multiplier = 4;
+    this.radius_multiplier = 1;
+    this.speed_multiplier = 1;
+
+    this.phase = "stalling";
+    this.fade_time = 500;
+    this.fade_time_left = 0;
+    this.grow_time_min = 750;
+    this.grow_time_max = 1250;
+    this.grow_time_left = 0;
+    this.stall_time_max = min_max(0, 3000);
+    this.stall_time_left = this.stall_time_max;
+
+    // Set initial velocity based on angle or default to downward movement
+    if (angle !== undefined) {
+      this.angle = angle;
+    } else {
+      this.vel.x = 0;
+      this.vel.y = speed;
+    }
+  }
+
+  collide(boundary) {
+    const collision = collisionEnemy(this, boundary, this.vel, this.pos, this.radius, true);
+    if (collision.col) {
+      this.wall_hit = true;
+    }
+  }
+
+  behavior(time, area, offset, players) {
+    this.vel.x = 0;
+    this.vel.y = this.speed;
+
+    if (this.phase == "stalling") {
+      this.radius_multiplier = 0;
+      this.stall_time_left -= time;
+      if (this.stall_time_left <= 0) {
+        this.stall_time_left = this.stall_time_max;
+        this.phase = "fading";
+      }
+    }
+    if (this.phase == "growing") {
+      this.speed_multiplier = 0;
+      this.grow_time_left -= time;
+      const grow_progress = 1 - Math.max(this.grow_time_left, 0) / this.grow_time;
+      this.radius_multiplier = 1 + (this.max_radius_multiplier - 1) * grow_progress;
+      if (this.grow_time_left <= 0) {
+        this.radius_multiplier = this.max_radius_multiplier;
+        this.phase = "falling";
+        this.wall_hit = false;
+        this.speed_multiplier = 1;
+      }
+    }
+    else if (this.phase == "falling") {
+      if (this.wall_hit) {
+        this.phase = "fading";
+        this.fade_time_left = this.fade_time;
+        this.speed_multiplier = 0;
+      }
+    }
+    else if (this.phase == "fading") {
+      this.speed_multiplier = 0;
+      this.fade_time_left -= time;
+      this.star_visibility = Math.max(this.fade_time_left, 0);
+      this.Harmless = true;
+      if (this.fade_time_left <= 0) {
+        this.Harmless = false;
+        this.phase = "growing";
+        this.radius_multiplier = 1;
+        // Immediately update the radius
+        this.radius = this.stored_radius;
+        // Teleport it to the top and keep it moving down
+        const boundary = area.getActiveBoundary();
+        this.pos.y -= boundary.h - this.stored_radius;
+        this.grow_time = min_max(this.grow_time_min, this.grow_time_max); 
+        this.grow_time_left = this.grow_time;
+      }
+    }
+
+    this.radiusMultiplier = this.radius_multiplier;
+    this.speedMultiplier = this.speed_multiplier;
   }
 }
 class Spiral extends Enemy {
@@ -4650,7 +4768,7 @@ class FrostGiant extends Enemy {
     super(pos, entityTypes.indexOf("frost_giant"), radius, speed, angle,"#7e7cd6");
     this.immune = immune;
     this.entityAngle = angle;
-    this.angle = angle;
+      this.angle = angle;
     this.tick_time = 1000/30;
     this.rotation = false;
     this.precise_movement = precise_movement;
@@ -4719,7 +4837,7 @@ class FrostGiant extends Enemy {
           this.pause_time = this.pause_duration;
         }
       return false;
-      } else {
+    } else {
           this.pause_cooldown -= time;
         }
     }
@@ -5017,7 +5135,7 @@ class Pumpkin extends Enemy {
   behavior(time,area,offset,players){
     let minimalDistance = this.player_detection_radius;
     let index;
-    const boundary = area.getActiveBoundary();
+        const boundary = area.getActiveBoundary();
     for (let i = 0; i < players.length; i++) {
       const player = players[i];
       if (distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y)) < minimalDistance && player.isDetectable() && pointInRectangle(new Vector(player.pos.x - offset.x, player.pos.y - offset.y), new Vector(boundary.x, boundary.y), new Vector(boundary.w, boundary.h))) {
@@ -6190,4 +6308,4 @@ class MinimizeProjectile extends Enemy {
     }
   }
   interact(){}
-}
+    }
