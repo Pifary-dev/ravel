@@ -87,6 +87,9 @@ var entityTypes = [
   "defender",
   "burning",
   "sticky_sniper",
+  "variable",
+  "expander",
+  "silence",
 
   // og evades
   "vary",
@@ -299,6 +302,7 @@ function death(player,enemy){
   player.teleportPosition = [];
   player.deathCounter++;
   player.reducingPower = 0;
+  player.resetEffectsAfterAreaChange();
   if(!settings.death_cooldown){
     player.firstAbilityCooldown = 0; 
     player.secondAbilityCooldown = 0;

@@ -70,6 +70,7 @@ class Game {
 
       if ((zone.type === 2 || zone.type === 3) && dist < player.radius) {
         onTele = true;
+        player.resetEffectsAfterAreaChange();
         if (!player.onTele) {
           const targetPoint = new Vector(player.pos.x + zone.translate.x, player.pos.y + zone.translate.y);
           
@@ -213,6 +214,7 @@ class World {
         turning: ['circle_size','turn_speed'],
         summoner: ['spawner'],
         global_spawner: ['spawner', 'cooldown', 'initial_spawner'],
+        variable: ['min_speed', 'max_speed', 'speed_change'],
         slasher: ['slash_radius']
       };
 
@@ -995,6 +997,12 @@ class Area {
         return new VoidCrawler(new Vector(posX, posY), radius / 32, speed, angle);
       case "dripping":
         return new Dripping(new Vector(posX, posY), radius / 32, speed, angle);
+      case "variable":
+        return new Variable(new Vector(posX, posY), radius / 32, speed, angle, preset.min_speed, preset.max_speed, preset.speed_change);
+      case "expander":
+        return new Expander(new Vector(posX, posY), radius / 32, speed, angle);
+      case "silence":
+        return new Silence(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }

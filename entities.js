@@ -390,6 +390,7 @@ class Player {
     this.safeAmount = 0;
     this.collidedPrev = false;
     this.knockback_limit_count = 0;
+    this.expander_interactions = 0;
     this.isDead = false;
   }
   input(input) {
@@ -772,6 +773,8 @@ class Player {
     if (this.magnetic_reduction) this.verticalSpeedMultiplayer = 0.5 * this.effectImmune;
     if (this.magnetic_nullification) this.verticalSpeedMultiplayer = 0;
     if (this.enlarging) this.radiusAdditioner += 10 * this.effectImmune;
+    if (this.expander_interactions>0) this.radiusAdditioner += 5 * this.expander_interactions * this.effectImmune;
+    if (this.expander_interactions>5) death(this);
     
     if (this.poison) {
       this.poisonTime += time;
@@ -935,6 +938,9 @@ class Player {
         this.speedMultiplier *= argument;
       }
     }
+  }
+  resetEffectsAfterAreaChange(){
+    this.expander_interactions = 0;
   }
   clearEffects(){
     if(!this.blocking){
@@ -3312,6 +3318,32 @@ class Slasher extends Enemy {
   }
 }
 
+class Silence extends Enemy {
+  constructor(pos, radius, speed, angle, auraRadius = 200) {
+    super(pos, entityTypes.indexOf("silence"), radius, speed, angle, "#571013", true, "rgba(87, 16, 19, 0.1)", auraRadius / 32);
+    this.maxRadius = auraRadius / 32;
+    this.givingSilence = false;
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      player.silence = true;
+      this.givingSilence = true;
+    } // it supposed to disable player's ability to save other players but since sandbox is solo it doesn't matter
+  }
+
+  behavior(time, area, offset, players) {
+    const timeFix = time / (1000 / 30);
+    if (this.givingSilence) {
+      this.givingSilence = false;
+      this.auraSize -= 2 / 32 * timeFix;
+    } else if (this.auraSize < this.maxRadius) {
+      this.auraSize += 2 / 32 * timeFix;
+      if(this.auraSize > this.maxRadius) this.auraSize = this.maxRadius;
+    }
+    this.auraStaticSize = this.auraSize;
+  }
+}
+
 class Slowing extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150, slow = 0.3) {
     super(pos, entityTypes.indexOf("slowing"), radius, speed, angle, "#ff0000", true, "rgba(255, 0, 0, 0.15)", auraRadius / 32);
@@ -3458,6 +3490,40 @@ class Invisible extends Enemy {
     }
 
     this.alpha = (this.opacity < 0) ? 0.000001 : (this.opacity > 1) ? 1 : this.opacity;
+  }
+}
+
+class Variable extends Enemy {
+  constructor(pos, radius, speed = 0, angle, min_speed, max_speed, speed_change = 500) {
+    super(pos, entityTypes.indexOf("variable"), radius, speed, angle, "#562e75");
+    this.speedDirection = random(1) === 1 ? true : false;
+    this.startingSpeed = min_max(min_speed, max_speed);
+    this.speedChange = speed_change;
+    this.clock = 0;
+    this.speed = this.startingSpeed;
+    this.minSpeed = min_speed;
+    this.maxSpeed = max_speed;
+
+    this.compute_speed();
+  }
+
+  behavior(time, area, offset, players) {
+    this.clock += time;
+    if(this.clock > this.speedChange){
+      if(this.speedDirection){
+        this.speed++;
+      } else {
+        this.speed--;
+      }
+      if(this.speed <= this.minSpeed || this.speed >= this.maxSpeed){ 
+        this.speedDirection = !this.speedDirection;
+      }
+      this.clock = 0;
+    }
+    this.compute_speed();
+  }
+  compute_speed(){
+    this.angleToVel();
   }
 }
 
@@ -5371,6 +5437,22 @@ class Wind extends Enemy {
         player.pos.y += (moveDist * Math.sin(angleToPlayer)) * timeFix;
         game.worlds[player.world].collisionPlayer(player.area, player);
         iterations++;
+      }
+    }
+  }
+}
+
+class Expander extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("expander"), radius, speed, angle, "#994509");
+    this.immune = true;
+  }
+  interact(player,worldPos,time){
+    if(!player.isInvulnerable() && !this.Harmless) {
+      if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+        player.expander_interactions++;
+        this.Harmless = true;
+        this.HarmlessEffect = 1000;
       }
     }
   }
