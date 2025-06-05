@@ -5444,7 +5444,7 @@ class Wind extends Enemy {
 
 class Expander extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("expander"), radius, speed, angle, "#994509");
+    super(pos, entityTypes.indexOf("expander"), radius, speed, angle, "#ffe7ad");
     this.immune = true;
   }
   interact(player,worldPos,time){
