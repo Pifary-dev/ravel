@@ -3504,6 +3504,12 @@ class Variable extends Enemy {
     this.minSpeed = min_speed;
     this.maxSpeed = max_speed;
 
+    if(this.startingSpeed === min_speed){
+      this.speedDirection = true;
+    } else if (this.startingSpeed === max_speed){
+      this.speedDirection = false;
+    }
+
     this.compute_speed();
   }
 
