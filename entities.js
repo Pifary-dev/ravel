@@ -3332,8 +3332,8 @@ class Slasher extends Enemy {
 }
 
 class Silence extends Enemy {
-  constructor(pos, radius, speed, angle, auraRadius = 200) {
-    super(pos, entityTypes.indexOf("silence"), radius, speed, angle, "#571013", true, "rgba(87, 16, 19, 0.1)", auraRadius / 32);
+  constructor(pos, radius, speed, angle, auraRadius = 150) {
+    super(pos, entityTypes.indexOf("silence"), radius, speed, angle, "#420808", true, "rgba(87, 16, 19, 0.1)", auraRadius / 32);
     this.maxRadius = auraRadius / 32;
     this.givingSilence = false;
   }
@@ -5508,7 +5508,7 @@ class Wind extends Enemy {
 
 class Expander extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("expander"), radius, speed, angle, "#ffe7ad");
+    super(pos, entityTypes.indexOf("expander"), radius, speed, angle, "#ffbf7c");
     this.immune = true;
   }
   interact(player,worldPos,time){
@@ -5522,9 +5522,9 @@ class Expander extends Enemy {
   }
 }
 
-class Curse extends Enemy {
+class Cursed extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("curse"), radius, speed, angle, "#91b892");
+    super(pos, entityTypes.indexOf("curse"), radius, speed, angle, "#57121f");
   }
   interact(player,worldPos,time){
     if(!player.isInvulnerable() && !this.Harmless) {

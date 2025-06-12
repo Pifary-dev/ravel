@@ -723,6 +723,9 @@ class Area {
           if (preset.gravity) preset.gravity /= 30;
           if (preset.repulsion) preset.repulsion /= 30;
           if (preset.quicksand_strength) preset.quicksand_strength /= 30;
+          if (preset.min_speed) preset.min_speed /= 30;
+          if (preset.max_speed) preset.max_speed /= 30;
+          console.log(preset)
           preset.converted_to_legacy = true;
         }
 
@@ -1004,8 +1007,8 @@ class Area {
         return new Wavering(new Vector(posX, posY), radius / 32, speed, angle, preset.min_speed, preset.max_speed, preset.speed_change);
       case "expander":
         return new Expander(new Vector(posX, posY), radius / 32, speed, angle);
-      case "curse":
-        return new Curse(new Vector(posX, posY), radius / 32, speed, angle);
+      case "cursed":
+        return new Cursed(new Vector(posX, posY), radius / 32, speed, angle);
       case "silence":
         return new Silence(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       default:

@@ -546,17 +546,13 @@ function renderPlayers(area, players, focus) {
     }
     if (player.curseEffect > 0) {
       const curseRatio = 1 - (player.curseEffect / 1500);
-      // Curse effect
-      context.fillStyle = `rgba(50, 205, 50, ${curseRatio * 0.7})`;
-      context.beginPath();
-      context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
-      context.fill();
-      // Black pulsing effect
-      const cycleTime = player.curseEffect % 750;
-      const vibrationCycle = cycleTime < 250 ? cycleTime / 250 : 
-                           cycleTime < 500 ? 1 - (cycleTime - 250) / 250 :
-                           0;
-      context.fillStyle = `rgba(0, 0, 0, ${curseRatio * 0.8 * vibrationCycle})`;
+      const startColor = [121, 29, 29];
+      const endColor = [57, 10, 10];
+      const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * curseRatio);
+      const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * curseRatio);
+      const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * curseRatio);
+      
+      context.fillStyle = `rgba(${r}, ${g}, ${b}, ${(1500 - player.curseEffect) / 1500})`;
       context.beginPath();
       context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       context.fill();
