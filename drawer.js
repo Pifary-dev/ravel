@@ -551,7 +551,7 @@ function renderPlayers(area, players, focus) {
       context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       context.fill();
       // Black pulsing effect
-      const cycleTime = Date.now() % 750;
+      const cycleTime = player.curseEffect % 750;
       const vibrationCycle = cycleTime < 250 ? cycleTime / 250 : 
                            cycleTime < 500 ? 1 - (cycleTime - 250) / 250 :
                            0;
