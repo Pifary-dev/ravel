@@ -543,6 +543,23 @@ function renderPlayers(area, players, focus) {
       context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       context.fill();
     }
+    if (player.curseEffect > 0) {
+      const curseRatio = 1 - (player.curseEffect / 1500);
+      // Curse effect
+      context.fillStyle = `rgba(50, 205, 50, ${curseRatio * 0.7})`;
+      context.beginPath();
+      context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
+      context.fill();
+      // Black pulsing effect
+      const cycleTime = Date.now() % 750;
+      const vibrationCycle = cycleTime < 250 ? cycleTime / 250 : 
+                           cycleTime < 500 ? 1 - (cycleTime - 250) / 250 :
+                           0;
+      context.fillStyle = `rgba(0, 0, 0, ${curseRatio * 0.8 * vibrationCycle})`;
+      context.beginPath();
+      context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
+      context.fill();
+    }
     if (player.leadTimeLeft > 0) {
       context.fillStyle = `rgba(33, 33, 39,${1-Math.min((player.leadTime-player.leadTimeLeft)/player.leadTime, 0.75)})`;
       context.beginPath();

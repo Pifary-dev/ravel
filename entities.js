@@ -854,6 +854,19 @@ class Player {
     } else {
       this.burningTimer = Math.max(0, this.burningTimer - time);
     }
+
+    if (this.curse) {
+      if (this.safeZone){
+        this.curse = false;
+        this.curseEffect = 0;
+      } else {
+        this.curseEffect -= time * this.effectImmune;
+        if (this.curseEffect < 0) {
+          death(this);
+          this.curse = false;
+        }
+      }
+    }
     
     if (this.reducing) {
       this.reducingEffect += time * this.effectImmune / 100;
@@ -3493,9 +3506,9 @@ class Invisible extends Enemy {
   }
 }
 
-class Variable extends Enemy {
+class Wavering extends Enemy {
   constructor(pos, radius, speed = 0, angle, min_speed, max_speed, speed_change = 500) {
-    super(pos, entityTypes.indexOf("variable"), radius, speed, angle, "#562e75");
+    super(pos, entityTypes.indexOf("wavering"), radius, speed, angle, "#562e75");
     this.speedDirection = random(1) === 1 ? true : false;
     this.startingSpeed = min_max(min_speed, max_speed);
     this.speedChange = speed_change;
@@ -3503,6 +3516,8 @@ class Variable extends Enemy {
     this.speed = this.startingSpeed;
     this.minSpeed = min_speed;
     this.maxSpeed = max_speed;
+    this.baseColor = "#562e75";
+    this.nextSpeed = this.speed;
 
     if(this.startingSpeed === min_speed){
       this.speedDirection = true;
@@ -3511,10 +3526,19 @@ class Variable extends Enemy {
     }
 
     this.compute_speed();
+    this.updateColor();
   }
 
   behavior(time, area, offset, players) {
     this.clock += time;
+    
+    // Start color transition 250ms before speed change
+    if(this.clock > this.speedChange - 250) {
+      const transitionProgress = (this.clock - (this.speedChange - 250)) / 250;
+      const nextSpeed = this.speedDirection ? this.speed + 1 : this.speed - 1;
+      this.updateColor(transitionProgress, nextSpeed);
+    }
+
     if(this.clock > this.speedChange){
       if(this.speedDirection){
         this.speed++;
@@ -3528,6 +3552,40 @@ class Variable extends Enemy {
     }
     this.compute_speed();
   }
+
+  updateColor(progress = 1, nextSpeed = null) {
+    const currentSpeed = nextSpeed !== null ? 
+      this.speed + (nextSpeed - this.speed) * progress : 
+      this.speed;
+    
+    // Base colors
+    const darkPurple = { r: 20, g: 10, b: 30 };  // Very dark purple for speed 0
+    const midPurple = { r: 86, g: 46, b: 117 };  // #562e75 for speed 12
+    const lightPurple = { r: 240, g: 230, b: 255 };  // Light purple-white for speed 30
+
+    let color;
+    if (currentSpeed <= 12) {
+      // Interpolate between dark purple and base color (0-12)
+      const ratio = currentSpeed / 12;
+      color = {
+        r: Math.round(darkPurple.r + (midPurple.r - darkPurple.r) * ratio),
+        g: Math.round(darkPurple.g + (midPurple.g - darkPurple.g) * ratio),
+        b: Math.round(darkPurple.b + (midPurple.b - darkPurple.b) * ratio)
+      };
+    } else {
+      // Interpolate between base color and light purple (12-30)
+      // well, speed more than 30 shouldn't be used anyway? I can make it speedratio based, but I don't really like this
+      const ratio = (currentSpeed - 12) / 18;
+      color = {
+        r: Math.round(midPurple.r + (lightPurple.r - midPurple.r) * ratio),
+        g: Math.round(midPurple.g + (lightPurple.g - midPurple.g) * ratio),
+        b: Math.round(midPurple.b + (lightPurple.b - midPurple.b) * ratio)
+      };
+    }
+    
+    this.color = `rgb(${color.r}, ${color.g}, ${color.b})`;
+  }
+
   compute_speed(){
     this.angleToVel();
   }
@@ -5457,6 +5515,24 @@ class Expander extends Enemy {
     if(!player.isInvulnerable() && !this.Harmless) {
       if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
         player.expander_interactions++;
+        this.Harmless = true;
+        this.HarmlessEffect = 1000;
+      }
+    }
+  }
+}
+
+class Curse extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("curse"), radius, speed, angle, "#91b892");
+  }
+  interact(player,worldPos,time){
+    if(!player.isInvulnerable() && !this.Harmless) {
+      if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+        player.curse = true;
+        if(player.curseEffect > 0){
+          player.curseEffect /= 2;
+        } else player.curseEffect = 1500; 
         this.Harmless = true;
         this.HarmlessEffect = 1000;
       }

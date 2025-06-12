@@ -215,6 +215,7 @@ class World {
         summoner: ['spawner'],
         global_spawner: ['spawner', 'cooldown', 'initial_spawner'],
         variable: ['min_speed', 'max_speed', 'speed_change'],
+        wavering: ['min_speed', 'max_speed', 'speed_change'],
         slasher: ['slash_radius']
       };
 
@@ -997,10 +998,14 @@ class Area {
         return new VoidCrawler(new Vector(posX, posY), radius / 32, speed, angle);
       case "dripping":
         return new Dripping(new Vector(posX, posY), radius / 32, speed, angle);
+      case "wavering":
+        return new Wavering(new Vector(posX, posY), radius / 32, speed, angle, preset.min_speed, preset.max_speed, preset.speed_change);
       case "variable":
-        return new Variable(new Vector(posX, posY), radius / 32, speed, angle, preset.min_speed, preset.max_speed, preset.speed_change);
+        return new Wavering(new Vector(posX, posY), radius / 32, speed, angle, preset.min_speed, preset.max_speed, preset.speed_change);
       case "expander":
         return new Expander(new Vector(posX, posY), radius / 32, speed, angle);
+      case "curse":
+        return new Curse(new Vector(posX, posY), radius / 32, speed, angle);
       case "silence":
         return new Silence(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       default:

@@ -80,6 +80,8 @@ var entityTypes = [
   "ninja_star_sniper",
   "summoner",
   "slasher",
+  "wavering",
+  "curse",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",
@@ -87,7 +89,6 @@ var entityTypes = [
   "defender",
   "burning",
   "sticky_sniper",
-  "variable",
   "expander",
   "silence",
 
