@@ -95,10 +95,11 @@ function renderArea(area, players, focus, areaUpdated) {
     renderUI(area, players, focus);
     renderMinimap(area, players, focus);
     if (player.overlay) {
+      const uiScale = settings.ui_scale || 1;
       context.beginPath();
-      context.font = "22px cursive";
+      context.font = `${22 * uiScale}px cursive`;
       context.textAlign = "start";
-      context.lineWidth = 0.5;
+      context.lineWidth = 0.5 * uiScale;
 
       const roughDelay = settings.fps_limit === "unlimited" ? 0 : Math.round((settings.tick_delay * (1000 / parseInt(settings.fps_limit))) + settings.input_delay);
       const avgPing = ping.array.length > 5 ? Math.round(ping.array.reduce((e, t) => e + t) / ping.array.length) : roughDelay;
@@ -118,8 +119,8 @@ function renderArea(area, players, focus, areaUpdated) {
 
       if (text) {
         context.fillStyle = context.strokeStyle = color;
-        context.fillText(text, 0, 20);
-        context.strokeText(text, 0, 20);
+        context.fillText(text, 0, 20 * uiScale);
+        context.strokeText(text, 0, 20 * uiScale);
       }
 
       if (settings.dev) {
@@ -130,8 +131,8 @@ function renderArea(area, players, focus, areaUpdated) {
           `Timer-clear: ${settings.timer_clear} (P), (O)`
         ];
         texts.forEach((text, i) => {
-          context.fillText(text, 0, 45 + i * 25);
-          context.strokeText(text, 0, 45 + i * 25);
+          context.fillText(text, 0, (45 + i * 25) * uiScale);
+          context.strokeText(text, 0, (45 + i * 25) * uiScale);
         });
       }
 
@@ -625,7 +626,8 @@ function renderPlayers(area, players, focus) {
 
 function renderMinimap(area, players, focus) {
   if (!players[0].minimap) return;
-  const minimapSize = new Vector(370, 100);
+  const uiScale = settings.ui_scale || 1;
+  const minimapSize = new Vector(370 * uiScale, 100 * uiScale);
   const bound = area.boundary;
   const xCoef = minimapSize.x / bound.w,
         yCoef = minimapSize.y / bound.h;
@@ -689,7 +691,7 @@ function renderMinimap(area, players, focus) {
   // Draw players on main context with correct size and position
   for (const i in players) {
     const player = players[i];
-    const playerMinimapRadius = Math.min((player.radius + coef),4);
+    const playerMinimapRadius = Math.min((player.radius + coef), 4) * uiScale;
     const newPos = new Vector(
       (player.pos.x - area.pos.x - bound.x) * coef,
       (player.pos.y - area.pos.y - bound.y) * coef
@@ -697,7 +699,7 @@ function renderMinimap(area, players, focus) {
     context.beginPath();
     context.fillStyle = player.color;
     context.strokeStyle = player.strokeColor;
-    context.lineWidth = 2;
+    context.lineWidth = 2 * uiScale;
     context.arc(newPos.x * (minimapSize.x / minimapCanvas.width), staticHeight - minimapSize.y + newPos.y * (minimapSize.y / minimapCanvas.height), playerMinimapRadius, 0, Math.PI * 2, true);
     context.fill();
     context.stroke();
@@ -709,24 +711,25 @@ function renderUI(area, players, focus) {
   const player = players[0];
   if (!player.herocard) return;
 
+  const uiScale = settings.ui_scale || 1;
   const UI_CONSTANTS = {
-    BASE_WIDTH: 516,
-    EXTRA_WIDTH: 80,
-    UI_HEIGHT: 85,
-    EXP_BAR_HEIGHT: 15,
-    ABILITY_SPACING: 82,
-    ABILITY_SIZE: 48,
-    ABILITY_DOT_RADIUS: 3,
-    LEVEL_CIRCLE_RADIUS: 23,
-    UPGRADE_SIZE: 12,
-    POINT_CIRCLE_LARGE: 8,
-    POINT_CIRCLE_SMALL: 6,
-    POINT_SPACING: 20,
-    SEPARATOR_X: 105,
-    CLASS_NAME_OFFSET: { X: 55, Y: 20 },
-    LEVEL_OFFSET: { X: 55, Y: 55 },
-    STAT_SPACING: 82,
-    FPS_INDICATOR: { X: 386, Y: 4, SIZE: 12 },
+    BASE_WIDTH: 516 * uiScale,
+    EXTRA_WIDTH: 80 * uiScale,
+    UI_HEIGHT: 85 * uiScale,
+    EXP_BAR_HEIGHT: 15 * uiScale,
+    ABILITY_SPACING: 82 * uiScale,
+    ABILITY_SIZE: 48 * uiScale,
+    ABILITY_DOT_RADIUS: 3 * uiScale,
+    LEVEL_CIRCLE_RADIUS: 23 * uiScale,
+    UPGRADE_SIZE: 12 * uiScale,
+    POINT_CIRCLE_LARGE: 8 * uiScale,
+    POINT_CIRCLE_SMALL: 6 * uiScale,
+    POINT_SPACING: 20 * uiScale,
+    SEPARATOR_X: 105 * uiScale,
+    CLASS_NAME_OFFSET: { X: 55 * uiScale, Y: 20 * uiScale },
+    LEVEL_OFFSET: { X: 55 * uiScale, Y: 55 * uiScale },
+    STAT_SPACING: 82 * uiScale,
+    FPS_INDICATOR: { X: 386 * uiScale, Y: 4 * uiScale, SIZE: 12 * uiScale },
     COLORS: {
       UI_BACKGROUND: "rgba(0, 0, 0, 0.8)",
       EXP_BAR_BACKGROUND: (r, g, b) => `rgba(${r},${g},${b},0.4)`,
@@ -738,10 +741,10 @@ function renderUI(area, players, focus) {
       FPS_CHEAT: "purple"
     },
     FONT_SIZES: {
-      TINY: "10px",
-      SMALL: "13px",
-      MEDIUM: "18px",
-      LARGE: "22px"
+      TINY: `${10 * uiScale}px`,
+      SMALL: `${13 * uiScale}px`,
+      MEDIUM: `${18 * uiScale}px`,
+      LARGE: `${22 * uiScale}px`
     }
   };
 
@@ -798,12 +801,12 @@ function renderUI(area, players, focus) {
 
       const { key, cooldown, totalCooldown, upgradeIndex } = ability;
       const text = texts[index];
-      const x = staticWidth / 2 - UI_CONSTANTS.BASE_WIDTH / 2 + UI_CONSTANTS.SEPARATOR_X + 41 + 246 + index * UI_CONSTANTS.ABILITY_SPACING;
+      const x = staticWidth / 2 - UI_CONSTANTS.BASE_WIDTH / 2 + UI_CONSTANTS.SEPARATOR_X + 41 * uiScale + 246 * uiScale + index * UI_CONSTANTS.ABILITY_SPACING;
       const y = staticHeight - UI_CONSTANTS.UI_HEIGHT;
 
       // Draw ability icon
       if (index < 2) {
-        context.drawImage(player[key], x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
+        context.drawImage(player[key], x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
       } else if (hasSpecialItem) {
         let itemImage;
         if (player.magnet) {
@@ -813,7 +816,7 @@ function renderUI(area, players, focus) {
         } else if (player.lantern) {
           itemImage = images.lantern;
         }
-        context.drawImage(itemImage, x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
+        context.drawImage(itemImage, x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
       }
 
       // Render text or upgrade
@@ -822,25 +825,25 @@ function renderUI(area, players, focus) {
       context.textAlign = "center";
       if (player.points > 0) {
         const active = index < 2 ? player[`${key}L`] !== player[`${key}ML`] : false;
-        renderUpgrade(context, x, y + 17/2 + 44 - 17 + UI_CONSTANTS.ABILITY_SIZE / 2 + 9.5, upgradeIndex, player, active);
+        renderUpgrade(context, x, y + 17/2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 9.5 * uiScale, upgradeIndex, player, active);
       } else {
-        context.fillText(text, x, y + 17/2 + 44 - 17 + UI_CONSTANTS.ABILITY_SIZE / 2 + 17);
+        context.fillText(text, x, y + 17/2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 17 * uiScale);
       }
 
       // Draw cooldown overlay
       if (index < 2) {
         const cooldownTime = player[cooldown] / player[totalCooldown];
         context.fillStyle = !player[`${key}L`] || cooldownTime === 1 ? "rgba(0, 0, 0, 0.6)" : "rgba(0, 0, 0, 0.2)";
-        context.fillRect(x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
+        context.fillRect(x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
       }
 
       // Draw ability level indicators
-      const dotY = y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2 + 45 - UI_CONSTANTS.ABILITY_SIZE - 6;
+      const dotY = y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2 + 45 * uiScale - UI_CONSTANTS.ABILITY_SIZE - 6 * uiScale;
       const maxLevel = index < 2 ? player[`${key}ML`] : 1;
       const currentLevel = index < 2 ? player[`${key}L`] : 1;
       for (let p = 0; p < 5; p++) {
         context.strokeStyle = !player[`${key}L`] || (index < 2 && player[cooldown] === player[totalCooldown]) ? "rgb(150, 150, 150)" : "rgb(200, 200, 200)";
-        const dotX = x - UI_CONSTANTS.ABILITY_SIZE / 2 + 5 + (40 * (maxLevel !== 5 ? 2 : p) / 4);
+        const dotX = x - UI_CONSTANTS.ABILITY_SIZE / 2 + 5 * uiScale + (40 * uiScale * (maxLevel !== 5 ? 2 : p) / 4);
         context.beginPath();
         context.arc(dotX, dotY, UI_CONSTANTS.ABILITY_DOT_RADIUS, 0, Math.PI * 2);
         context.stroke();
@@ -850,7 +853,7 @@ function renderUI(area, players, focus) {
       context.fillStyle = UI_CONSTANTS.COLORS.YELLOW;
       context.strokeStyle = UI_CONSTANTS.COLORS.YELLOW;
       for (let p = 0; p < currentLevel; p++) {
-        const dotX = x - UI_CONSTANTS.ABILITY_SIZE / 2 + 5 + (40 * (maxLevel !== 5 ? 2 : p) / 4);
+        const dotX = x - UI_CONSTANTS.ABILITY_SIZE / 2 + 5 * uiScale + (40 * uiScale * (maxLevel !== 5 ? 2 : p) / 4);
         context.beginPath();
         context.arc(dotX, dotY, UI_CONSTANTS.ABILITY_DOT_RADIUS, 0, Math.PI * 2);
         context.fill();
@@ -860,7 +863,9 @@ function renderUI(area, players, focus) {
       // Draw cooldown arc for first two abilities only
       if (index < 2) {
         context.fillStyle = "rgba(0, 0, 0, 0.6)";
-        sectorInRect(context, x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 + 17 + 44 - 17 - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE, 360 * (1 - player[cooldown] / player[totalCooldown]) - 90);
+        const abilityX = x - UI_CONSTANTS.ABILITY_SIZE / 2;
+        const abilityY = y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2;
+        sectorInRect(context, abilityX, abilityY, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE, 360 * (1 - player[cooldown] / player[totalCooldown]) - 90);
       }
     });
   }
@@ -892,6 +897,30 @@ function renderUI(area, players, focus) {
     context.closePath();
   }
 
+  function drawShape(context, shape, x, y, color, width, height) {
+    const uiScale = settings.ui_scale || 1;
+    context.fillStyle = color;
+    context.beginPath();
+    
+    switch(shape) {
+      case 'rect':
+        context.fillRect(x, y - height * uiScale, width * uiScale, height * uiScale);
+        break;
+      case 'triangle':
+        context.moveTo(x, y);
+        context.lineTo(x + width * uiScale, y);
+        context.lineTo(x + (width * uiScale)/2, y - height * uiScale);
+        context.closePath();
+        context.fill();
+        break;
+      case 'circle':
+        context.arc(x + (width * uiScale)/2, y - (height * uiScale)/2, (width * uiScale)/2, 0, Math.PI * 2);
+        context.fill();
+        break;
+    }
+    context.closePath();
+  }
+
   const baseX = staticWidth / 2 - UI_CONSTANTS.BASE_WIDTH / 2;
   const baseY = staticHeight - UI_CONSTANTS.UI_HEIGHT;
 
@@ -900,65 +929,80 @@ function renderUI(area, players, focus) {
 
   // Draw level circle
   drawCircle(context, baseX + UI_CONSTANTS.LEVEL_OFFSET.X, baseY + UI_CONSTANTS.LEVEL_OFFSET.Y, UI_CONSTANTS.LEVEL_CIRCLE_RADIUS, player.color);
-  drawText(context, player.level, baseX + UI_CONSTANTS.LEVEL_OFFSET.X, baseY + UI_CONSTANTS.LEVEL_OFFSET.Y + 8, `${UI_CONSTANTS.FONT_SIZES.LARGE} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
+  drawText(context, player.level, baseX + UI_CONSTANTS.LEVEL_OFFSET.X, baseY + UI_CONSTANTS.LEVEL_OFFSET.Y + 8 * uiScale, `${UI_CONSTANTS.FONT_SIZES.LARGE} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
 
   // Draw separator line
-  drawLine(context, baseX + UI_CONSTANTS.SEPARATOR_X, baseY, baseX + UI_CONSTANTS.SEPARATOR_X, staticHeight, UI_CONSTANTS.COLORS.SEPARATOR, 2);
+  drawLine(context, baseX + UI_CONSTANTS.SEPARATOR_X, baseY, baseX + UI_CONSTANTS.SEPARATOR_X, staticHeight, UI_CONSTANTS.COLORS.SEPARATOR, 2 * uiScale);
 
   if (player.points > 0) {
-    drawText(context, "Points:", baseX + 136, baseY + 16, `${UI_CONSTANTS.FONT_SIZES.SMALL} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
+    drawText(context, "Points:", baseX + 136 * uiScale, baseY + 16 * uiScale, `${UI_CONSTANTS.FONT_SIZES.SMALL} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
 
     if (player.points > 8) {
-      drawCircle(context, baseX + 169, baseY + 12, UI_CONSTANTS.POINT_CIRCLE_LARGE, UI_CONSTANTS.COLORS.POINT_COLOR);
-      drawText(context, player.points, baseX + 169, baseY + 16, `${UI_CONSTANTS.FONT_SIZES.TINY} Tahoma, Verdana, Segoe, sans-serif`, "black");
+      drawCircle(context, baseX + 169 * uiScale, baseY + 12 * uiScale, UI_CONSTANTS.POINT_CIRCLE_LARGE, UI_CONSTANTS.COLORS.POINT_COLOR);
+      drawText(context, player.points, baseX + 169 * uiScale, baseY + 16 * uiScale, `${UI_CONSTANTS.FONT_SIZES.TINY} Tahoma, Verdana, Segoe, sans-serif`, "black");
     } else {
       for (let step = 0; step < player.points; step++) {
-        drawCircle(context, baseX + 169 + UI_CONSTANTS.POINT_SPACING * step, baseY + 12, UI_CONSTANTS.POINT_CIRCLE_SMALL, UI_CONSTANTS.COLORS.POINT_COLOR);
+        drawCircle(context, baseX + 169 * uiScale + UI_CONSTANTS.POINT_SPACING * step, baseY + 12 * uiScale, UI_CONSTANTS.POINT_CIRCLE_SMALL, UI_CONSTANTS.COLORS.POINT_COLOR);
       }
     }
 
-    const upgradeY = staticHeight / 2 + 275 + 17 + 52;
+    const upgradeY = baseY + 17/2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 9.5 * uiScale;
     const speedActive = parseFloat(player.speed.toFixed(3)) < player.maxSpeed;
     const energyActive = player.maxEnergy < player.maxUpgradableEnergy;
     const regenActive = parseFloat(player.regen.toFixed(3)) < player.maxRegen;
 
-    renderUpgrade(context, baseX + UI_CONSTANTS.SEPARATOR_X + 41, upgradeY, 1, player, speedActive);
-    renderUpgrade(context, baseX + UI_CONSTANTS.SEPARATOR_X + 123, upgradeY, 2, player, energyActive);
-    renderUpgrade(context, baseX + UI_CONSTANTS.SEPARATOR_X + 205, upgradeY, 3, player, regenActive);
+    renderUpgrade(context, baseX + UI_CONSTANTS.SEPARATOR_X + 41 * uiScale, upgradeY, 1, player, speedActive);
+    renderUpgrade(context, baseX + UI_CONSTANTS.SEPARATOR_X + 123 * uiScale, upgradeY, 2, player, energyActive);
+    renderUpgrade(context, baseX + UI_CONSTANTS.SEPARATOR_X + 205 * uiScale, upgradeY, 3, player, regenActive);
   }
 
-  const statBaseX = baseX + UI_CONSTANTS.SEPARATOR_X + 41;
-  const statY = baseY + 17 + 44;
+  const statBaseX = baseX + UI_CONSTANTS.SEPARATOR_X + 41 * uiScale;
+  const statY = baseY + 17 * uiScale + 44 * uiScale;
 
   function drawStat(label, value, xOffset = 0) {
     drawText(context, label, statBaseX + xOffset, statY, `${UI_CONSTANTS.FONT_SIZES.TINY} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
-    drawText(context, value, statBaseX + xOffset, statY - 17, `${UI_CONSTANTS.FONT_SIZES.LARGE} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
+    drawText(context, value, statBaseX + xOffset, statY - 17 * uiScale, `${UI_CONSTANTS.FONT_SIZES.LARGE} Tahoma, Verdana, Segoe, sans-serif`, UI_CONSTANTS.COLORS.WHITE);
   }
 
   drawStat("Speed", parseFloat(player.speed.toFixed(1)));
-  drawStat("Energy", `${Math.round(player.energy)} / ${player.maxEnergy}`, 82);
-  drawStat("Regen", Math.round(player.regen * 10) / 10, 164);
+  drawStat("Energy", `${Math.round(player.energy)} / ${player.maxEnergy}`, 82 * uiScale);
+  drawStat("Regen", Math.round(player.regen * 10) / 10, 164 * uiScale);
 
   const shape = settings.fps_limit === "unlimited" ? 'rect' : (settings.fps_limit === "60" ? 'triangle' : 'circle');
   const color = player.hasCheated ? "purple" : "#696969";
-  drawShape(context, shape, 386, staticHeight - 4, color, 12, 12);
+  drawShape(context, shape, baseX + UI_CONSTANTS.SEPARATOR_X + 41 * uiScale + 246 * uiScale + 2 * UI_CONSTANTS.ABILITY_SPACING - 550 * uiScale, staticHeight - 4 * uiScale, color, 12, 12);
 }
 
 function renderUpgrade(ctx, xValue, yValue, text, player, active) {
+  const uiScale = settings.ui_scale || 1;
   const upgradeBrightness = (active) ? Math.round((player.upgradeBrightness.value - player.upgradeBrightness.min) / 3) : -120;
   const red = 200;
   const green = 200;
   const blue = 0;
   ctx.fillStyle = `rgb(${red + upgradeBrightness}, ${green + upgradeBrightness}, ${blue + upgradeBrightness})`;
   ctx.strokeStyle = ctx.fillStyle;
-  const x = xValue - 6;
+  const x = xValue - 6 * uiScale;
   const y = yValue;
-  const width = 12;
-  const height = 12;
+  const width = 12 * uiScale;
+  const height = 12 * uiScale;
   roundedRect(ctx, x, y, width, height, 1, true, true);
   ctx.fillStyle = `rgb(${upgradeBrightness}, ${upgradeBrightness}, ${upgradeBrightness})`;
-  context.font = 12 + "px Tahoma, Verdana, Segoe, sans-serif";
-  ctx.fillText(text, x + width/2, y + 10);
+  context.font = `${12 * uiScale}px Tahoma, Verdana, Segoe, sans-serif`;
+  ctx.fillText(text, x + width/2, y + 10 * uiScale);
+}
+
+function roundedRect(ctx, x, y, width, height, strokeSize = 5, fillEnabled = false, strokeEnabled = true) {
+  const uiScale = settings.ui_scale || 1;
+  strokeSize = strokeSize * uiScale;
+  ctx.beginPath();
+  ctx.moveTo(x + strokeSize, y);
+  ctx.arcTo(x + width, y, x + width, y + height, strokeSize);
+  ctx.arcTo(x + width, y + height, x, y + height, strokeSize);
+  ctx.arcTo(x, y + height, x, y, strokeSize);
+  ctx.arcTo(x, y, x + width, y, strokeSize);
+  ctx.closePath();
+  if (fillEnabled) ctx.fill();
+  if (strokeEnabled) ctx.stroke();
 }
 
 function drawTiles(area, focus) {
@@ -1135,17 +1179,6 @@ function renderAssets(area, players, focus) {
     }
   });
 }
-function roundedRect(ctx, x, y, width, height, strokeSize = 5, fillEnabled = false, strokeEnabled = true) {
-  ctx.beginPath();
-  ctx.moveTo(x + strokeSize, y);
-  ctx.arcTo(x + width, y, x + width, y + height, strokeSize);
-  ctx.arcTo(x + width, y + height, x, y + height, strokeSize);
-  ctx.arcTo(x, y + height, x, y, strokeSize);
-  ctx.arcTo(x, y, x + width, y, strokeSize);
-  ctx.closePath();
-  if (fillEnabled) ctx.fill();
-  if (strokeEnabled) ctx.stroke();
-}
 
 function updateBackground(context,width,height,color){
   context.clearRect(0, 0, width, height);
@@ -1157,40 +1190,21 @@ function updateBackground(context,width,height,color){
 }
 
 function drawAreaHeader(context,lineSize,strokeStyle,text,width,height,world,size = 35,fillStyle = "#f4faff"){
+  const uiScale = settings.ui_scale || 1;
   context.beginPath();
   context.textAlign = "center";
-  context.lineWidth = lineSize;
+  context.lineWidth = lineSize * uiScale;
   context.fillStyle = fillStyle;
   context.strokeStyle = strokeStyle;
-  context.font = "bold " + size + "px Tahoma, Verdana, Segoe, sans-serif";
+  context.font = "bold " + (size * uiScale) + "px Tahoma, Verdana, Segoe, sans-serif";
   context.textAlign = "center";
   if(world != null){
-    context.strokeText(world.name + ": " + text, width / 2, height);
-    context.fillText(world.name + ": " + text, width / 2, height);
+    context.strokeText(world.name + ": " + text, width / 2, height * uiScale);
+    context.fillText(world.name + ": " + text, width / 2, height * uiScale);
   } else {
-    context.strokeText(text, width / 2, height);
-    context.fillText(text, width / 2, height);
+    context.strokeText(text, width / 2, height * uiScale);
+    context.fillText(text, width / 2, height * uiScale);
   }
-  context.closePath();
-}
-
-function drawShape(context, type, x, y, color, width, height) {
-  context.beginPath();
-  context.fillStyle = color;
-  
-  if (type === 'rect') {
-    context.fillRect(x, y - height, width, height);
-  } else if (type === 'triangle') {
-    context.moveTo(x, y);
-    context.lineTo(x + width, y);
-    context.lineTo(x + width / 2, y - height + 2);
-    context.fill();
-  } else if (type === 'circle') {
-    const radius = Math.min(width, height) / 2;
-    context.arc(x + width / 2, y - height / 2, radius, 0, 2 * Math.PI);
-    context.fill();
-  }
-  
   context.closePath();
 }
 

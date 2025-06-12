@@ -26,6 +26,7 @@ const settings = {
   diff: 'Easy',
   tick_delay: 2,
   input_delay: 0,
+  ui_scale: 1,
   scale: 1,
   cheats: true,
   v_sync: false
@@ -51,16 +52,27 @@ for(const i in settings){
     const canParse = (localStored && typeof setting != "string" && localStored != 'NaN') ? true : false;
     const previousSetting = (canParse) ? JSON.parse(localStored) : setting;
     if(localStored == 'NaN') console.warn(`Invalid value for ${i}`);
-    if(previousSetting != localSetting.checked){
-      localSetting.checked = previousSetting;
-    }
-    if(localStored){
-      if(typeof setting == "string"){
-        localSetting.value = localStored;
-      } else if (typeof setting == "number") {
-        const localNumber = Number(localStored);
-        localSetting.value = (isNaN(localNumber)) ? setting : localNumber;
+    
+    // Handle checkbox inputs
+    if(localSetting.type === 'checkbox') {
+      if(previousSetting != localSetting.checked){
+        localSetting.checked = previousSetting;
       }
+    }
+    // Handle range and number inputs
+    else if(localSetting.type === 'range' || localSetting.type === 'number') {
+      const localNumber = Number(localStored);
+      const value = (isNaN(localNumber)) ? setting : localNumber;
+      localSetting.value = value;
+      // Update the display value for range inputs if the element exists
+      const valueDisplay = document.getElementById(`${i}_value`);
+      if(valueDisplay) {
+        valueDisplay.textContent = value.toFixed(1);
+      }
+    }
+    // Handle text and select inputs
+    else if(localSetting.type === 'text' || localSetting.type === 'select-one') {
+      localSetting.value = localStored || setting;
     }
   }
 }
@@ -82,6 +94,16 @@ window.onresize = () => {
 window.onload = () => {
   window.onresize();
   document.getElementById("hero").value = (typeof window.localStorage.hero === 'string') ? window.localStorage.hero : 'Normal';
+  
+  // Add event listener for ui_scale range input
+  const uiScaleInput = document.getElementById("ui_scale");
+  const uiScaleValue = document.getElementById("ui_scale_value");
+  if (uiScaleInput && uiScaleValue) {
+    uiScaleInput.addEventListener("input", () => {
+      uiScaleValue.textContent = Number(uiScaleInput.value).toFixed(1);
+    });
+  }
+
   document.getElementById("connect").onclick = () => {
     const hero = document.getElementById("hero");
     const head = document.getElementById("wreath");
@@ -95,8 +117,8 @@ window.onload = () => {
     for(const i in settings){
       const localSetting = document.getElementById(i);
       if(localSetting){
-        const finalValue = (localSetting.type == 'number') ?
-          localSetting.valueAsNumber : (localSetting.type == 'select-one' || localSetting.type == 'text') ?
+        const finalValue = (localSetting.type == 'number' || localSetting.type == 'range') ?
+          Number(localSetting.value) : (localSetting.type == 'select-one' || localSetting.type == 'text') ?
           localSetting.value : localSetting.checked;
         localStorage[i] = settings[i] = finalValue;
       }
