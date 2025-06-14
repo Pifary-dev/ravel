@@ -8,6 +8,7 @@ let mouse = false;
 let loaded = false;
 let lastRender = 0;
 let fov = 32;
+changeResolution(1920,1080);
 
 function loadMain() {
   isCustomWorld = false;

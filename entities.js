@@ -193,8 +193,8 @@ class Pellet extends Entity {
   }
 
   getRandomPosition(zone) {
-    const x = Math.random() * (zone.w - 2 * this.radius) + zone.x + this.radius;
-    const y = Math.random() * (zone.h - 2 * this.radius) + zone.y + this.radius;
+    const x = Math.random() * (zone.w - 2 * this.radius * 1.2) + zone.x + this.radius * 1.2;
+    const y = Math.random() * (zone.h - 2 * this.radius * 1.2) + zone.y + this.radius * 1.2;
     return new Vector(x, y);
   }
 
@@ -390,6 +390,7 @@ class Player {
     this.safeAmount = 0;
     this.collidedPrev = false;
     this.knockback_limit_count = 0;
+    this.expander_interactions = 0;
     this.isDead = false;
   }
   input(input) {
@@ -772,6 +773,8 @@ class Player {
     if (this.magnetic_reduction) this.verticalSpeedMultiplayer = 0.5 * this.effectImmune;
     if (this.magnetic_nullification) this.verticalSpeedMultiplayer = 0;
     if (this.enlarging) this.radiusAdditioner += 10 * this.effectImmune;
+    if (this.expander_interactions>0) this.radiusAdditioner += 5 * this.expander_interactions * this.effectImmune;
+    if (this.expander_interactions>5) death(this);
     
     if (this.poison) {
       this.poisonTime += time;
@@ -850,6 +853,19 @@ class Player {
       if (this.burningTimer > 1000) death(this);
     } else {
       this.burningTimer = Math.max(0, this.burningTimer - time);
+    }
+
+    if (this.curse) {
+      if (this.safeZone){
+        this.curse = false;
+        this.curseEffect = 0;
+      } else {
+        this.curseEffect -= time * this.effectImmune;
+        if (this.curseEffect < 0) {
+          death(this);
+          this.curse = false;
+        }
+      }
     }
     
     if (this.reducing) {
@@ -935,6 +951,9 @@ class Player {
         this.speedMultiplier *= argument;
       }
     }
+  }
+  resetEffectsAfterAreaChange(){
+    this.expander_interactions = 0;
   }
   clearEffects(){
     if(!this.blocking){
@@ -2772,7 +2791,33 @@ class Summoner extends Enemy {
     if (!this.disappearing){
       this.disappearing = true;
       const area = game.worlds[player.world].areas[player.area];
-      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), {pos: this.pos, angle: this.angle, radius: this.radius});
+      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), {pos: this.pos, angle: this.angle, radius: this.radius}, true);
+    }
+  }
+}
+
+class GlobalSpawner extends Enemy {
+  constructor(pos, radius, speed, angle, spawner, cooldown, initial_spawner) {
+    super(pos, entityTypes.indexOf("global_spawner"), radius, speed, angle, "#91bbff");
+    this.spawner = spawner;
+    this.radius = radius;
+    this.Harmless = true;
+    this.immune = true;
+    this.spawn_cooldown = cooldown;
+    this.spawn_time = 0;
+    this.initial_spawner = initial_spawner;
+    this.initialized = false;
+  }
+  behavior(time, area, offset, players) {
+    this.spawn_time += time;
+    const player = players[0];
+    if(!this.initialized && this.initial_spawner){
+      this.initialized = true;
+      area.spawnEnemies(game.worlds[player.world].processSpawner(this.initial_spawner), {pos: this.pos, angle: this.angle, radius: this.radius}, false);
+    }
+    if(this.spawn_time > this.spawn_cooldown){
+      this.spawn_time = 0;
+      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), {pos: this.pos, angle: this.angle, radius: this.radius}, false);
     }
   }
 }
@@ -3286,6 +3331,32 @@ class Slasher extends Enemy {
   }
 }
 
+class Silence extends Enemy {
+  constructor(pos, radius, speed, angle, auraRadius = 150) {
+    super(pos, entityTypes.indexOf("silence"), radius, speed, angle, "#420808", true, "rgba(87, 16, 19, 0.1)", auraRadius / 32);
+    this.maxRadius = auraRadius / 32;
+    this.givingSilence = false;
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      player.silence = true;
+      this.givingSilence = true;
+    } // it supposed to disable player's ability to save other players but since sandbox is solo it doesn't matter
+  }
+
+  behavior(time, area, offset, players) {
+    const timeFix = time / (1000 / 30);
+    if (this.givingSilence) {
+      this.givingSilence = false;
+      this.auraSize -= 2 / 32 * timeFix;
+    } else if (this.auraSize < this.maxRadius) {
+      this.auraSize += 2 / 32 * timeFix;
+      if(this.auraSize > this.maxRadius) this.auraSize = this.maxRadius;
+    }
+    this.auraStaticSize = this.auraSize;
+  }
+}
+
 class Slowing extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150, slow = 0.3) {
     super(pos, entityTypes.indexOf("slowing"), radius, speed, angle, "#ff0000", true, "rgba(255, 0, 0, 0.15)", auraRadius / 32);
@@ -3432,6 +3503,91 @@ class Invisible extends Enemy {
     }
 
     this.alpha = (this.opacity < 0) ? 0.000001 : (this.opacity > 1) ? 1 : this.opacity;
+  }
+}
+
+class Wavering extends Enemy {
+  constructor(pos, radius, speed = 0, angle, min_speed, max_speed, speed_change = 500) {
+    super(pos, entityTypes.indexOf("wavering"), radius, speed, angle, "#562e75");
+    this.speedDirection = random(1) === 1 ? true : false;
+    this.startingSpeed = min_max(min_speed, max_speed);
+    this.speedChange = speed_change;
+    this.clock = 0;
+    this.speed = this.startingSpeed;
+    this.minSpeed = min_speed;
+    this.maxSpeed = max_speed;
+    this.baseColor = "#562e75";
+    this.nextSpeed = this.speed;
+
+    if(this.startingSpeed === min_speed){
+      this.speedDirection = true;
+    } else if (this.startingSpeed === max_speed){
+      this.speedDirection = false;
+    }
+
+    this.compute_speed();
+    this.updateColor();
+  }
+
+  behavior(time, area, offset, players) {
+    this.clock += time;
+    
+    // Start color transition 250ms before speed change
+    if(this.clock > this.speedChange - 250) {
+      const transitionProgress = (this.clock - (this.speedChange - 250)) / 250;
+      const nextSpeed = this.speedDirection ? this.speed + 1 : this.speed - 1;
+      this.updateColor(transitionProgress, nextSpeed);
+    }
+
+    if(this.clock > this.speedChange){
+      if(this.speedDirection){
+        this.speed++;
+      } else {
+        this.speed--;
+      }
+      if(this.speed <= this.minSpeed || this.speed >= this.maxSpeed){ 
+        this.speedDirection = !this.speedDirection;
+      }
+      this.clock = 0;
+    }
+    this.compute_speed();
+  }
+
+  updateColor(progress = 1, nextSpeed = null) {
+    const currentSpeed = nextSpeed !== null ? 
+      this.speed + (nextSpeed - this.speed) * progress : 
+      this.speed;
+    
+    // Base colors
+    const darkPurple = { r: 20, g: 10, b: 30 };  // Very dark purple for speed 0
+    const midPurple = { r: 86, g: 46, b: 117 };  // #562e75 for speed 12
+    const lightPurple = { r: 240, g: 230, b: 255 };  // Light purple-white for speed 30
+
+    let color;
+    if (currentSpeed <= 12) {
+      // Interpolate between dark purple and base color (0-12)
+      const ratio = currentSpeed / 12;
+      color = {
+        r: Math.round(darkPurple.r + (midPurple.r - darkPurple.r) * ratio),
+        g: Math.round(darkPurple.g + (midPurple.g - darkPurple.g) * ratio),
+        b: Math.round(darkPurple.b + (midPurple.b - darkPurple.b) * ratio)
+      };
+    } else {
+      // Interpolate between base color and light purple (12-30)
+      // well, speed more than 30 shouldn't be used anyway? I can make it speedratio based, but I don't really like this
+      const ratio = (currentSpeed - 12) / 18;
+      color = {
+        r: Math.round(midPurple.r + (lightPurple.r - midPurple.r) * ratio),
+        g: Math.round(midPurple.g + (lightPurple.g - midPurple.g) * ratio),
+        b: Math.round(midPurple.b + (lightPurple.b - midPurple.b) * ratio)
+      };
+    }
+    
+    this.color = `rgb(${color.r}, ${color.g}, ${color.b})`;
+  }
+
+  compute_speed(){
+    this.angleToVel();
   }
 }
 
@@ -4096,8 +4252,9 @@ class Cobweb extends Enemy {
 
 class Teleporting extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("teleporting"), radius, speed, angle,"#ecc4ef");
-    this.pause_interval = 1400 / ((settings.convert_to_legacy_speed) ? speed : speed / 21);
+    super(pos, entityTypes.indexOf("teleporting"), radius, 42, angle,"#ecc4ef");
+    const teleport_speed = (settings.convert_to_legacy_speed) ? speed : speed / 21;
+    this.pause_interval = 1400 / teleport_speed;
     this.pause_time = this.pause_interval;
     this.teleporting = true;
   }
@@ -4105,7 +4262,6 @@ class Teleporting extends Enemy {
     this.pause_time -= time;
     if (this.pause_time <= 0) {
       this.pause_time = this.pause_interval;
-      this.speedMultiplier *= (settings.convert_to_legacy_speed) ? 42 / 2 : 1;
     } else {
       this.speedMultiplier = 0;
     }
@@ -4269,6 +4425,98 @@ class Icicle extends Enemy {
         this.speedMultiplier = 0;
       }
     } 
+  }
+}
+
+class Dripping extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("dripping"), radius, speed, angle, "#100812");
+    this.wall_time = 1000;
+    this.wall_hit = false;
+    this.star_visibility = 500;
+    this.movement_immune = true;
+    this.stored_radius = this.radius;
+    this.max_radius_multiplier = 4;
+    this.radius_multiplier = 1;
+    this.speed_multiplier = 1;
+
+    this.phase = "stalling";
+    this.fade_time = 500;
+    this.fade_time_left = 0;
+    this.grow_time_min = 750;
+    this.grow_time_max = 1250;
+    this.grow_time_left = 0;
+    this.stall_time_max = min_max(0, 3000);
+    this.stall_time_left = this.stall_time_max;
+
+    // Set initial velocity based on angle or default to downward movement
+    if (angle !== undefined) {
+      this.angle = angle;
+    } else {
+      this.vel.x = 0;
+      this.vel.y = speed;
+    }
+  }
+
+  collide(boundary) {
+    const collision = collisionEnemy(this, boundary, this.vel, this.pos, this.radius, true);
+    if (collision.col) {
+      this.wall_hit = true;
+    }
+  }
+
+  behavior(time, area, offset, players) {
+    this.vel.x = 0;
+    this.vel.y = this.speed;
+
+    if (this.phase == "stalling") {
+      this.radius_multiplier = 0;
+      this.stall_time_left -= time;
+      if (this.stall_time_left <= 0) {
+        this.stall_time_left = this.stall_time_max;
+        this.phase = "fading";
+      }
+    }
+    if (this.phase == "growing") {
+      this.speed_multiplier = 0;
+      this.grow_time_left -= time;
+      const grow_progress = 1 - Math.max(this.grow_time_left, 0) / this.grow_time;
+      this.radius_multiplier = 1 + (this.max_radius_multiplier - 1) * grow_progress;
+      if (this.grow_time_left <= 0) {
+        this.radius_multiplier = this.max_radius_multiplier;
+        this.phase = "falling";
+        this.wall_hit = false;
+        this.speed_multiplier = 1;
+      }
+    }
+    else if (this.phase == "falling") {
+      if (this.wall_hit) {
+        this.phase = "fading";
+        this.fade_time_left = this.fade_time;
+        this.speed_multiplier = 0;
+      }
+    }
+    else if (this.phase == "fading") {
+      this.speed_multiplier = 0;
+      this.fade_time_left -= time;
+      this.star_visibility = Math.max(this.fade_time_left, 0);
+      this.Harmless = true;
+      if (this.fade_time_left <= 0) {
+        this.Harmless = false;
+        this.phase = "growing";
+        this.radius_multiplier = 1;
+        // Immediately update the radius
+        this.radius = this.stored_radius;
+        // Teleport it to the top and keep it moving down
+        const boundary = area.getActiveBoundary();
+        this.pos.y -= boundary.h - this.stored_radius;
+        this.grow_time = min_max(this.grow_time_min, this.grow_time_max); 
+        this.grow_time_left = this.grow_time;
+      }
+    }
+
+    this.radiusMultiplier = this.radius_multiplier;
+    this.speedMultiplier = this.speed_multiplier;
   }
 }
 class Spiral extends Enemy {
@@ -4650,7 +4898,7 @@ class FrostGiant extends Enemy {
     super(pos, entityTypes.indexOf("frost_giant"), radius, speed, angle,"#7e7cd6");
     this.immune = immune;
     this.entityAngle = angle;
-    this.angle = angle;
+      this.angle = angle;
     this.tick_time = 1000/30;
     this.rotation = false;
     this.precise_movement = precise_movement;
@@ -4719,7 +4967,7 @@ class FrostGiant extends Enemy {
           this.pause_time = this.pause_duration;
         }
       return false;
-      } else {
+    } else {
           this.pause_cooldown -= time;
         }
     }
@@ -5017,7 +5265,7 @@ class Pumpkin extends Enemy {
   behavior(time,area,offset,players){
     let minimalDistance = this.player_detection_radius;
     let index;
-    const boundary = area.getActiveBoundary();
+        const boundary = area.getActiveBoundary();
     for (let i = 0; i < players.length; i++) {
       const player = players[i];
       if (distance(this.pos, new Vector(player.pos.x - offset.x, player.pos.y - offset.y)) < minimalDistance && player.isDetectable() && pointInRectangle(new Vector(player.pos.x - offset.x, player.pos.y - offset.y), new Vector(boundary.x, boundary.y), new Vector(boundary.w, boundary.h))) {
@@ -5253,6 +5501,40 @@ class Wind extends Enemy {
         player.pos.y += (moveDist * Math.sin(angleToPlayer)) * timeFix;
         game.worlds[player.world].collisionPlayer(player.area, player);
         iterations++;
+      }
+    }
+  }
+}
+
+class Expander extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("expander"), radius, speed, angle, "#ffbf7c");
+    this.immune = true;
+  }
+  interact(player,worldPos,time){
+    if(!player.isInvulnerable() && !this.Harmless) {
+      if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+        player.expander_interactions++;
+        this.Harmless = true;
+        this.HarmlessEffect = 1000;
+      }
+    }
+  }
+}
+
+class Cursed extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("curse"), radius, speed, angle, "#57121f");
+  }
+  interact(player,worldPos,time){
+    if(!player.isInvulnerable() && !this.Harmless) {
+      if(distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+        player.curse = true;
+        if(player.curseEffect > 0){
+          player.curseEffect /= 2;
+        } else player.curseEffect = 1500; 
+        this.Harmless = true;
+        this.HarmlessEffect = 1000;
       }
     }
   }
@@ -6190,4 +6472,4 @@ class MinimizeProjectile extends Enemy {
     }
   }
   interact(){}
-}
+    }

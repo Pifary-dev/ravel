@@ -80,6 +80,8 @@ var entityTypes = [
   "ninja_star_sniper",
   "summoner",
   "slasher",
+  "wavering",
+  "curse",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",
@@ -87,6 +89,8 @@ var entityTypes = [
   "defender",
   "burning",
   "sticky_sniper",
+  "expander",
+  "silence",
 
   // og evades
   "vary",
@@ -299,6 +303,7 @@ function death(player,enemy){
   player.teleportPosition = [];
   player.deathCounter++;
   player.reducingPower = 0;
+  player.resetEffectsAfterAreaChange();
   if(!settings.death_cooldown){
     player.firstAbilityCooldown = 0; 
     player.secondAbilityCooldown = 0;
@@ -355,18 +360,20 @@ function collisionEnemy(enemy,boundary,vel,pos,radius,returnCollision){
 
     if (collideX || collideY) {
       collision = true;
-      if (collideX) vel.x = -vel.x;
-      if (collideY) vel.y = -vel.y;
-      enemy.velToAngle();
+      if(!enemy.disabled_collision_angle_changes){
+        if (collideX) vel.x = -vel.x;
+        if (collideY) vel.y = -vel.y;
+        enemy.velToAngle();
+      }
     }
   } else {
     isSpawned(boundary,enemy);
       const circle = {x:enemy.pos.x,y:enemy.pos.y,r:radius,angle:enemy.angle,vel:vel}
     if(enemy.isEnemy||enemy.weak){
       const intersect = intersects(circle,boundary);
+      if(intersect.collision) collision = true;
       if(intersect.collision&&enemy.weak){enemy.toRemove = true}
-      else if (intersect.collision){
-        collision = true;
+      else if (intersect.collision && !enemy.disabled_collision_angle_changes){
         const halfWidth = boundary.w/2;
         const halfHeight = boundary.h/2;
         const center_x = boundary.x+halfWidth;

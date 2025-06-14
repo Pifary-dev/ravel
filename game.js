@@ -81,6 +81,7 @@ class Game {
 
       if ((zone.type === 2 || zone.type === 3) && dist < player.radius) {
         onTele = true;
+        player.resetEffectsAfterAreaChange();
         if (!player.onTele) {
           const targetPoint = new Vector(player.pos.x + zone.translate.x, player.pos.y + zone.translate.y);
           
@@ -231,6 +232,9 @@ class World {
         invisible: ['opacity_modifier'],
         turning: ['circle_size','turn_speed'],
         summoner: ['spawner'],
+        global_spawner: ['spawner', 'cooldown', 'initial_spawner'],
+        variable: ['min_speed', 'max_speed', 'speed_change'],
+        wavering: ['min_speed', 'max_speed', 'speed_change'],
         slasher: ['slash_radius']
       };
 
@@ -675,7 +679,7 @@ class Area {
     this.spawnEnemies();
   }
 
-  spawnEnemies(extraSpawner, extraSpawnerProps) {
+  spawnEnemies(extraSpawner, extraSpawnerProps, relativeSpawn) {
     const spawner = extraSpawner ? extraSpawner : this.preset;
     const boundary = this.getActiveBoundary();
     const variables = this.variables || {};
@@ -727,8 +731,8 @@ class Area {
         };
 
         const count = (typeof countRaw === 'object') ? random_between(countRaw) : processVariable(countRaw);
-        const radius = processVariable(radiusRaw);
-        const speed = processVariable(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1);
+        const radius = (typeof radiusRaw === 'object') ? random_between(radiusRaw) : processVariable(radiusRaw);
+        const speed = (typeof speedRaw === 'object') ? random_between(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1) : processVariable(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1);
         const x = processVariable(xRaw);
         const y = processVariable(yRaw);
         const auraRadius = processVariable(auraRadiusRaw);
@@ -743,6 +747,9 @@ class Area {
           if (preset.gravity) preset.gravity /= 30;
           if (preset.repulsion) preset.repulsion /= 30;
           if (preset.quicksand_strength) preset.quicksand_strength /= 30;
+          if (preset.min_speed) preset.min_speed /= 30;
+          if (preset.max_speed) preset.max_speed /= 30;
+          console.log(preset)
           preset.converted_to_legacy = true;
         }
 
@@ -767,7 +774,7 @@ class Area {
               ? min_max(...x.split(',').map(parseFloat)) / 32
               : x / 32;
           } else {
-            posX = (extraSpawner) ? extraSpawnerProps.pos.x + Math.cos(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius//Math.cos(360 / (index + 1)) * radius / 32 + extraSpawnerPos.x
+            posX = (relativeSpawn) ? extraSpawnerProps.pos.x + Math.cos(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
             : Math.random() * (boundary.w - radius / 16) + boundary.x + radius / 32;
           }
 
@@ -776,12 +783,12 @@ class Area {
               ? min_max(...y.split(',').map(parseFloat)) / 32
               : y / 32;
           } else {
-            posY = (extraSpawner) ? extraSpawnerProps.pos.y + Math.sin(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
+            posY = (relativeSpawn) ? extraSpawnerProps.pos.y + Math.sin(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
             : Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
           }
 
           let changing_angle = angle;
-          if(extraSpawner && angle === undefined) {
+          if(relativeSpawn && angle === undefined) {
             changing_angle = (extraSpawnerProps.angle + Math.PI * 2 / count * index) + degrees_to_radians(Math.random() * 45);
           }
           let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, changing_angle, preset, currentAuraRadius, index, count);
@@ -789,7 +796,7 @@ class Area {
           if(this.all_enemies_immune) enemy.immune = true;
           if(extraSpawner){
             enemy.Harmless = true;
-            enemy.HarmlessEffect = 450;
+            enemy.HarmlessEffect = (relativeSpawn) ? 450 : 1000;
             enemy.appearing = true;
           }
           this.addEntity(entityTypes[enemy.type],enemy);
@@ -1008,12 +1015,26 @@ class Area {
         return new NinjaStarSniper(new Vector(posX, posY), radius / 32, speed, angle);
       case "summoner":
         return new Summoner(new Vector(posX, posY), radius / 32, speed, angle, preset.spawner);
+      case "global_spawner":
+        return new GlobalSpawner(new Vector(posX, posY), radius / 32, speed, angle, preset.spawner, preset.cooldown, preset.initial_spawner);
       case "slasher":
         return new Slasher(new Vector(posX, posY), radius / 32, speed, angle, preset.slash_radius);
       case "withering":
         return new Withering(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       case "void_crawler":
         return new VoidCrawler(new Vector(posX, posY), radius / 32, speed, angle);
+      case "dripping":
+        return new Dripping(new Vector(posX, posY), radius / 32, speed, angle);
+      case "wavering":
+        return new Wavering(new Vector(posX, posY), radius / 32, speed, angle, preset.min_speed, preset.max_speed, preset.speed_change);
+      case "variable":
+        return new Wavering(new Vector(posX, posY), radius / 32, speed, angle, preset.min_speed, preset.max_speed, preset.speed_change);
+      case "expander":
+        return new Expander(new Vector(posX, posY), radius / 32, speed, angle);
+      case "cursed":
+        return new Cursed(new Vector(posX, posY), radius / 32, speed, angle);
+      case "silence":
+        return new Silence(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }
