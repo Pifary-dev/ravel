@@ -1054,8 +1054,8 @@ class Area {
   }
 
   addEntity(name, entity) {
-    if(this.entities[name] === undefined) this.entities[name] = [];
-    this.entities[name].push(entity);
+    if(this.entities[name + ' ' + entity.radius + ' radius'] === undefined) this.entities[name + ' ' + entity.radius + ' radius'] = [];
+    this.entities[name + ' ' + entity.radius + ' radius'].push(entity);
   }
   addEntitiesBehind(name, entity, amount){ // ¯\_(ツ)_/¯
     const isExists = this.entities[name] !== undefined;
