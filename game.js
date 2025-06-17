@@ -725,7 +725,6 @@ class Area {
           if (preset.quicksand_strength) preset.quicksand_strength /= 30;
           if (preset.min_speed) preset.min_speed /= 30;
           if (preset.max_speed) preset.max_speed /= 30;
-          console.log(preset)
           preset.converted_to_legacy = true;
         }
 
