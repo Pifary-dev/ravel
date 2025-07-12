@@ -1838,7 +1838,7 @@ class Rameses extends Player {
     this.strokeColor = "#686b2a";
   }
   abilities(time, area, offset) {
-    const firstAbilityCost = 50;
+    const firstAbilityCost = 40;
     if (this.firstAbility && this.energy >= firstAbilityCost && this.firstAbilityCooldown == 0 && !this.bandage && this.ab1L) {
       this.energy -= firstAbilityCost;
       this.stand = true;
