@@ -141,8 +141,7 @@ class Game {
     obj.background_color = area.background_color;
     obj.lighting = area.lighting;
     obj.texture = area.texture||0;
-    obj.variables = area.variables;
-    obj.pattern_amount = area.pattern_amount;
+    obj.patterns = area.patterns;
     obj.text = area.text;
     obj.pos = new Vector(area.pos.x + this.worlds[player.world].pos.x, area.pos.y + this.worlds[player.world].pos.y);
     obj.boundary = area.getBoundary();
@@ -230,7 +229,7 @@ class World {
         }
       }
 
-      ['move_clockwise', 'initial_side', 'horizontal', 'pattern_id'].forEach(prop => {
+      ['move_clockwise', 'initial_side', 'horizontal'].forEach(prop => {
         if (values[prop] !== undefined) object[prop] = values[prop];
       });
 
@@ -325,6 +324,8 @@ class World {
         texture: this.texture
       });
 
+
+
       if (propertiesC) {
         if (propertiesC.background_color) {
           const colorC = propertiesC.background_color;
@@ -334,8 +335,6 @@ class World {
         if (propertiesC.title_stroke_color) area.title_stroke_color = propertiesC.title_stroke_color;
         if (propertiesC.lighting !== undefined) area.lighting = propertiesC.lighting;
         if (propertiesC.all_enemies_immune !== undefined) area.all_enemies_immune = propertiesC.all_enemies_immune;
-        if (propertiesC.variables !== undefined) area.variables = propertiesC.variables;
-        if (propertiesC.pattern_amount !== undefined) area.pattern_amount = propertiesC.pattern_amount;
         if (propertiesC.magnetism) area.magnetism = true;
         if (propertiesC.partial_magnetism) area.partial_magnetism = true;
         if (propertiesC.applies_lantern) area.applies_lantern = true;
@@ -357,6 +356,7 @@ class World {
         if (areay.toString().startsWith("last_bottom")) areay = lastDimensions.bottom - areaPosY;
         if (areay.toString().startsWith("last_y") || areay.toString().startsWith("last_top")) areay = lastDimensions.y;
         if (areax.toString().startsWith("last_x") || areax.toString().startsWith("last_left")) areax = lastDimensions.x;
+        if (zone.patterns) area.patterns = zone.patterns;
 
         // corrupted casino crashes without this ;-;
         if(typeof areax === "string") areax = parseFloat(areax);
@@ -654,84 +654,164 @@ class Area {
     this.spawnPellets(boundary);
     this.spawnEnemies();
   }
+  
+  spawnPattern(preset, boundary, matchingPattern) {
+    const {
+      auraRadius: auraRadiusRaw, 
+      count: countRaw, 
+      radius: radiusRaw,
+      speed: speedRaw, 
+      x: xRaw, 
+      y: yRaw, 
+      angle: angleRaw, 
+      type: enemyTypes
+    } = preset;
+
+    // Determine how many pattern instances to spawn
+    const patternCount = (typeof countRaw === 'object') ? random_between(countRaw) : countRaw;
+            
+    // Spawn each pattern instance
+    for (let patternInstance = 0; patternInstance < patternCount; patternInstance++) {
+      // Calculate standard properties for this pattern instance
+      const standard_radius = (typeof radiusRaw === 'object') ? random_between(radiusRaw) : radiusRaw;
+      const standard_speed = (typeof speedRaw === 'object') 
+        ? random_between(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1) 
+        : speedRaw / (settings.convert_to_legacy_speed ? 30 : 1);
+
+      // Calculate pattern boundaries to ensure proper positioning
+      let maxX = 0, minX = 0, maxY = 0, minY = 0, maxRadius = 0;
+      for (const spawner of matchingPattern.spawner) {
+        maxX = Math.max(maxX, spawner.x || 0);
+        minX = Math.min(minX, spawner.x || 0);
+        maxY = Math.max(maxY, spawner.y || 0);
+        minY = Math.min(minY, spawner.y || 0);
+        maxRadius = Math.max(maxRadius, spawner.radius || standard_radius);
+      }
+      minX = Math.abs(minX);
+      minY = Math.abs(minY);
+      
+      // Calculate base position for this pattern instance
+      const calculateCoordinate = (rawValue, boundarySize, boundaryOffset, maxOffset, minOffset, maxRadius) => {
+        if (rawValue !== undefined) {
+          if (typeof rawValue === "string" && rawValue.includes(',')) {
+            return min_max(...rawValue.split(',').map(parseFloat)) / 32;
+          }
+          return rawValue / 32;
+        }
+        const availableSpace = boundarySize * 32 - (maxOffset + maxRadius + minOffset + maxRadius);
+        return Math.random() * availableSpace / 32 + boundaryOffset + (minOffset + maxRadius) / 32;
+      };
+
+      const basePosX = calculateCoordinate(xRaw, boundary.w, boundary.x, maxX, minX, maxRadius);
+      const basePosY = calculateCoordinate(yRaw, boundary.h, boundary.y, maxY, minY, maxRadius);
+      
+      // Calculate base angle for this pattern instance
+      const baseAngle = (angleRaw !== undefined) 
+        ? (Math.PI * angleRaw) / 180 
+        : Math.random() * Math.PI * 2;
+
+      // Spawn each entity in the pattern
+      for (const patternSpawner of matchingPattern.spawner) {
+        // Calculate entity-specific properties
+        const entityRadius = patternSpawner.radius 
+          ? (typeof patternSpawner.radius === 'object') ? random_between(patternSpawner.radius) : patternSpawner.radius 
+          : standard_radius;
+        
+        const entitySpeed = patternSpawner.speed 
+          ? (typeof patternSpawner.speed === 'object') ? random_between(patternSpawner.speed) : patternSpawner.speed 
+          : standard_speed;
+        const finalEntitySpeed = (entitySpeed == standard_speed) ? entitySpeed : entitySpeed / (settings.convert_to_legacy_speed ? 30 : 1);
+        
+        const patternTypes = patternSpawner.types || enemyTypes;
+        
+        // Calculate entity position with pattern offsets
+        let entityPosX = basePosX;
+        let entityPosY = basePosY;
+
+        if (patternSpawner.x !== undefined) {
+          entityPosX = basePosX + patternSpawner.x / 32;
+        }
+        if (patternSpawner.y !== undefined) {
+          entityPosY = basePosY + patternSpawner.y / 32;
+        }
+        
+        const entityAngle = patternSpawner.angle !== undefined ? patternSpawner.angle : baseAngle;
+        
+        const randomIndex = Math.floor(Math.random() * (patternTypes?.length || 1));
+        const selectedEnemyType = patternTypes?.[randomIndex];
+        const entityAuraRadius = (preset[`${selectedEnemyType}_radius`]) ? preset[`${selectedEnemyType}_radius`] : auraRadiusRaw;
+
+        const enemy = this.createEnemy(
+          selectedEnemyType, 
+          entityPosX, 
+          entityPosY, 
+          entityRadius, 
+          finalEntitySpeed, 
+          entityAngle, 
+          preset, 
+          entityAuraRadius, 
+          patternInstance, 
+          patternCount
+        );
+        
+        enemy.isSpawned = true;
+        if (this.all_enemies_immune) enemy.immune = true;
+        this.addEntity(entityTypes[enemy.type], enemy);
+      }
+    }
+  }
+  
 
   spawnEnemies(extraSpawner, extraSpawnerProps, relativeSpawn) {
     const spawner = extraSpawner ? extraSpawner : this.preset;
     const boundary = this.getActiveBoundary();
-    const variables = this.variables || {};
-    const currentVariables = [];
-    const hashVariables = [];
-    // Process variables only if they exist
-    if (this.variables || this.pattern_amount) {
-      // Process variables
-      for (const [i, variable] of Object.entries(variables)) {
-        const variableStr = variable?.toString() || '';
-        if (variableStr.includes("#")) {
-          const [, hashIdStr] = variableStr.split("#");
-          const hashId = parseInt(hashIdStr);
-          if (isNaN(this.pattern_amount?.[hashId])) {
-            console.error("Pattern-amount is NaN.");
-            return;
-          }
-          hashVariables[hashId] = hashVariables[hashId] || [];
-          hashVariables[hashId][i] = hashVariables[hashId][i] || [];
-          for (let index = 0; index < (this.pattern_amount?.[hashId] || 0); index++) {
-            let xVariable = process_variable(variableStr);
-            xVariable = math_module(variableStr, xVariable);
-            hashVariables[hashId][i].push(xVariable);
-          }
-        }
-        const pushableVariable = math_module(variableStr, process_variable(variableStr));
-        currentVariables.push(pushableVariable);
-      }
-    }
+    const patterns = this.patterns;
 
-    // Process presets
+    // Process presets  
     for (const preset of spawner || []) {
-      let pattern_amount = this.pattern_amount ? [...this.pattern_amount] : [];
-      do {
-        if (pattern_amount && pattern_amount[preset.pattern_id] !== undefined) {
-          pattern_amount[preset.pattern_id]--;
-        }
+      const {
+        auraRadius: auraRadiusRaw, count: countRaw, radius: radiusRaw,
+        speed: speedRaw, x: xRaw, y: yRaw, angle: angleRaw, type: enemyTypes
+      } = preset;
 
-        const {
-          pattern_id, auraRadius: auraRadiusRaw, count: countRaw, radius: radiusRaw,
-          speed: speedRaw, x: xRaw, y: yRaw, angle: angleRaw, type: enemyTypes
-        } = preset;
+      if (settings.convert_to_legacy_speed && !preset.converted_to_legacy) {
+        if (preset.turn_speed) preset.turn_speed /= 30;
+        if (preset.turn_acceleration) preset.turn_acceleration /= 30;
+        if (preset.shot_acceleration) preset.shot_acceleration /= 30;
+        if (preset.projectile_speed) preset.projectile_speed /= 30;
+        if (preset.speed_loss) preset.speed_loss /= 30;
+        if (preset.increment) preset.increment /= 30;
+        if (preset.gravity) preset.gravity /= 30;
+        if (preset.repulsion) preset.repulsion /= 30;
+        if (preset.quicksand_strength) preset.quicksand_strength /= 30;
+        if (preset.min_speed) preset.min_speed /= 30;
+        if (preset.max_speed) preset.max_speed /= 30;
+        preset.converted_to_legacy = true;
+      }
 
-        const processVariable = (value) => {
-          if (this.variables && typeof value === "string" && value.startsWith("var") && currentVariables.length > 0) {
-            return find_variable(value, currentVariables, hashVariables, pattern_id, pattern_amount);
+      const patternTypes = [];
+      let matchingPattern;
+      if (patterns && enemyTypes && Array.isArray(enemyTypes)) {
+        for (const enemyType of enemyTypes) {
+          matchingPattern = patterns.find(pattern => pattern.name === enemyType);
+          if (matchingPattern && matchingPattern.spawner) {
+            patternTypes.push(enemyType);
           }
-          return value;
-        };
-
-        const count = (typeof countRaw === 'object') ? random_between(countRaw) : processVariable(countRaw);
-        const radius = (typeof radiusRaw === 'object') ? random_between(radiusRaw) : processVariable(radiusRaw);
-        const speed = (typeof speedRaw === 'object') ? random_between(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1) : processVariable(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1);
-        const x = processVariable(xRaw);
-        const y = processVariable(yRaw);
-        const auraRadius = processVariable(auraRadiusRaw);
-
-        if (settings.convert_to_legacy_speed && !preset.converted_to_legacy) {
-          if (preset.turn_speed) preset.turn_speed /= 30;
-          if (preset.turn_acceleration) preset.turn_acceleration /= 30;
-          if (preset.shot_acceleration) preset.shot_acceleration /= 30;
-          if (preset.projectile_speed) preset.projectile_speed /= 30;
-          if (preset.speed_loss) preset.speed_loss /= 30;
-          if (preset.increment) preset.increment /= 30;
-          if (preset.gravity) preset.gravity /= 30;
-          if (preset.repulsion) preset.repulsion /= 30;
-          if (preset.quicksand_strength) preset.quicksand_strength /= 30;
-          if (preset.min_speed) preset.min_speed /= 30;
-          if (preset.max_speed) preset.max_speed /= 30;
-          preset.converted_to_legacy = true;
         }
+      }
+
+      if (patternTypes.length > 0 && matchingPattern) {
+        this.spawnPattern(preset, boundary, matchingPattern);
+      } else {
+        const count = (typeof countRaw === 'object') ? random_between(countRaw) : countRaw;
+        const radius = (typeof radiusRaw === 'object') ? random_between(radiusRaw) : radiusRaw;
+        const speed = (typeof speedRaw === 'object') ? random_between(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1) : speedRaw / (settings.convert_to_legacy_speed ? 30 : 1);
+        const x = xRaw;
+        const y = yRaw;
+        const auraRadius = auraRadiusRaw;
 
         let angle;
-        if (this.variables && typeof angleRaw === "string" && currentVariables.length > 0 && angleRaw.startsWith("var")) {
-          angle = (Math.PI * processVariable(angleRaw)) / 180;
-        } else if (angleRaw !== undefined) {
+        if (angleRaw !== undefined) {
           angle = (Math.PI * angleRaw) / 180;
         }
 
@@ -776,7 +856,7 @@ class Area {
           }
           this.addEntity(entityTypes[enemy.type],enemy);
         }
-      } while ((pattern_amount[preset.pattern_id])>0);
+      }
     }
   }
 
@@ -1053,8 +1133,9 @@ class Area {
   }
 
   addEntity(name, entity) {
-    if(this.entities[name + ' ' + entity.radius + ' radius'] === undefined) this.entities[name + ' ' + entity.radius + ' radius'] = [];
-    this.entities[name + ' ' + entity.radius + ' radius'].push(entity);
+    const entityName = name + ' ' + entity.radius + ' radius';
+    if(this.entities[entityName] === undefined) this.entities[entityName] = [];
+    this.entities[entityName].push(entity);
   }
   addEntitiesBehind(name, entity, amount){ // ¯\_(ツ)_/¯
     const isExists = this.entities[name] !== undefined;

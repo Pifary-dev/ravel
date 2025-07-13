@@ -81,7 +81,7 @@ var entityTypes = [
   "summoner",
   "slasher",
   "wavering",
-  "curse",
+  "cursed",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",
@@ -563,70 +563,6 @@ function min_max(min,max) {
 
 function random_between(array){
   return array[random((array.length-1))]
-}
-
-function math_module(variable, pushableVariable) {
-  const operators = {
-    '+': (a, b) => a + b,
-    '-': (a, b) => a - b,
-    '*': (a, b) => a * b,
-    '/': (a, b) => a / b,
-    '^': (a, b) => a ** b
-  };
-
-  for (const [op, func] of Object.entries(operators)) {
-    if (variable.includes(op)) {
-      return func(pushableVariable, parseFloat(variable.split(op)[1]));
-    }
-  }
-  return pushableVariable;
-}
-
-function process_variable(variable) {
-  // If the variable is a number, return it as a float
-  if (!isNaN(parseFloat(variable))) {
-    return parseFloat(variable);
-  }
-
-  // Define handlers for different variable types
-  const variableHandlers = {
-    'random_between': () => {
-      const options = variable.match(/\((.*?)\)/)[1].split('|');
-      return parseFloat(random_between(options));
-    },
-    'random': () => {
-      const max = parseInt(variable.match(/\((.*?)\)/)[1]);
-      return random(max);
-    },
-    'min': () => {
-      const matches = variable.match(/min\((.*?)\).*?max\((.*?)\)/);
-      const min = Number(matches[1]);
-      const max = Number(matches[2]);
-      return min_max(min, max);
-    }
-  };
-
-  // Check if the variable starts with any of the defined prefixes
-  for (const [prefix, handler] of Object.entries(variableHandlers)) {
-    if (variable.startsWith(prefix)) {
-      return handler();
-    }
-  }
-
-  // If no matching handler is found, return 0
-  return 0;
-}
-
-function find_variable(preset, variables, hashVariables, pattern_id, amount) {
-  const [, string] = preset.split('var');
-  const id = parseInt(string);
-  
-  if (pattern_id !== undefined && hashVariables[pattern_id]?.[id]) {
-    const xVariable = hashVariables[pattern_id][id][amount[pattern_id]];
-    return math_module(string, xVariable);
-  }
-  
-  return math_module(string, variables[id]);
 }
 
 function loadImages(character) {
