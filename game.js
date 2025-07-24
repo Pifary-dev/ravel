@@ -70,7 +70,6 @@ class Game {
 
       if ((zone.type === 2 || zone.type === 3) && dist < player.radius) {
         onTele = true;
-        player.resetEffectsAfterAreaChange();
         if (!player.onTele) {
           const targetPoint = new Vector(player.pos.x + zone.translate.x, player.pos.y + zone.translate.y);
           

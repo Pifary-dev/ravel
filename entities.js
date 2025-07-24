@@ -773,7 +773,12 @@ class Player {
     if (this.magnetic_reduction) this.verticalSpeedMultiplayer = 0.5 * this.effectImmune;
     if (this.magnetic_nullification) this.verticalSpeedMultiplayer = 0;
     if (this.enlarging) this.radiusAdditioner += 10 * this.effectImmune;
-    if (this.expander_interactions>0) this.radiusAdditioner += 5 * this.expander_interactions * this.effectImmune;
+    if (this.expander_interactions>0){
+      this.radiusAdditioner += 4 * this.expander_interactions * this.effectImmune;
+      if(this.safeZone){
+        this.expander_interactions = 0;
+      }
+    }
     if (this.expander_interactions>5) death(this);
     
     if (this.poison) {
@@ -951,9 +956,6 @@ class Player {
         this.speedMultiplier *= argument;
       }
     }
-  }
-  resetEffectsAfterAreaChange(){
-    this.expander_interactions = 0;
   }
   clearEffects(){
     if(!this.blocking){
