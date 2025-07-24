@@ -216,6 +216,7 @@ function renderEntities(area, players, focus) {
     }
     ctx.globalAlpha = toRGBArray(color)[3];
     if (settings.effect_blending) ctx.drawImage(effects[entityType].canvas, 0, 0);
+    ctx.globalAlpha = 1;
   }
 
   for (const entityType in area.entities) {
