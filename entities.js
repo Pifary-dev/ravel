@@ -3350,7 +3350,7 @@ class Silence extends Enemy {
     const timeFix = time / (1000 / 30);
     if (this.givingSilence) {
       this.givingSilence = false;
-      this.auraSize -= 2 / 32 * timeFix;
+      this.auraSize -= 4 / 32 * timeFix;
     } else if (this.auraSize < this.maxRadius) {
       this.auraSize += 2 / 32 * timeFix;
       if(this.auraSize > this.maxRadius) this.auraSize = this.maxRadius;
