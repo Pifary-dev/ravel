@@ -373,6 +373,7 @@ class Player {
     this.leadTime = 0;
     this.reducingEffect = 0;
     this.burningTimer = 0;
+    this.voidDrainTimer = 0;
     this.stickness = 0;
     this.stickyTrailTimer = 0;
     this.sticky = false;
@@ -855,9 +856,22 @@ class Player {
     
     if (this.burning) {
       this.burningTimer += time * this.effectImmune * this.burn_modifier;
-      if (this.burningTimer > 1000) death(this);
+      if (this.burningTimer > 1000) {
+        death(this);
+        this.burningTimer = 0;
+      }
     } else {
       this.burningTimer = Math.max(0, this.burningTimer - time);
+    }
+
+    if (this.voidDrain) {
+      this.voidDrainTimer += time * this.effectImmune;
+      if (this.voidDrainTimer > 2500) {
+        death(this);
+        this.voidDrainTimer = 0;
+      }
+    } else {
+      this.voidDrainTimer = Math.max(0, this.voidDrainTimer - time);
     }
 
     if (this.curse) {
@@ -978,6 +992,7 @@ class Player {
       this.magnetic_reduction = false;
       this.magnetic_nullification = false;
       this.withering = false;
+      this.voidDrain = false;
     }
     this.blocking = false;
     this.radiusAdditioner = 0;
@@ -3217,13 +3232,13 @@ class VoidCrawler extends Enemy {
       const dX = closestPlayer.x - this.pos.x;
       const dY = closestPlayer.y - this.pos.y;
       this.targetAngle = Math.atan2(dY, dX);
+      const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
+      const angleIncrement = this.increment * (time / 30);
+      if (Math.abs(angleDiff) >= this.increment) {
+        this.angle += Math.sign(angleDiff) * angleIncrement;
+      }
+      this.angleToVel();
     }
-    const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
-    const angleIncrement = this.increment * (time / 30);
-    if (Math.abs(angleDiff) >= this.increment) {
-      this.angle += Math.sign(angleDiff) * angleIncrement;
-    }
-    this.angleToVel();
   }
   change_angle(change){
     this.velToAngle();
@@ -3266,13 +3281,13 @@ class Homing extends Enemy {
       const dX = closestPlayer.x - this.pos.x;
       const dY = closestPlayer.y - this.pos.y;
       this.targetAngle = Math.atan2(dY, dX);
+      const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
+      const angleIncrement = this.increment * (time / 30);
+      if (Math.abs(angleDiff) >= this.increment) {
+        this.angle += Math.sign(angleDiff) * angleIncrement;
+      }
+      this.angleToVel();
     }
-    const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
-    const angleIncrement = this.increment * (time / 30);
-    if (Math.abs(angleDiff) >= this.increment) {
-      this.angle += Math.sign(angleDiff) * angleIncrement;
-    }
-    this.angleToVel();
   }
   findClosestPlayer(players, offset) {
     let closestDist = this.home_range;
@@ -5779,6 +5794,17 @@ class Poison_Ghost extends Enemy {
       player.poison = true;
       player.poisonTime = 0;
       player.poisonTimeLeft = 150*player.effectImmune;
+    }
+  }
+}
+
+class VoidDrain extends Enemy {
+  constructor(pos, radius, speed, angle, auraRadius = 150) {
+    super(pos, entityTypes.indexOf("void_drain"), radius, speed, angle, "#261235", true, "rgba(38, 18, 53, 0.15)", auraRadius / 32);
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      player.voidDrain = true;
     }
   }
 }

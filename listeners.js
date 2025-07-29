@@ -30,7 +30,7 @@ const settings = {
   scale: 1,
   cheats: true,
   v_sync: false,
-  effect_blending: false
+  effect_blending: true
 }
 
 const ping = {

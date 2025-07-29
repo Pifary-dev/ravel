@@ -545,7 +545,7 @@ function renderPlayers(area, players, focus) {
 
     // Render effects (poison, frozen, burning, lead)
     if (player.poison) {
-      context.fillStyle = `rgba(140, 1, 183,${(player.poisonTimeLeft - player.poisonTime) / player.poisonTimeLeft})`;
+      context.fillStyle = `rgba(140, 1, 183, ${(player.poisonTimeLeft - player.poisonTime) / player.poisonTimeLeft})`;
       context.beginPath();
       context.arc(playerX, playerY, (player.radius + 0.5 / 32) * fov, 0, Math.PI * 2);
       context.fill();
@@ -557,13 +557,19 @@ function renderPlayers(area, players, focus) {
       context.fill();
     }
     if (player.frozen) {
-      context.fillStyle = `rgba(137, 231, 255,${Math.min((player.frozenTimeLeft - player.frozenTime) / player.frozenTimeLeft, 0.7)})`;
+      context.fillStyle = `rgba(137, 231, 255, ${Math.min((player.frozenTimeLeft - player.frozenTime) / player.frozenTimeLeft, 0.7)})`;
       context.beginPath();
       context.arc(playerX, playerY, (player.radius + 0.5 / 32) * fov, 0, Math.PI * 2);
       context.fill();
     }
     if (player.burningTimer > 0) {
-      context.fillStyle = `rgba(0, 0, 0,${player.burningTimer / 1000})`;
+      context.fillStyle = `rgba(0, 0, 0, ${player.burningTimer / 1000})`;
+      context.beginPath();
+      context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
+      context.fill();
+    }
+    if (player.voidDrainTimer > 0) {
+      context.fillStyle = `rgba(94, 77, 102, ${player.voidDrainTimer / 2500})`;
       context.beginPath();
       context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       context.fill();

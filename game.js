@@ -1089,6 +1089,8 @@ class Area {
         return new Cursed(new Vector(posX, posY), radius / 32, speed, angle);
       case "silence":
         return new Silence(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "void_drain":
+        return new VoidDrain(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }
