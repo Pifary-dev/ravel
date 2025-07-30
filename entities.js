@@ -373,6 +373,7 @@ class Player {
     this.leadTime = 0;
     this.reducingEffect = 0;
     this.burningTimer = 0;
+    this.voidDrainTimer = 0;
     this.stickness = 0;
     this.stickyTrailTimer = 0;
     this.sticky = false;
@@ -773,7 +774,12 @@ class Player {
     if (this.magnetic_reduction) this.verticalSpeedMultiplayer = 0.5 * this.effectImmune;
     if (this.magnetic_nullification) this.verticalSpeedMultiplayer = 0;
     if (this.enlarging) this.radiusAdditioner += 10 * this.effectImmune;
-    if (this.expander_interactions>0) this.radiusAdditioner += 5 * this.expander_interactions * this.effectImmune;
+    if (this.expander_interactions>0){
+      this.radiusAdditioner += 4 * this.expander_interactions * this.effectImmune;
+      if(this.safeZone){
+        this.expander_interactions = 0;
+      }
+    }
     if (this.expander_interactions>5) death(this);
     
     if (this.poison) {
@@ -850,9 +856,22 @@ class Player {
     
     if (this.burning) {
       this.burningTimer += time * this.effectImmune * this.burn_modifier;
-      if (this.burningTimer > 1000) death(this);
+      if (this.burningTimer > 1000) {
+        death(this);
+        this.burningTimer = 0;
+      }
     } else {
       this.burningTimer = Math.max(0, this.burningTimer - time);
+    }
+
+    if (this.voidDrain) {
+      this.voidDrainTimer += time * this.effectImmune;
+      if (this.voidDrainTimer > 2500) {
+        death(this);
+        this.voidDrainTimer = 0;
+      }
+    } else {
+      this.voidDrainTimer = Math.max(0, this.voidDrainTimer - time);
     }
 
     if (this.curse) {
@@ -952,9 +971,6 @@ class Player {
       }
     }
   }
-  resetEffectsAfterAreaChange(){
-    this.expander_interactions = 0;
-  }
   clearEffects(){
     if(!this.blocking){
       this.reducing = false;
@@ -976,6 +992,7 @@ class Player {
       this.magnetic_reduction = false;
       this.magnetic_nullification = false;
       this.withering = false;
+      this.voidDrain = false;
     }
     this.blocking = false;
     this.radiusAdditioner = 0;
@@ -1838,7 +1855,7 @@ class Rameses extends Player {
     this.strokeColor = "#686b2a";
   }
   abilities(time, area, offset) {
-    const firstAbilityCost = 50;
+    const firstAbilityCost = 40;
     if (this.firstAbility && this.energy >= firstAbilityCost && this.firstAbilityCooldown == 0 && !this.bandage && this.ab1L) {
       this.energy -= firstAbilityCost;
       this.stand = true;
@@ -3215,13 +3232,13 @@ class VoidCrawler extends Enemy {
       const dX = closestPlayer.x - this.pos.x;
       const dY = closestPlayer.y - this.pos.y;
       this.targetAngle = Math.atan2(dY, dX);
+      const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
+      const angleIncrement = this.increment * (time / 30);
+      if (Math.abs(angleDiff) >= this.increment) {
+        this.angle += Math.sign(angleDiff) * angleIncrement;
+      }
+      this.angleToVel();
     }
-    const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
-    const angleIncrement = this.increment * (time / 30);
-    if (Math.abs(angleDiff) >= this.increment) {
-      this.angle += Math.sign(angleDiff) * angleIncrement;
-    }
-    this.angleToVel();
   }
   change_angle(change){
     this.velToAngle();
@@ -3264,13 +3281,13 @@ class Homing extends Enemy {
       const dX = closestPlayer.x - this.pos.x;
       const dY = closestPlayer.y - this.pos.y;
       this.targetAngle = Math.atan2(dY, dX);
+      const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
+      const angleIncrement = this.increment * (time / 30);
+      if (Math.abs(angleDiff) >= this.increment) {
+        this.angle += Math.sign(angleDiff) * angleIncrement;
+      }
+      this.angleToVel();
     }
-    const angleDiff = Math.atan2(Math.sin(this.targetAngle - this.angle), Math.cos(this.targetAngle - this.angle));
-    const angleIncrement = this.increment * (time / 30);
-    if (Math.abs(angleDiff) >= this.increment) {
-      this.angle += Math.sign(angleDiff) * angleIncrement;
-    }
-    this.angleToVel();
   }
   findClosestPlayer(players, offset) {
     let closestDist = this.home_range;
@@ -3348,7 +3365,7 @@ class Silence extends Enemy {
     const timeFix = time / (1000 / 30);
     if (this.givingSilence) {
       this.givingSilence = false;
-      this.auraSize -= 2 / 32 * timeFix;
+      this.auraSize -= 4 / 32 * timeFix;
     } else if (this.auraSize < this.maxRadius) {
       this.auraSize += 2 / 32 * timeFix;
       if(this.auraSize > this.maxRadius) this.auraSize = this.maxRadius;
@@ -3731,6 +3748,7 @@ class Sniper extends Enemy {
     return closestPlayer;
   }
 }
+
 class SniperBullet extends Enemy {
   constructor(pos, angle, radius, speed) {
     super(pos, entityTypes.indexOf("sniper_bullet"), radius, speed, angle, "#a05353");
@@ -3751,6 +3769,47 @@ class SniperBullet extends Enemy {
   }
 }
 
+class VoidSniper extends Sniper {
+  constructor(pos, radius, speed, angle, color = "#40144b") {
+    super(pos, radius, speed, angle, color);
+    this.type = entityTypes.indexOf("void_sniper");
+    this.releaseTime = 3000;
+    this.bulletType = 20;
+    this.bulletSpeed = 10;
+    this.bulletRadius = this.radius / 4;
+    this.clock = Math.random() * this.releaseTime;
+    this.detectionDistance = 600 / 32;
+    this.additionalProperties = [];
+  }
+}
+
+class VoidSniperBullet extends SniperBullet {
+  constructor(pos, angle, radius, speed) {
+    super(pos, angle, radius, speed);
+    this.color = "#1e0723";
+    this.removeTime = 3000;
+
+    this.sizing_limit = 6;
+    this.sizing_changing_speed = 1;
+    this.maxRadius = this.radius * this.sizing_limit;
+    this.changingRadius = this.radius;
+    this.staticRadius = this.radius;
+  }
+  behavior(time, area, offset, players) {
+    super.behavior(time, area, offset, players);
+    const timeFix = (time / (1000 / 30));
+
+    if(this.changingRadius < this.maxRadius){
+      this.changingRadius += (this.sizing_changing_speed / 32) * timeFix;
+    }
+    if (this.changingRadius > this.maxRadius) {
+      this.changingRadius = this.maxRadius;
+    } 
+
+    // i want to increase radius based on changing radius without touching radius
+    this.radiusMultiplier *= this.changingRadius / this.staticRadius;
+  }
+}
 class NinjaStarSniper extends Sniper {
   constructor(pos, radius, speed, angle, color = "#dedede") {
     super(pos, radius, speed, angle, color);
@@ -5777,6 +5836,17 @@ class Poison_Ghost extends Enemy {
       player.poison = true;
       player.poisonTime = 0;
       player.poisonTimeLeft = 150*player.effectImmune;
+    }
+  }
+}
+
+class VoidDrain extends Enemy {
+  constructor(pos, radius, speed, angle, auraRadius = 150) {
+    super(pos, entityTypes.indexOf("void_drain"), radius, speed, angle, "#261235", true, "rgba(38, 18, 53, 0.15)", auraRadius / 32);
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      player.voidDrain = true;
     }
   }
 }

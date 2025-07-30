@@ -29,7 +29,8 @@ const settings = {
   ui_scale: 1,
   scale: 1,
   cheats: true,
-  v_sync: false
+  v_sync: false,
+  effect_blending: true
 }
 
 const ping = {

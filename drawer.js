@@ -1,6 +1,7 @@
 let tilesCanvas;
 let minimapCanvas;
 let shouldRenderPartially = undefined;
+let effects = [];
 
 const canvas = document.getElementById("game");
 const context = canvas.getContext("2d");
@@ -8,16 +9,17 @@ let width = canvas.width,
   height = canvas.height;
 
 function renderArea(area, players, focus, areaUpdated) {
-  if(!images.tiles.complete) return;
+  if (!images.tiles.complete) return;
   const player = players[0];
   const light = document.createElement('canvas');
   const lightCtx = light.getContext("2d");
   light.width = width;
   light.height = height;
   if (areaUpdated || !tilesCanvas) {
-    tilesCanvas = undefined; 
+    tilesCanvas = undefined;
     minimapCanvas = undefined;
     shouldRenderPartially = undefined;
+    effects = [];
   }
   renderTiles(area, players, focus);
   renderAssets(area, players, focus);
@@ -39,9 +41,9 @@ function renderArea(area, players, focus, areaUpdated) {
     players.forEach(player => {
       let playerX = width / 2 + (player.pos.x - focus.x) * fov;
       let playerY = height / 2 + (player.pos.y - focus.y) * fov;
-      
-      player.lightCount = (player.lantern_active && player.lantern) ? 250/32 : 50/32;
-      renderLight(playerX||0, playerY||0, player.lightCount * fov);
+
+      player.lightCount = (player.lantern_active && player.lantern) ? 250 / 32 : 50 / 32;
+      renderLight(playerX || 0, playerY || 0, player.lightCount * fov);
 
       if (player.flashlight_active && player.flashlight && player.energy > 0) {
         const flashlightRadius = (460 / 32) * fov;
@@ -49,11 +51,11 @@ function renderArea(area, players, focus, areaUpdated) {
         const flashlightAngleIncrement = 9;
         const flashlightDistance = 500 / 32 * fov;
 
-        player.inputAng = mouse ? Math.atan2(mousePos.y - playerY, mousePos.x - playerX) * 180 / Math.PI : 
-                                  player.moving ? Math.atan2(player.dirY, player.dirX) * 180 / Math.PI : player.lastAng;
-        
+        player.inputAng = mouse ? Math.atan2(mousePos.y - playerY, mousePos.x - playerX) * 180 / Math.PI :
+          player.moving ? Math.atan2(player.dirY, player.dirX) * 180 / Math.PI : player.lastAng;
+
         player.inputAng = (player.inputAng + 360) % 360;
-        
+
         const angleDiff = ((player.inputAng - player.lastAng + 540) % 360) - 180;
         player.lastAng += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), flashlightAngleIncrement);
         player.lastAng = (player.lastAng + 360) % 360;
@@ -79,8 +81,8 @@ function renderArea(area, players, focus, areaUpdated) {
             entityX += entity.size.x / 2 * fov;
             entityY += entity.size.y / 2 * fov;
           }
-          
-          renderLight(entityX||0, entityY||0, (lightPower / 32) * fov);
+
+          renderLight(entityX || 0, entityY || 0, (lightPower / 32) * fov);
         }
       });
 
@@ -90,8 +92,8 @@ function renderArea(area, players, focus, areaUpdated) {
     context.globalCompositeOperation = "destination-in";
     context.drawImage(light, 0, 0);
     context.globalCompositeOperation = "source-over";
-  } 
-  applyScale(context,settings.scale,()=>{
+  }
+  applyScale(context, settings.scale, () => {
     renderUI(area, players, focus);
     renderMinimap(area, players, focus);
     if (player.overlay) {
@@ -151,7 +153,7 @@ function renderStaticEntities(area, players, focus) {
       const enemyX = width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov;
       const enemyY = height / 2 + (area.pos.y + entity.pos.y - focus.y) * fov;
       const enemyRadius = (entity.scaleOscillator ? entity.scaleOscillator.value : 1) * entity.radius * fov;
-      if (enemyX + enemyRadius < 0 || enemyX - enemyRadius > width || 
+      if (enemyX + enemyRadius < 0 || enemyX - enemyRadius > width ||
         enemyY + enemyRadius < 0 || enemyY - enemyRadius > height) {
         continue;
       }
@@ -169,10 +171,19 @@ function renderEntities(area, players, focus) {
   const focusX = focus.x;
   const focusY = focus.y;
   // Render effects first
-  for (const entityType in { ...area.entities, ...area.effects}) {
+  for (const entityType in { ...area.entities, ...area.effects }) {
     const entities = area.entities[entityType] ? area.entities[entityType] : area.effects[entityType];
-    if (!entities[0]) continue;
-    if (!entities[0].aura && !entities[0].isEffect) continue;
+    const firstEntity = entities[0];
+    if (!firstEntity) continue;
+    if (!firstEntity.aura && !firstEntity.isEffect) continue;
+    if (settings.effect_blending) if (effects[entityType] === undefined) {
+      effects[entityType] = {};
+      effects[entityType].canvas = createOffscreenCanvas(width, height);
+      effects[entityType].ctx = effects[entityType].canvas.getContext("2d");
+    } else {
+      effects[entityType].ctx.clearRect(0, 0, width, height);
+    }
+    const color = firstEntity.isEffect ? firstEntity.color : firstEntity.auraColor;
     const len = entities.length;
     for (let i = 0; i < len; i++) {
       const entity = entities[i];
@@ -182,17 +193,30 @@ function renderEntities(area, players, focus) {
       const effectRadius = (entity.isEffect ? entity.radius : entity.auraSize) * fov;
 
       // Check if the entity is within the visible range
-      if (effectX + effectRadius < 0 || effectX - effectRadius > width || 
-          effectY + effectRadius < 0 || effectY - effectRadius > height) {
+      if (effectX + effectRadius < 0 || effectX - effectRadius > width ||
+        effectY + effectRadius < 0 || effectY - effectRadius > height) {
         continue;
       }
 
       // Render effect
+      if (settings.effect_blending && !entity.isEffect) {
+        const effectCtx = effects[entityType].ctx;
+        const colorArray = toRGBArray(color);
+        effectCtx.beginPath();
+        effectCtx.fillStyle = `rgb(${colorArray[0]},${colorArray[1]},${colorArray[2]})`;
+        effectCtx.arc(effectX, effectY, effectRadius, 0, Math.PI * 2);
+        effectCtx.fill();
+        continue;
+      };
+
       ctx.beginPath();
-      ctx.fillStyle = entity.isEffect ? entity.color : entity.auraColor;
+      ctx.fillStyle = color;
       ctx.arc(effectX, effectY, effectRadius, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.globalAlpha = toRGBArray(color)[3];
+    if (settings.effect_blending) ctx.drawImage(effects[entityType].canvas, 0, 0);
+    ctx.globalAlpha = 1;
   }
 
   for (const entityType in area.entities) {
@@ -284,13 +308,13 @@ function renderShatteredEntity(ctx, entity, x, y, radius) {
 }
 
 function renderShieldEntity(ctx, entity, x, y) {
-  if(entity.isShield){
+  if (entity.isShield) {
     ctx.save()
-    ctx.translate(x,y)
+    ctx.translate(x, y)
     ctx.rotate(entity.rot)
     ctx.beginPath();
     ctx.fillStyle = "black";
-    ctx.fillRect(-entity.size.x*fov,-entity.size.y*fov, entity.size.x*fov*2, entity.size.y*fov*2);
+    ctx.fillRect(-entity.size.x * fov, -entity.size.y * fov, entity.size.x * fov * 2, entity.size.y * fov * 2);
     ctx.fill();
     ctx.closePath();
     ctx.restore();
@@ -300,17 +324,17 @@ function renderShieldEntity(ctx, entity, x, y) {
 function renderNormalEntity(ctx, entity, x, y, radius) {
   let alpha = 1;
   const harmlessDuration = (entity.appearing) ? 450 : 1000;
-  if(entity.static){
+  if (entity.static) {
     alpha = 1;
-  } else if(entity.alpha){ 
+  } else if (entity.alpha) {
     alpha = entity.alpha;
-  } else if(entity.star_visibility>0){
+  } else if (entity.star_visibility > 0) {
     alpha = entity.star_visibility / entity.wall_time;
-  } else if(settings.fading_effects && entity.HarmlessEffect > 0 && entity.HarmlessEffect < harmlessDuration){
-    alpha = 0.4 + 0.6 * (1-entity.HarmlessEffect/harmlessDuration);
-  } else if(entity.isHarmless()){
+  } else if (settings.fading_effects && entity.HarmlessEffect > 0 && entity.HarmlessEffect < harmlessDuration) {
+    alpha = 0.4 + 0.6 * (1 - entity.HarmlessEffect / harmlessDuration);
+  } else if (entity.isHarmless()) {
     alpha = 0.4;
-  } 
+  }
   ctx.globalAlpha = alpha;
   ctx.beginPath();
 
@@ -320,19 +344,19 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
   } else {
     ctx.fillStyle = entity.healing > 0 ? "rgb(0, 221, 0)" : entity.color;
   }
-  if(entity.slashTime>=200 && entity.slashTime<=600 && settings.fading_effects){
-    const slash=(entity.slashTime-200)/400;
-    const color=Math.floor(54+66*slash);
-    ctx.fillStyle=`rgba(${color}, ${color}, ${color}, 1)`;
+  if (entity.slashTime >= 200 && entity.slashTime <= 600 && settings.fading_effects) {
+    const slash = (entity.slashTime - 200) / 400;
+    const color = Math.floor(54 + 66 * slash);
+    ctx.fillStyle = `rgba(${color}, ${color}, ${color}, 1)`;
   }
-  if(entity.slashing) {
+  if (entity.slashing) {
     ctx.fillStyle = "rgb(190, 190, 190)";
   }
 
   if (entity.texture) {
     renderTexturedEntity(ctx, entity, x, y, radius);
   } else {
-    if(entity.isHalf){
+    if (entity.isHalf) {
       ctx.arc(x, y, radius, 0, Math.PI, entity.orientation);
     } else {
       ctx.arc(x, y, radius, 0, Math.PI * 2);
@@ -340,20 +364,20 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     ctx.fill();
   }
 
-  if(settings.fading_effects){
+  if (settings.fading_effects) {
     const switch_time = entity.switch_total_time - entity.switch_clock;
-    if(entity.switching && switch_time <= entity.fading_effects_time){
-      alpha = 0.3 - 0.3 * Math.cos((entity.fading_effects_time-switch_time)/220*Math.PI);
+    if (entity.switching && switch_time <= entity.fading_effects_time) {
+      alpha = 0.3 - 0.3 * Math.cos((entity.fading_effects_time - switch_time) / 220 * Math.PI);
       entity.disabled ? ctx.fillStyle = `rgba(25,25,25,${alpha})` : ctx.fillStyle = `rgba(147,147,147,${alpha})`;
       ctx.fill();
     }
   }
 
-  if(entity.sugar_rush>0){
+  if (entity.sugar_rush > 0) {
     const sugarRushMaxTime = 2000;
-    const highestAlpha=0.7;
-    const adjustedAlpha=Math.min(Math.max(highestAlpha-highestAlpha*((sugarRushMaxTime-entity.sugar_rush)/sugarRushMaxTime),0),highestAlpha);
-    ctx.fillStyle=`rgba(255, 128, 189, ${adjustedAlpha})`;
+    const highestAlpha = 0.7;
+    const adjustedAlpha = Math.min(Math.max(highestAlpha - highestAlpha * ((sugarRushMaxTime - entity.sugar_rush) / sugarRushMaxTime), 0), highestAlpha);
+    ctx.fillStyle = `rgba(255, 128, 189, ${adjustedAlpha})`;
     ctx.fill();
   }
 
@@ -377,9 +401,9 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
 
   const isOutline = (settings.outline && entity.outline);
   const isProjectile = (settings.projectile_outline && !entity.static && !entity.texture && entity.projectile_outline);
-  if(entity.outlineAlpha || entity.outlineAlpha === 0) ctx.globalAlpha = entity.outlineAlpha;
+  if (entity.outlineAlpha || entity.outlineAlpha === 0) ctx.globalAlpha = entity.outlineAlpha;
 
-  if(isOutline || isProjectile) {
+  if (isOutline || isProjectile) {
     if (entity.texture) ctx.arc(x, y, radius, 0, Math.PI * 2);
 
     if (isOutline) ctx.lineWidth = 2 / (32 / fov);
@@ -412,10 +436,10 @@ function renderTexturedEntity(ctx, entity, x, y, radius) {
     case "pumpkinOff":
       texture = images.pumpkinOff;
       break;
-    case "sweet_tooth_item": 
+    case "sweet_tooth_item":
       texture = images.sweet_tooth_item;
       break;
-    case "vengeance_projectile": 
+    case "vengeance_projectile":
       texture = images.vengeance_projectile;
       break;
   }
@@ -443,7 +467,7 @@ function renderPlayers(area, players, focus) {
     4: { getRadius: () => 150 / 32, color: "rgba(76, 240, 161, 0.25)" },
   };
 
-  const heavyBalloonColors = ["rgb(2, 135, 4, .8)","rgb(228, 122, 42, .8)","rgb(255, 219, 118, .8)","rgb(4, 70, 255, .8)", "rgb(216, 48, 162, .8)"];
+  const heavyBalloonColors = ["rgb(2, 135, 4, .8)", "rgb(228, 122, 42, .8)", "rgb(255, 219, 118, .8)", "rgb(4, 70, 255, .8)", "rgb(216, 48, 162, .8)"];
 
   for (const player of players) {
     const playerX = width / 2 + (player.pos.x - focus.x) * fov;
@@ -497,21 +521,21 @@ function renderPlayers(area, players, focus) {
     } else {
       const rgb = hexToRgb(player.tempColor);
       context.fillStyle = player.night ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.6)` :
-                          player.mortar ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]},${1-player.mortarTime/1000})` :
-                          player.fusion ? "rgba(60, 60, 75)" :
-                          player.isDead ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.4)` :
-                          player.tempColor;
+        player.mortar ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]},${1 - player.mortarTime / 1000})` :
+          player.fusion ? "rgba(60, 60, 75)" :
+            player.isDead ? `rgb(${rgb[0]},${rgb[1]},${rgb[2]},0.4)` :
+              player.tempColor;
     }
 
     // Render player shape
     context.beginPath();
     if (player.type === 7 && player.shape > 0) {
       const numberOfSides = player.shape === 1 ? 4 : player.shape === 2 ? 3 : player.shape === 3 ? 5 : 4;
-      context.moveTo(playerX + playerRadius * Math.cos(-Math.PI/2), playerY + playerRadius * Math.sin(-Math.PI/2));
+      context.moveTo(playerX + playerRadius * Math.cos(-Math.PI / 2), playerY + playerRadius * Math.sin(-Math.PI / 2));
       for (let i = 1; i <= numberOfSides; i++) {
         context.lineTo(
-          playerX + playerRadius * Math.cos(i * 2 * Math.PI / numberOfSides - Math.PI/2),
-          playerY + playerRadius * Math.sin(i * 2 * Math.PI / numberOfSides - Math.PI/2)
+          playerX + playerRadius * Math.cos(i * 2 * Math.PI / numberOfSides - Math.PI / 2),
+          playerY + playerRadius * Math.sin(i * 2 * Math.PI / numberOfSides - Math.PI / 2)
         );
       }
     } else if (!player.reaperShade && !player.mortar) {
@@ -521,25 +545,31 @@ function renderPlayers(area, players, focus) {
 
     // Render effects (poison, frozen, burning, lead)
     if (player.poison) {
-      context.fillStyle = `rgba(140, 1, 183,${(player.poisonTimeLeft-player.poisonTime)/player.poisonTimeLeft})`;
+      context.fillStyle = `rgba(140, 1, 183, ${(player.poisonTimeLeft - player.poisonTime) / player.poisonTimeLeft})`;
       context.beginPath();
-      context.arc(playerX, playerY, (player.radius + 0.5/32) * fov, 0, Math.PI * 2);
+      context.arc(playerX, playerY, (player.radius + 0.5 / 32) * fov, 0, Math.PI * 2);
       context.fill();
     }
     if (player.lava) {
-      context.fillStyle = `rgba(247, 131, 6, ${(player.lavaTimeLeft-player.lavaTime)/player.lavaTimeLeft})`;
+      context.fillStyle = `rgba(247, 131, 6, ${(player.lavaTimeLeft - player.lavaTime) / player.lavaTimeLeft})`;
       context.beginPath();
-      context.arc(playerX, playerY, (player.radius + 0.5/32) * fov, 0, Math.PI * 2);
+      context.arc(playerX, playerY, (player.radius + 0.5 / 32) * fov, 0, Math.PI * 2);
       context.fill();
     }
     if (player.frozen) {
-      context.fillStyle = `rgba(137, 231, 255,${Math.min((player.frozenTimeLeft-player.frozenTime)/player.frozenTimeLeft, 0.7)})`;
+      context.fillStyle = `rgba(137, 231, 255, ${Math.min((player.frozenTimeLeft - player.frozenTime) / player.frozenTimeLeft, 0.7)})`;
       context.beginPath();
-      context.arc(playerX, playerY, (player.radius + 0.5/32) * fov, 0, Math.PI * 2);
+      context.arc(playerX, playerY, (player.radius + 0.5 / 32) * fov, 0, Math.PI * 2);
       context.fill();
     }
     if (player.burningTimer > 0) {
-      context.fillStyle = `rgba(0, 0, 0,${player.burningTimer/1000})`;
+      context.fillStyle = `rgba(0, 0, 0, ${player.burningTimer / 1000})`;
+      context.beginPath();
+      context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
+      context.fill();
+    }
+    if (player.voidDrainTimer > 0) {
+      context.fillStyle = `rgba(94, 77, 102, ${player.voidDrainTimer / 2500})`;
       context.beginPath();
       context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       context.fill();
@@ -551,14 +581,14 @@ function renderPlayers(area, players, focus) {
       const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * curseRatio);
       const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * curseRatio);
       const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * curseRatio);
-      
+
       context.fillStyle = `rgba(${r}, ${g}, ${b}, ${(1500 - player.curseEffect) / 1500})`;
       context.beginPath();
       context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       context.fill();
     }
     if (player.leadTimeLeft > 0) {
-      context.fillStyle = `rgba(33, 33, 39,${1-Math.min((player.leadTime-player.leadTimeLeft)/player.leadTime, 0.75)})`;
+      context.fillStyle = `rgba(33, 33, 39,${1 - Math.min((player.leadTime - player.leadTimeLeft) / player.leadTime, 0.75)})`;
       context.beginPath();
       context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
       context.fill();
@@ -594,10 +624,10 @@ function renderPlayers(area, players, focus) {
       const energyBarWidth = ENERGY_BAR_WIDTH / 32 * fov;
       const energyBarHeight = ENERGY_BAR_HEIGHT / 32 * fov;
       const energyBarY = playerY - player.radius * fov - ENERGY_BAR_Y_OFFSET / 32 * fov;
-      
+
       context.fillStyle = !settings.cooldown ? "rgb(255, 255, 0)" : player.sweetToothEffect ? "rgb(255, 43, 143)" : "blue";
       context.fillRect(playerX - energyBarWidth / 2, energyBarY, energyBarWidth * player.energy / player.maxEnergy, energyBarHeight);
-      
+
       context.strokeStyle = !settings.cooldown ? "rgb(211, 211, 0)" : player.sweetToothEffect ? "rgb(212, 0, 100)" : "rgb(68, 118, 255)";
       context.lineWidth = 1 / (32 / fov);
       context.strokeRect(playerX - energyBarWidth / 2, energyBarY, energyBarWidth, energyBarHeight);
@@ -626,7 +656,7 @@ function renderMinimap(area, players, focus) {
   const minimapSize = new Vector(370 * uiScale, 100 * uiScale);
   const bound = area.boundary;
   const xCoef = minimapSize.x / bound.w,
-        yCoef = minimapSize.y / bound.h;
+    yCoef = minimapSize.y / bound.h;
   if (xCoef > yCoef) {
     minimapSize.x *= yCoef / xCoef;
   } else {
@@ -640,34 +670,34 @@ function renderMinimap(area, players, focus) {
     minimapCanvas = createOffscreenCanvas(canvasSize.x, canvasSize.y);
     const ctx = minimapCanvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    
+
     for (const i in area.zones) {
       const zone = area.zones[i];
       let style = "rgb(255, 255, 255, 255)";
-      switch(zone.type){
-        case 1: style = "rgb(195, 195, 195, 255)";break;
-        case 2:case 4: style = "rgb(255, 244, 108, 255)";break;
-        case 3: style = "rgb(106, 208, 222, 255)";break;
-        case 5: style = "rgb(255, 249, 186, 255)";break;
+      switch (zone.type) {
+        case 1: style = "rgb(195, 195, 195, 255)"; break;
+        case 2: case 4: style = "rgb(255, 244, 108, 255)"; break;
+        case 3: style = "rgb(106, 208, 222, 255)"; break;
+        case 5: style = "rgb(255, 249, 186, 255)"; break;
       }
       style = toRGBArray(style);
       const x = (zone.pos.x - bound.x) * coef;
       const y = (zone.pos.y - bound.y) * coef;
       const w = zone.size.x * coef;
       const h = zone.size.y * coef;
-      
+
       let background_color = toRGBArray(zone.background_color);
       background_color[3] *= 255;
       background_color = arrayToInt32(background_color);
       const background_color_array = [background_color >> 24 & 255, background_color >> 16 & 255, background_color >> 8 & 255, 255 & background_color];
-      
-      ctx.fillStyle = arrayToRGBStr(mixColors(style,background_color_array));
+
+      ctx.fillStyle = arrayToRGBStr(mixColors(style, background_color_array));
       ctx.fillRect(x, y, w, h);
     }
 
-    for(const i in area.assets){
+    for (const i in area.assets) {
       const asset = area.assets[i];
-      if(asset.texture === undefined) continue;
+      if (asset.texture === undefined) continue;
       const x = (asset.pos.x - bound.x) * coef;
       const y = (asset.pos.y - bound.y) * coef;
       const w = asset.size.x * coef;
@@ -679,7 +709,7 @@ function renderMinimap(area, players, focus) {
     ctx.fillStyle = "rgba(80, 80, 80, 0.6)";
     ctx.fillRect(0, 0, canvasSize.x, canvasSize.y);
   }
-  
+
   context.imageSmoothingEnabled = false;
   context.drawImage(minimapCanvas, 0, staticHeight - Math.round(minimapSize.y), Math.round(minimapSize.x), Math.round(minimapSize.y));
   context.imageSmoothingEnabled = true;
@@ -821,9 +851,9 @@ function renderUI(area, players, focus) {
       context.textAlign = "center";
       if (player.points > 0) {
         const active = index < 2 ? player[`${key}L`] !== player[`${key}ML`] : false;
-        renderUpgrade(context, x, y + 17/2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 9.5 * uiScale, upgradeIndex, player, active);
+        renderUpgrade(context, x, y + 17 / 2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 9.5 * uiScale, upgradeIndex, player, active);
       } else {
-        context.fillText(text, x, y + 17/2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 17 * uiScale);
+        context.fillText(text, x, y + 17 / 2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 17 * uiScale);
       }
 
       // Draw cooldown overlay
@@ -897,20 +927,20 @@ function renderUI(area, players, focus) {
     const uiScale = settings.ui_scale || 1;
     context.fillStyle = color;
     context.beginPath();
-    
-    switch(shape) {
+
+    switch (shape) {
       case 'rect':
         context.fillRect(x, y - height * uiScale, width * uiScale, height * uiScale);
         break;
       case 'triangle':
         context.moveTo(x, y);
         context.lineTo(x + width * uiScale, y);
-        context.lineTo(x + (width * uiScale)/2, y - height * uiScale);
+        context.lineTo(x + (width * uiScale) / 2, y - height * uiScale);
         context.closePath();
         context.fill();
         break;
       case 'circle':
-        context.arc(x + (width * uiScale)/2, y - (height * uiScale)/2, (width * uiScale)/2, 0, Math.PI * 2);
+        context.arc(x + (width * uiScale) / 2, y - (height * uiScale) / 2, (width * uiScale) / 2, 0, Math.PI * 2);
         context.fill();
         break;
     }
@@ -942,7 +972,7 @@ function renderUI(area, players, focus) {
       }
     }
 
-    const upgradeY = baseY + 17/2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 9.5 * uiScale;
+    const upgradeY = baseY + 17 / 2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 9.5 * uiScale;
     const speedActive = parseFloat(player.speed.toFixed(3)) < player.maxSpeed;
     const energyActive = player.maxEnergy < player.maxUpgradableEnergy;
     const regenActive = parseFloat(player.regen.toFixed(3)) < player.maxRegen;
@@ -984,7 +1014,7 @@ function renderUpgrade(ctx, xValue, yValue, text, player, active) {
   roundedRect(ctx, x, y, width, height, 1, true, true);
   ctx.fillStyle = `rgb(${upgradeBrightness}, ${upgradeBrightness}, ${upgradeBrightness})`;
   context.font = `${12 * uiScale}px Tahoma, Verdana, Segoe, sans-serif`;
-  ctx.fillText(text, x + width/2, y + 10 * uiScale);
+  ctx.fillText(text, x + width / 2, y + 10 * uiScale);
 }
 
 function roundedRect(ctx, x, y, width, height, strokeSize = 5, fillEnabled = false, strokeEnabled = true) {
@@ -1002,9 +1032,9 @@ function roundedRect(ctx, x, y, width, height, strokeSize = 5, fillEnabled = fal
 }
 
 function drawTiles(area, focus) {
-    const x = (-focus.x + area.pos.x) * fov + width / 2;
-    const y = (-focus.y + area.pos.y) * fov + height / 2;
-    context.drawImage(tilesCanvas, x, y);
+  const x = (-focus.x + area.pos.x) * fov + width / 2;
+  const y = (-focus.y + area.pos.y) * fov + height / 2;
+  context.drawImage(tilesCanvas, x, y);
 }
 
 function renderTiles(area, players, focus) {
@@ -1012,15 +1042,15 @@ function renderTiles(area, players, focus) {
     drawTiles(area, focus);
     return;
   }
-  if(!shouldRenderPartially){
+  if (!shouldRenderPartially) {
     const { boundary, zones, assets, texture, background_color } = area;
     const { w, h } = boundary;
     const wid = w * fov, heig = h * fov;
-    
+
     tilesCanvas = createOffscreenCanvas(wid, heig);
     const ctx = tilesCanvas.getContext('2d');
-    if(fov !== 32)ctx.scale(fov/32, fov/32);
-    
+    if (fov !== 32) ctx.scale(fov / 32, fov / 32);
+
     const zoneCanvas = createOffscreenCanvas(128, 128);
     const zoneCTX = zoneCanvas.getContext('2d');
 
@@ -1038,20 +1068,20 @@ function renderTiles(area, players, focus) {
       const textureType = zone.type === 6 ? 0 : (zone.type === 4 ? 2 : (zone.type === 5 ? 4 : zone.type));
       ctx.fillStyle = patterns[textureType];
       ctx.fillRect(Math.round(zone.pos.x * 32), Math.round(zone.pos.y * 32), zone.size.x * 32, zone.size.y * 32);
-      
+
       ctx.fillStyle = zone.background_color || background_color;
       ctx.fillRect(zone.pos.x * 32, zone.pos.y * 32, zone.size.x * 32, zone.size.y * 32);
     });
-    
+
     // Render walls
     assets.forEach(zone => {
       if (zone.type > 3) return;
       const modifier = zone.texture === 4 ? 4 : 1;
       const zoneType = zone.texture === 4 ? 0 : zone.type;
-      
+
       zoneCanvas.width = zoneCanvas.height = 128 * modifier;
       zoneCTX.drawImage(images.tiles, zoneType * 128, zone.texture * 128, 128 * modifier, 128 * modifier, 0, 0, 128 * modifier, 128 * modifier);
-      
+
       ctx.fillStyle = ctx.createPattern(zoneCanvas, "repeat");
       ctx.fillRect(Math.round(zone.pos.x * 32), Math.round(zone.pos.y * 32), zone.size.x * 32, zone.size.y * 32);
     });
@@ -1059,10 +1089,10 @@ function renderTiles(area, players, focus) {
     drawTiles(area, focus);
   } else {
     const { zones, assets, texture, background_color } = area;
-    
+
     const tileSize = 32; // Assuming each tile is 32x32 pixels in the tileset
     const scaledTileSize = tileSize * (fov / 32);
-    
+
     // Calculate visible area
     const visibleWidth = width / fov;
     const visibleHeight = height / fov;
@@ -1110,13 +1140,13 @@ function renderTiles(area, players, focus) {
         }
       }
     });
-    
+
     // Render walls
     assets.forEach(zone => {
       if (zone.type > 3) return;
       const modifier = zone.texture === 4 ? 4 : 1;
       const zoneType = zone.texture === 4 ? 0 : zone.type;
-      
+
       const zoneStartX = Math.max(startX, zone.pos.x + areaX);
       const zoneStartY = Math.max(startY, zone.pos.y + areaY);
       const zoneEndX = Math.min(endX, zone.pos.x + zone.size.x + areaX);
@@ -1145,7 +1175,7 @@ function renderTiles(area, players, focus) {
 }
 
 function renderAssets(area, players, focus) {
-  if(!area.assets.length)return;
+  if (!area.assets.length) return;
   const player = players[0];
   const scale = settings.scale / (32 / fov * settings.scale);
   const assetImages = {
@@ -1176,7 +1206,7 @@ function renderAssets(area, players, focus) {
   });
 }
 
-function updateBackground(context,width,height,color){
+function updateBackground(context, width, height, color) {
   context.clearRect(0, 0, width, height);
   context.beginPath();
   context.fillStyle = color;
@@ -1185,7 +1215,7 @@ function updateBackground(context,width,height,color){
   context.closePath();
 }
 
-function drawAreaHeader(context,lineSize,strokeStyle,text,width,height,world,size = 35,fillStyle = "#f4faff"){
+function drawAreaHeader(context, lineSize, strokeStyle, text, width, height, world, size = 35, fillStyle = "#f4faff") {
   const uiScale = settings.ui_scale || 1;
   context.beginPath();
   context.textAlign = "center";
@@ -1194,7 +1224,7 @@ function drawAreaHeader(context,lineSize,strokeStyle,text,width,height,world,siz
   context.strokeStyle = strokeStyle;
   context.font = "bold " + (size * uiScale) + "px Tahoma, Verdana, Segoe, sans-serif";
   context.textAlign = "center";
-  if(world != null){
+  if (world != null) {
     context.strokeText(world.name + ": " + text, width / 2, height * uiScale);
     context.fillText(world.name + ": " + text, width / 2, height * uiScale);
   } else {
@@ -1204,19 +1234,19 @@ function drawAreaHeader(context,lineSize,strokeStyle,text,width,height,world,siz
   context.closePath();
 }
 
-function applyScale(context,scale,drawFunction){
-  if(scale != 1){
+function applyScale(context, scale, drawFunction) {
+  if (scale != 1) {
     context.save();
-    context.scale(scale,height/staticHeight); //hmm...
+    context.scale(scale, height / staticHeight); //hmm...
   }
   drawFunction();
-  if(scale != 1){
+  if (scale != 1) {
     context.restore();
   }
 }
 
-function changeResolution(newWidth,newHeight){ //hmm...
-  const scalingFactor = newWidth/staticWidth;
+function changeResolution(newWidth, newHeight) { //hmm...
+  const scalingFactor = newWidth / staticWidth;
   width = newWidth;
   height = newHeight;
   fov = 32 * scalingFactor;
