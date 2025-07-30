@@ -3814,7 +3814,7 @@ class VoidSwarm extends Sniper {
   constructor(pos, radius, speed, angle, color = "#393042") {
     super(pos, radius, speed, angle, color);
     this.type = entityTypes.indexOf("void_swarm");
-    this.releaseTime = 3000;
+    this.releaseTime = 4500;
     this.bulletType = 21;
     this.bulletSpeed = 7;
     this.bulletRadius = this.radius / 6;
