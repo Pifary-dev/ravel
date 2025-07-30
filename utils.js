@@ -83,6 +83,8 @@ var entityTypes = [
   "wavering",
   "cursed",
   "void_drain",
+  "void_sniper",
+  "void_swarm",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",

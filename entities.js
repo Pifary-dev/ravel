@@ -3748,6 +3748,7 @@ class Sniper extends Enemy {
     return closestPlayer;
   }
 }
+
 class SniperBullet extends Enemy {
   constructor(pos, angle, radius, speed) {
     super(pos, entityTypes.indexOf("sniper_bullet"), radius, speed, angle, "#a05353");
@@ -3768,6 +3769,47 @@ class SniperBullet extends Enemy {
   }
 }
 
+class VoidSniper extends Sniper {
+  constructor(pos, radius, speed, angle, color = "#40144b") {
+    super(pos, radius, speed, angle, color);
+    this.type = entityTypes.indexOf("void_sniper");
+    this.releaseTime = 3000;
+    this.bulletType = 20;
+    this.bulletSpeed = 10;
+    this.bulletRadius = this.radius / 4;
+    this.clock = Math.random() * this.releaseTime;
+    this.detectionDistance = 600 / 32;
+    this.additionalProperties = [];
+  }
+}
+
+class VoidSniperBullet extends SniperBullet {
+  constructor(pos, angle, radius, speed) {
+    super(pos, angle, radius, speed);
+    this.color = "#1e0723";
+    this.removeTime = 3000;
+
+    this.sizing_limit = 6;
+    this.sizing_changing_speed = 1;
+    this.maxRadius = this.radius * this.sizing_limit;
+    this.changingRadius = this.radius;
+    this.staticRadius = this.radius;
+  }
+  behavior(time, area, offset, players) {
+    super.behavior(time, area, offset, players);
+    const timeFix = (time / (1000 / 30));
+
+    if(this.changingRadius < this.maxRadius){
+      this.changingRadius += (this.sizing_changing_speed / 32) * timeFix;
+    }
+    if (this.changingRadius > this.maxRadius) {
+      this.changingRadius = this.maxRadius;
+    } 
+
+    // i want to increase radius based on changing radius without touching radius
+    this.radiusMultiplier *= this.changingRadius / this.staticRadius;
+  }
+}
 class NinjaStarSniper extends Sniper {
   constructor(pos, radius, speed, angle, color = "#dedede") {
     super(pos, radius, speed, angle, color);

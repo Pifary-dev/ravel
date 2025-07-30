@@ -1091,6 +1091,8 @@ class Area {
         return new Silence(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       case "void_drain":
         return new VoidDrain(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "void_sniper":
+        return new VoidSniper(new Vector(posX, posY), radius / 32, speed, angle);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }
@@ -1122,7 +1124,8 @@ class Area {
       16: { name: "LeadSniperProjectile", class: LeadSniperBullet },
       17: { name: "ForceSniperAProjectile", class: ForceSniperABullet },
       18: { name: "ForceSniperBProjectile", class: ForceSniperBBullet },
-      19: { name: "NinjaStarSniperProjectile", class: NinjaStarSniperBullet }
+      19: { name: "NinjaStarSniperProjectile", class: NinjaStarSniperBullet },
+      20: { name: "VoidSniperProjectile", class: VoidSniperBullet }
     };
 
     if (bulletTypes[type]) {
