@@ -3899,6 +3899,7 @@ class VoidSwarmBullet extends SniperBullet {
     this.removeTime /= 2;
     this.home_range = 600 / 32;
     this.increment = 0.05;
+    this.removeTime = 4200;
   }
   behavior(time, area, offset, players) {
     super.behavior(time, area, offset, players);
