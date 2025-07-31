@@ -871,7 +871,7 @@ class Player {
         this.voidDrainTimer = 0;
       }
     } else {
-      this.voidDrainTimer = Math.max(0, this.voidDrainTimer - time);
+      this.voidDrainTimer = 0;
     }
 
     if (this.curse) {
@@ -4680,9 +4680,9 @@ class Dripping extends Enemy {
       this.speed_multiplier = 0;
       this.fade_time_left -= time;
       this.star_visibility = Math.max(this.fade_time_left, 0);
-      this.Harmless = true;
+      //this.Harmless = true;
       if (this.fade_time_left <= 0) {
-        this.Harmless = false;
+        //this.Harmless = false;
         this.phase = "growing";
         this.radius_multiplier = 1;
         // Immediately update the radius
