@@ -142,7 +142,7 @@ function animate(time) {
       
       if (area.text) {
         const size = world.selectedIndex === 2 && player.area === 0 ? 35 : 25;
-        drawAreaHeader(context, 5, "#006b2c", area.text, staticWidth, staticHeight - 120, null, size, "#00ff6b");
+        drawAreaHeader(context, 5, "#006b2c", area.text, staticWidth, (staticHeight - 120 * settings.ui_scale) / settings.ui_scale, null, size, "#00ff6b");
       }
     });
   }
