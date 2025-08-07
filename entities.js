@@ -4078,9 +4078,9 @@ class ForceSniperBBullet extends ForceSniperBullet {
 class WindSniper extends Sniper {
   constructor(pos, radius, speed, angle) {
     super(pos, radius, speed, angle, "#9de3c6");
-    this.releaseTime = 1000;
     this.bulletType = 13;
-    this.bulletSpeed = 16;
+    this.bulletSpeed = 7;
+    this.bulletRadius = this.radius * 0.8;
   }
 }
 
