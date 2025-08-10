@@ -1103,6 +1103,8 @@ class Area {
         return new VoidSniper(new Vector(posX, posY), radius / 32, speed, angle);
       case "void_swarm":
         return new VoidSwarm(new Vector(posX, posY), radius / 32, speed, angle);
+      case "static":
+        return new Static(new Vector(posX, posY), radius / 32, speed, angle);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }

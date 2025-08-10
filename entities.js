@@ -6490,6 +6490,65 @@ class Charging extends Enemy {
     }
   }
 }
+
+class Static extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("static"), radius, speed, angle, "#f5a462");
+    this.disabled = true;
+    this.activeSeconds = 0;
+    this.activeSecondsMax = 1000;
+    this.targetFound = false;
+    this.immune = true;
+    this.target;
+  }
+
+  behavior(time, area, offset, players) {
+    if(this.activeSeconds > 0){
+      this.activeSeconds -= time;
+      return;
+    } else if (!this.disabled){
+      this.disabled = true;
+    }
+
+    if (this.targetFound && !this.target?.safeZone){
+      this.pos.x = this.target.pos.x;
+      this.pos.y = this.target.pos.y;
+    } else if (this.target?.safeZone){
+      this.targetFound = false;
+      this.target = undefined;
+    } else {
+      return;
+    }
+
+    for (const group in area.entities) {
+      if (!group.startsWith('static')) continue;
+
+      for (const i in area.entities[group]){
+        const enemy = area.entities[group][i];
+        if (enemy == this) continue;
+
+        if (distance(this.pos, enemy.pos) < this.radius + enemy.radius){
+          this.disabled = false;
+          this.activeSeconds = this.activeSecondsMax;
+          this.targetFound = false;
+          this.target = undefined;
+          return;
+        }
+      }
+    }
+  }
+
+  interact(player, worldPos, time) {
+    super.interact(player, worldPos, time);
+    if (!player.isInvulnerable() && this.disabled) {
+      if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
+        this.target = player;
+        this.targetFound = true;
+      }
+    }
+  }
+}
+
 // custom
 
 class StickySniper extends Sniper {
