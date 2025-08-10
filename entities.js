@@ -6511,8 +6511,8 @@ class Static extends Enemy {
     }
 
     if (this.targetFound && !this.target?.safeZone){
-      this.pos.x = this.target.pos.x;
-      this.pos.y = this.target.pos.y;
+      this.pos.x = this.target.pos.x - offset.x;
+      this.pos.y = this.target.pos.y - offset.y;
     } else if (this.target?.safeZone){
       this.targetFound = false;
       this.target = undefined;
@@ -6546,6 +6546,47 @@ class Static extends Enemy {
         this.targetFound = true;
       }
     }
+  }
+}
+
+class Thunderbolt extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("thunderbolt"), radius, speed, angle, "#f4ff8c");
+    this.staticRadius = this.radius;
+    this.staticSpeed = speed;
+    this.radius *= 2;
+    this.speed = 0;
+
+    this.angleToVel();
+    this.groundTimeLeft = 0;
+    this.groundTimeTotal = 1000;
+    this.fallingTimeLeft = 0;
+    this.fallingTimeTotal = 10000;
+    this.Harmless = true;
+    this.updateThunderboltEffects();
+  }
+  behavior(time, area, offset, players) {
+    this.fallingTimeLeft -= time * this.staticSpeed * this.speedMultiplier;
+    if(this.fallingTimeLeft <= 0) {
+      this.fallingTimeLeft = 0;
+      this.groundTimeLeft -= time;
+    }
+    if(this.groundTimeLeft <= 0) {
+      const direction = Math.PI * 2 * Math.random();
+      const speed = (Math.random() * this.staticSpeed * this.speedMultiplier) + this.staticRadius;
+      this.pos.x += Math.cos(direction) * speed;
+      this.pos.y += Math.sin(direction) * speed;
+      this.Harmless = true;
+      this.fallingTimeLeft = this.fallingTimeTotal;
+      this.groundTimeLeft = this.groundTimeTotal;
+    }
+
+    this.updateThunderboltEffects();
+  }
+
+  updateThunderboltEffects(){
+    this.HarmlessEffect = this.fallingTimeLeft / (this.staticSpeed * this.speedMultiplier);
+    this.radius = this.staticRadius * (1 + (this.fallingTimeLeft / this.fallingTimeTotal))
   }
 }
 

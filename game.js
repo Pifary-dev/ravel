@@ -1105,6 +1105,8 @@ class Area {
         return new VoidSwarm(new Vector(posX, posY), radius / 32, speed, angle);
       case "static":
         return new Static(new Vector(posX, posY), radius / 32, speed, angle);
+      case "thunderbolt":
+        return new Thunderbolt(new Vector(posX, posY), radius / 32, speed, angle);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }
