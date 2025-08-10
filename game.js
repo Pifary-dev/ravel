@@ -1045,6 +1045,10 @@ class Area {
         return new Infectious(new Vector(posX, posY), radius / 32, speed, angle);
       case "penny":
         return new Penny(new Vector(posX, posY), radius / 32, speed, angle);
+      case "confectioner":
+        return new Confectioner(new Vector(posX, posY), radius / 32, speed, angle);
+      case "confectioner_switch":
+        return switchCombiner(Confectioner, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#cfc6f9");
       case "penny_switch":
         return switchCombiner(Penny, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#d9b67f");
       case "wavy_switch":
@@ -1055,6 +1059,10 @@ class Area {
         return switchCombiner(Zoning, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#b35f40");
       case "oscillating_switch":
         return switchCombiner(Oscillating, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#b6c46f");
+      case "homing_switch":
+        return switchCombiner(Homing, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#694d0e");
+      case "dasher_switch":
+        return switchCombiner(Dasher, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#00243d");
       case "vary":
         return new Vary(new Vector(posX, posY), radius / 32, speed, angle, preset.vary_modifier, preset.opacity_modifier)
       case "invisible":

@@ -82,9 +82,12 @@ var entityTypes = [
   "slasher",
   "wavering",
   "cursed",
+  "expander",
+  "silence",
   "void_drain",
   "void_sniper",
   "void_swarm",
+  "confectioner",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",
@@ -92,8 +95,6 @@ var entityTypes = [
   "defender",
   "burning",
   "sticky_sniper",
-  "expander",
-  "silence",
 
   // og evades
   "vary",
@@ -618,6 +619,7 @@ function loadImages(character) {
     lotusOn: "lotus_flower_on",
     lotusOff: "lotus_flower_off",
     ninja_star_sniper_projectile: "ninja_star_sniper_projectile",
+    sour_candy_item: "sour_candy_item"
   };
 
   for (const [key, imageName] of Object.entries(imageNames)) {

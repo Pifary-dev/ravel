@@ -439,6 +439,9 @@ function renderTexturedEntity(ctx, entity, x, y, radius) {
     case "sweet_tooth_item":
       texture = images.sweet_tooth_item;
       break;
+    case "sour_candy_item":
+      texture = images.sour_candy_item;
+      break;
     case "vengeance_projectile":
       texture = images.vengeance_projectile;
       break;
@@ -625,10 +628,10 @@ function renderPlayers(area, players, focus) {
       const energyBarHeight = ENERGY_BAR_HEIGHT / 32 * fov;
       const energyBarY = playerY - player.radius * fov - ENERGY_BAR_Y_OFFSET / 32 * fov;
 
-      context.fillStyle = !settings.cooldown ? "rgb(255, 255, 0)" : player.sweetToothEffect ? "rgb(255, 43, 143)" : "blue";
+      context.fillStyle = !settings.cooldown ? "rgb(255, 255, 0)" : player.sweetToothEffect ? "rgb(255, 43, 143)" : player.sourCandyEffect ? "rgb(153, 43, 255)" : "blue";
       context.fillRect(playerX - energyBarWidth / 2, energyBarY, energyBarWidth * player.energy / player.maxEnergy, energyBarHeight);
 
-      context.strokeStyle = !settings.cooldown ? "rgb(211, 211, 0)" : player.sweetToothEffect ? "rgb(212, 0, 100)" : "rgb(68, 118, 255)";
+      context.strokeStyle = !settings.cooldown ? "rgb(211, 211, 0)" : player.sweetToothEffect ? "rgb(212, 0, 100)" : player.sourCandyEffect ? "rgb(110, 0, 212)" : "rgb(68, 118, 255)";
       context.lineWidth = 1 / (32 / fov);
       context.strokeRect(playerX - energyBarWidth / 2, energyBarY, energyBarWidth, energyBarHeight);
     }

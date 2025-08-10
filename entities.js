@@ -602,6 +602,8 @@ class Player {
     this.energy += (this.regen + this.regenAdditioner) * time / 1000;
     if (this.energy > this.maxEnergy) {
       this.energy = this.maxEnergy;
+    } else if (this.energy < 0) {
+      this.energy = 0;
     }
 
     if (this.victoryTimer <= 0) {
@@ -897,6 +899,21 @@ class Player {
       this.speedMultiplier = 0;
       this.speedAdditioner = 0;
       this.frozenTime += time;
+    }
+
+    if (this.sourCandyConsumed) {
+      this.energy = Math.max(this.energy - this.maxEnergy / 2, 0);
+      this.sourCandyConsumed = false;
+    }
+
+    if (this.sourCandyEffect) {
+      this.speedAdditioner -= this.sourCandyPower;
+      this.regenAdditioner -= this.sourCandyPower;
+      this.sourCandyTimer -= time;
+      if (this.sourCandyTimer <= 0) {
+        this.sourCandyTimer = 0;
+        this.sourCandyEffect = false;
+      }
     }
 
     // Post-effect processing
@@ -4813,6 +4830,27 @@ class Repelling_Ghost extends Enemy {
     game.worlds[player.world].collisionPlayer(player.area, player);
   }
 }
+
+class Confectioner extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("confectioner"), radius, speed, angle, "#8771f2");
+    this.releaseTime = 3000;
+    this.clock = Math.random() * this.releaseTime;
+  }
+  behavior(time, area, offset, players) {
+    this.clock += time;
+    if (this.clock >= this.releaseTime) {
+      this.spawnSourCandy(area);
+      this.clock = 0;
+    }
+  }
+  spawnSourCandy(area) {
+    const power = 5;
+    const sourCandyItem = new SourCandy(new Vector(this.pos.x, this.pos.y), power);
+    area.addEntitiesBehind("sour_candy", sourCandyItem, 1);
+  }
+}
+
 class Wavy extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("wavy"), radius, speed, angle, "#dd2606");
@@ -6549,6 +6587,33 @@ class ClownTrail extends Enemy {
 }
 
 // non-enemies
+class SourCandy extends Entity {
+  constructor(pos, power) {
+    super(pos, 0.4, "#e26110");
+    this.texture = "sour_candy_item";
+    this.no_collide = true;
+    this.power = power;
+    this.removeTimeMax = 3000;
+    this.removeTime = 0;
+  }
+  interact(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius * 1.5) {
+      player.sourCandyEffect = true;
+      player.sourCandyConsumed = true;
+      player.sourCandyTimer = 5000;
+      player.sourCandyPower = this.power;
+      this.no_collide = false;
+      this.weak = true;
+      this.toRemove = true;
+    }
+  }
+  behavior(time){
+    this.removeTime += time;
+    if(this.removeTime >= this.removeTimeMax){
+      this.toRemove = true;
+    }
+  }
+}
 
 class SweetTooth extends Entity {
   constructor(pos, power) {
