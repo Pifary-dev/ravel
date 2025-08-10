@@ -1107,6 +1107,8 @@ class Area {
         return new Static(new Vector(posX, posY), radius / 32, speed, angle);
       case "thunderbolt":
         return new Thunderbolt(new Vector(posX, posY), radius / 32, speed, angle);
+      case "superstar":
+        return new Superstar(new Vector(posX, posY), radius / 32, speed, angle);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }

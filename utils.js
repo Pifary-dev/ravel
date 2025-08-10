@@ -90,6 +90,7 @@ var entityTypes = [
   "confectioner",
   "static",
   "thunderbolt",
+  "superstar",
   // Not in evades
   "wind", //use wind_ghost instead
   "web",

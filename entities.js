@@ -6570,7 +6570,11 @@ class Thunderbolt extends Enemy {
     if(this.fallingTimeLeft <= 0) {
       this.fallingTimeLeft = 0;
       this.groundTimeLeft -= time;
+      this.no_collide = false;
+    } else {
+      this.no_collide = true;
     }
+
     if(this.groundTimeLeft <= 0) {
       const direction = Math.PI * 2 * Math.random();
       const speed = (Math.random() * this.staticSpeed * this.speedMultiplier) + this.staticRadius;
@@ -6587,6 +6591,23 @@ class Thunderbolt extends Enemy {
   updateThunderboltEffects(){
     this.HarmlessEffect = this.fallingTimeLeft / (this.staticSpeed * this.speedMultiplier);
     this.radius = this.staticRadius * (1 + (this.fallingTimeLeft / this.fallingTimeTotal))
+  }
+}
+
+class Superstar extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("superstar"), radius, speed, angle, "#FFFFFF");
+    this.immune = true;
+    this.corrosive = true;
+    this.infectious = true;
+    this.hue = 0;
+  }
+
+  behavior(time, area, offset, players){
+    this.hue += 120 * time / 1000;
+    this.hue %= 360;
+
+    this.color = `hsl(${this.hue}, 80%, 40%)`
   }
 }
 
