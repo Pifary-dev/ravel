@@ -170,19 +170,33 @@ function renderEntities(area, players, focus) {
   const areaY = area.pos.y;
   const focusX = focus.x;
   const focusY = focus.y;
+
+  const area_effects = {};
+
   // Render effects first
   for (const entityType in { ...area.entities, ...area.effects }) {
     const entities = area.entities[entityType] ? area.entities[entityType] : area.effects[entityType];
     const firstEntity = entities[0];
     if (!firstEntity) continue;
     if (!firstEntity.aura && !firstEntity.isEffect) continue;
-    if (settings.effect_blending) if (effects[entityType] === undefined) {
-      effects[entityType] = {};
-      effects[entityType].canvas = createOffscreenCanvas(width, height);
-      effects[entityType].ctx = effects[entityType].canvas.getContext("2d");
+
+    const cleanType = entityType.split(' ')[0]
+    if (area_effects[cleanType] === undefined) area_effects[cleanType] = [];
+    area_effects[cleanType].push(...entities);
+  }
+
+  for (const effect in area_effects) {
+
+    if (settings.effect_blending) if (effects[effect] === undefined) {
+      effects[effect] = {};
+      effects[effect].canvas = createOffscreenCanvas(width, height);
+      effects[effect].ctx = effects[effect].canvas.getContext("2d");
     } else {
-      effects[entityType].ctx.clearRect(0, 0, width, height);
+      effects[effect].ctx.clearRect(0, 0, width, height);
     }
+
+    const entities = area_effects[effect];
+    const firstEntity = entities[0];
     const color = firstEntity.isEffect ? firstEntity.color : firstEntity.auraColor;
     const len = entities.length;
     for (let i = 0; i < len; i++) {
@@ -192,7 +206,7 @@ function renderEntities(area, players, focus) {
       const effectY = halfHeight + (areaY + entity.pos.y - focusY) * fov;
       const effectRadius = (entity.isEffect ? entity.radius : entity.auraSize) * fov;
 
-      // Check if the entity is within the visible range
+      // Check if the effect is within the visible range
       if (effectX + effectRadius < 0 || effectX - effectRadius > width ||
         effectY + effectRadius < 0 || effectY - effectRadius > height) {
         continue;
@@ -200,7 +214,7 @@ function renderEntities(area, players, focus) {
 
       // Render effect
       if (settings.effect_blending && !entity.isEffect) {
-        const effectCtx = effects[entityType].ctx;
+        const effectCtx = effects[effect].ctx;
         const colorArray = toRGBArray(color);
         effectCtx.beginPath();
         effectCtx.fillStyle = `rgb(${colorArray[0]},${colorArray[1]},${colorArray[2]})`;
@@ -215,10 +229,11 @@ function renderEntities(area, players, focus) {
       ctx.fill();
     }
     ctx.globalAlpha = toRGBArray(color)[3];
-    if (settings.effect_blending) ctx.drawImage(effects[entityType].canvas, 0, 0);
+    if (settings.effect_blending) ctx.drawImage(effects[effect].canvas, 0, 0);
     ctx.globalAlpha = 1;
   }
 
+  // Render entities
   for (const entityType in area.entities) {
     const entities = area.entities[entityType];
     const len = entities.length;
