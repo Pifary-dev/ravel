@@ -821,3 +821,37 @@ class Pulsation {
     }
   } 
 }
+
+
+function evaluateExpression(rawValue, variables = {}) {
+  if (typeof rawValue === 'string') {
+    let expression = rawValue;
+    let hasVariables = false;
+
+    for (const [varName, varValue] of Object.entries(variables)) {
+      if (expression.includes(varName)) {
+        expression = expression.replace(new RegExp(varName, 'g'), varValue.toString());
+        hasVariables = true;
+      }
+    }
+
+    if (hasVariables) {
+      if (!/^[0-9+\-*/.() \t\n]+$/.test(expression)) {
+        console.warn(`Unsafe expression detected: "${rawValue}", falling back to parsed value`);
+        return { value: parseFloat(rawValue) || 0, wasExpression: false };
+      } else {
+        try {
+          const result = Function('"use strict"; return (' + expression + ')')();
+          return { value: result, wasExpression: true };
+        } catch (e) {
+          console.error(`Expression evaluation failed: "${rawValue}"`, e.message);
+          return { value: parseFloat(rawValue) || 0, wasExpression: false };
+        }
+      }
+    } else {
+      return { value: parseFloat(rawValue) || rawValue, wasExpression: false };
+    }
+  } else {
+    return { value: rawValue, wasExpression: false };
+  }
+}

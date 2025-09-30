@@ -1,4 +1,3 @@
-
 class Game {
   constructor() {
     this.worlds = [];
@@ -72,7 +71,7 @@ class Game {
         onTele = true;
         if (!player.onTele) {
           const targetPoint = new Vector(player.pos.x + zone.translate.x, player.pos.y + zone.translate.y);
-          
+
           if (zone.type === 2) {
             player.area = this.findClosestArea(targetPoint, player.world);
           } else {
@@ -139,7 +138,7 @@ class Game {
     obj.effects = area.effects;
     obj.background_color = area.background_color;
     obj.lighting = area.lighting;
-    obj.texture = area.texture||0;
+    obj.texture = area.texture || 0;
     obj.patterns = area.patterns;
     obj.text = area.text;
     obj.pos = new Vector(area.pos.x + this.worlds[player.world].pos.x, area.pos.y + this.worlds[player.world].pos.y);
@@ -173,7 +172,7 @@ class World {
   collisionPlayer(area, players) {
     this.areas[area].collisionPlayer(players, this.pos)
   }
-  processSpawner(spawner){
+  processSpawner(spawner) {
     const preset = [];
     for (const k in spawner) {
       const values = spawner[k];
@@ -209,7 +208,7 @@ class World {
         pumpkin: ['player_detection_radius'],
         vary: ['vary_modifier', 'opacity_modifier'],
         invisible: ['opacity_modifier'],
-        turning: ['circle_size','turn_speed'],
+        turning: ['circle_size', 'turn_speed'],
         summoner: ['spawner'],
         global_spawner: ['spawner', 'cooldown', 'initial_spawner'],
         variable: ['min_speed', 'max_speed', 'speed_change'],
@@ -218,7 +217,7 @@ class World {
       };
 
       for (const type of object.type) {
-        if(values[`${type}_radius`] !== undefined){
+        if (values[`${type}_radius`] !== undefined) {
           object[`${type}_radius`] = values[`${type}_radius`];
         }
         if (typeSpecificProps[type]) {
@@ -272,7 +271,7 @@ class World {
       }
       if (properties.pellet_multiplier !== undefined) {
         this.pellet_multiplier = properties.pellet_multiplier;
-      }    
+      }
       if (properties.texture !== undefined) {
         this.texture = textureToId(properties.texture);
       }
@@ -296,15 +295,15 @@ class World {
       if (curAreaYStr.startsWith("last_y")) areaPosY = lastAreaPos.y;
       if (curAreaXStr.startsWith("last_x")) areaPosX = lastAreaPos.x;
       if (curAreaYStr.startsWith("last_bottom")) areaPosY = lastAreaPos.bottom;
-      
-      if(curAreaXStr.includes("+")){
+
+      if (curAreaXStr.includes("+")) {
         areaPosX += parseFloat(curAreaXStr.split("+")[1])
-     } else if (curAreaXStr.includes("-",1)){
+      } else if (curAreaXStr.includes("-", 1)) {
         areaPosX -= parseFloat(curAreaXStr.substring(1).split("-")[1])
-     }
-      if(curAreaYStr.includes("+")){
+      }
+      if (curAreaYStr.includes("+")) {
         areaPosY += parseFloat(curAreaYStr.split("+")[1])
-      } else if (curAreaYStr.includes("-",1)){
+      } else if (curAreaYStr.includes("-", 1)) {
         areaPosY -= parseFloat(curAreaYStr.substring(1).split("-")[1])
       }
 
@@ -358,8 +357,8 @@ class World {
         if (zone.patterns) area.patterns = zone.patterns;
 
         // corrupted casino crashes without this ;-;
-        if(typeof areax === "string") areax = parseFloat(areax);
-        if(typeof areay === "string") areay = parseFloat(areay);
+        if (typeof areax === "string") areax = parseFloat(areax);
+        if (typeof areay === "string") areay = parseFloat(areay);
 
         const absoluteZoneRight = areax + widthSize + areaPosX;
         const absoluteZoneBottom = areay + heightSize + areaPosY;
@@ -455,7 +454,7 @@ class Area {
   update(time, players, worldPos) {
     const boundary = this.getActiveBoundary();
     const areaBoundary = this.getBoundary();
-    const areaOffset = {x: this.pos.x + worldPos.x, y: this.pos.y + worldPos.y};
+    const areaOffset = { x: this.pos.x + worldPos.x, y: this.pos.y + worldPos.y };
 
     // Update static entities
     for (const staticEntityType in this.static_entities) {
@@ -469,14 +468,14 @@ class Area {
       this.entities[entityType] = this.entities[entityType].filter(entity => {
         entity.update(time);
         entity.collide(boundary);
-        
+
         for (const asset of this.assets) {
           if (asset.type === 1) {
             const dx = Math.abs(entity.pos.x - (asset.pos.x + asset.size.x / 2));
             const dy = Math.abs(entity.pos.y - (asset.pos.y + asset.size.y / 2));
             const speed = Math.abs(entity.speed / 32);
             if (dx < (asset.size.x / 2 + entity.radius + speed) && dy < (asset.size.y / 2 + entity.radius + speed)) {
-              entity.collide({x: asset.pos.x, y: asset.pos.y, w: asset.size.x, h: asset.size.y, t: false, wall: true});
+              entity.collide({ x: asset.pos.x, y: asset.pos.y, w: asset.size.x, h: asset.size.y, t: false, wall: true });
             }
           }
         }
@@ -486,27 +485,27 @@ class Area {
           entity.immune = entity.curDefend;
           entity.curDefend = false;
         }
-        
+
         entity.behavior(time, this, areaOffset, players);
-        
+
         if (!entity.toRemove) {
           const entityBoundary = entity.area_collide ? areaBoundary : boundary;
           const inside = pointInRectangle(
             entity.pos,
-            {x: entityBoundary.x + entity.radius, y: entityBoundary.y + entity.radius},
-            {x: entityBoundary.w - entity.radius * 2, y: entityBoundary.h - entity.radius * 2}
+            { x: entityBoundary.x + entity.radius, y: entityBoundary.y + entity.radius },
+            { x: entityBoundary.w - entity.radius * 2, y: entityBoundary.h - entity.radius * 2 }
           );
-          
+
           if (inside || !entity.weak) {
             if (entity.wall_push && !entity.no_collide) {
               entity.pos = closestPointToRectangle(
                 entity.pos,
-                {x: entityBoundary.x + entity.radius, y: entityBoundary.y + entity.radius},
-                {x: entityBoundary.w - entity.radius * 2, y: entityBoundary.h - entity.radius * 2}
+                { x: entityBoundary.x + entity.radius, y: entityBoundary.y + entity.radius },
+                { x: entityBoundary.w - entity.radius * 2, y: entityBoundary.h - entity.radius * 2 }
               );
             }
             for (const player of players) {
-              if(!player.god) entity.interact(player, areaOffset, time);
+              if (!player.god) entity.interact(player, areaOffset, time);
             }
             return true;
           }
@@ -520,11 +519,11 @@ class Area {
       this.effects[effectType].forEach(entity => {
         entity.behavior(time, this, areaOffset, players);
         for (const player of players) {
-          if(!player.god) entity.interact(player, areaOffset, time);
+          if (!player.god) entity.interact(player, areaOffset, time);
         }
       });
     }
-    
+
     for (const player of players) {
       player.abilities(time, this, areaOffset);
     }
@@ -557,7 +556,7 @@ class Area {
   }
   getActiveBoundary() {
     const activeZones = this.zones.filter(zone => zone.type === 0 || zone.type === 4);
-    
+
     if (activeZones.length === 0) {
       return { x: 0, y: 0, w: 0, h: 0, t: false };
     }
@@ -653,28 +652,28 @@ class Area {
     this.spawnPellets(boundary);
     this.spawnEnemies();
   }
-  
+
   spawnPattern(preset, boundary, matchingPattern) {
     const {
-      auraRadius: auraRadiusRaw, 
-      count: countRaw, 
+      auraRadius: auraRadiusRaw,
+      count: countRaw,
       radius: radiusRaw,
-      speed: speedRaw, 
-      x: xRaw, 
-      y: yRaw, 
-      angle: angleRaw, 
+      speed: speedRaw,
+      x: xRaw,
+      y: yRaw,
+      angle: angleRaw,
       type: enemyTypes
     } = preset;
 
     // Determine how many pattern instances to spawn
     const patternCount = (typeof countRaw === 'object') ? random_between(countRaw) : countRaw;
-            
+
     // Spawn each pattern instance
     for (let patternInstance = 0; patternInstance < patternCount; patternInstance++) {
       // Calculate standard properties for this pattern instance
       const standard_radius = (typeof radiusRaw === 'object') ? random_between(radiusRaw) : radiusRaw;
-      const standard_speed = (typeof speedRaw === 'object') 
-        ? random_between(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1) 
+      const standard_speed = (typeof speedRaw === 'object')
+        ? random_between(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1)
         : speedRaw / (settings.convert_to_legacy_speed ? 30 : 1);
 
       // Calculate pattern boundaries to ensure proper positioning
@@ -688,7 +687,7 @@ class Area {
       }
       minX = Math.abs(minX);
       minY = Math.abs(minY);
-      
+
       // Calculate base position for this pattern instance
       const calculateCoordinate = (rawValue, boundarySize, boundaryOffset, maxOffset, minOffset, maxRadius) => {
         if (rawValue !== undefined) {
@@ -703,26 +702,26 @@ class Area {
 
       const basePosX = calculateCoordinate(xRaw, boundary.w, boundary.x, maxX, minX, maxRadius);
       const basePosY = calculateCoordinate(yRaw, boundary.h, boundary.y, maxY, minY, maxRadius);
-      
+
       // Calculate base angle for this pattern instance
-      const baseAngle = (angleRaw !== undefined) 
-        ? (Math.PI * angleRaw) / 180 
+      const baseAngle = (angleRaw !== undefined)
+        ? (Math.PI * angleRaw) / 180
         : Math.random() * Math.PI * 2;
 
       // Spawn each entity in the pattern
       for (const patternSpawner of matchingPattern.spawner) {
         // Calculate entity-specific properties
-        const entityRadius = patternSpawner.radius 
-          ? (typeof patternSpawner.radius === 'object') ? random_between(patternSpawner.radius) : patternSpawner.radius 
+        const entityRadius = patternSpawner.radius
+          ? (typeof patternSpawner.radius === 'object') ? random_between(patternSpawner.radius) : patternSpawner.radius
           : standard_radius;
-        
-        const entitySpeed = patternSpawner.speed 
-          ? (typeof patternSpawner.speed === 'object') ? random_between(patternSpawner.speed) : patternSpawner.speed 
+
+        const entitySpeed = patternSpawner.speed
+          ? (typeof patternSpawner.speed === 'object') ? random_between(patternSpawner.speed) : patternSpawner.speed
           : standard_speed;
         const finalEntitySpeed = (entitySpeed == standard_speed) ? entitySpeed : entitySpeed / (settings.convert_to_legacy_speed ? 30 : 1);
-        
+
         const patternTypes = patternSpawner.types || enemyTypes;
-        
+
         // Calculate entity position with pattern offsets
         let entityPosX = basePosX;
         let entityPosY = basePosY;
@@ -733,38 +732,40 @@ class Area {
         if (patternSpawner.y !== undefined) {
           entityPosY = basePosY + patternSpawner.y / 32;
         }
-        
+
         const entityAngle = patternSpawner.angle !== undefined ? patternSpawner.angle : baseAngle;
-        
+
         const randomIndex = Math.floor(Math.random() * (patternTypes?.length || 1));
         const selectedEnemyType = patternTypes?.[randomIndex];
         const entityAuraRadius = (preset[`${selectedEnemyType}_radius`]) ? preset[`${selectedEnemyType}_radius`] : auraRadiusRaw;
 
         const enemy = this.createEnemy(
-          selectedEnemyType, 
-          entityPosX, 
-          entityPosY, 
-          entityRadius, 
-          finalEntitySpeed, 
-          entityAngle, 
-          preset, 
-          entityAuraRadius, 
-          patternInstance, 
+          selectedEnemyType,
+          entityPosX,
+          entityPosY,
+          entityRadius,
+          finalEntitySpeed,
+          entityAngle,
+          preset,
+          entityAuraRadius,
+          patternInstance,
           patternCount
         );
-        
+
         enemy.isSpawned = true;
         if (this.all_enemies_immune) enemy.immune = true;
         this.addEntity(entityTypes[enemy.type], enemy);
       }
     }
   }
-  
+
 
   spawnEnemies(extraSpawner, extraSpawnerProps, relativeSpawn) {
     const spawner = extraSpawner ? extraSpawner : this.preset;
     const boundary = this.getActiveBoundary();
     const patterns = this.patterns;
+    let lastX = 0;
+    let lastY = 0;
 
     // Process presets  
     for (const preset of spawner || []) {
@@ -805,8 +806,20 @@ class Area {
         const count = (typeof countRaw === 'object') ? random_between(countRaw) : countRaw;
         const radius = (typeof radiusRaw === 'object') ? random_between(radiusRaw) : radiusRaw;
         const speed = (typeof speedRaw === 'object') ? random_between(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1) : speedRaw / (settings.convert_to_legacy_speed ? 30 : 1);
-        const x = xRaw;
-        const y = yRaw;
+        let x, y;
+
+        const xResult = evaluateExpression(xRaw, { last_x: lastX, last_y: lastY });
+        x = xResult.value;
+        if (xResult.wasExpression || typeof xRaw === 'number') {
+          lastX = x;
+        }
+
+        const yResult = evaluateExpression(yRaw, { last_x: lastX, last_y: lastY });
+        y = yResult.value;
+        if (yResult.wasExpression || typeof yRaw === 'number') {
+          lastY = y;
+        }
+
         const auraRadius = auraRadiusRaw;
 
         let angle;
@@ -818,7 +831,7 @@ class Area {
           const rand = Math.floor(Math.random() * (enemyTypes?.length || 1));
           const currentEnemyType = enemyTypes?.[rand];
           let currentAuraRadius = auraRadius;
-          if(preset[`${currentEnemyType}_radius`]){
+          if (preset[`${currentEnemyType}_radius`]) {
             currentAuraRadius = preset[`${currentEnemyType}_radius`];
           }
 
@@ -829,7 +842,7 @@ class Area {
               : x / 32;
           } else {
             posX = (relativeSpawn) ? extraSpawnerProps.pos.x + Math.cos(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
-            : Math.random() * (boundary.w - radius / 16) + boundary.x + radius / 32;
+              : Math.random() * (boundary.w - radius / 16) + boundary.x + radius / 32;
           }
 
           if (y !== undefined) {
@@ -838,22 +851,22 @@ class Area {
               : y / 32;
           } else {
             posY = (relativeSpawn) ? extraSpawnerProps.pos.y + Math.sin(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
-            : Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
+              : Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
           }
 
           let changing_angle = angle;
-          if(relativeSpawn && angle === undefined) {
+          if (relativeSpawn && angle === undefined) {
             changing_angle = (extraSpawnerProps.angle + Math.PI * 2 / count * index) + degrees_to_radians(Math.random() * 45);
           }
           let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, changing_angle, preset, currentAuraRadius, index, count);
           enemy.isSpawned = true;
-          if(this.all_enemies_immune) enemy.immune = true;
-          if(extraSpawner){
+          if (this.all_enemies_immune) enemy.immune = true;
+          if (extraSpawner) {
             enemy.Harmless = true;
             enemy.HarmlessEffect = (relativeSpawn) ? 450 : 1000;
             enemy.appearing = true;
           }
-          this.addEntity(entityTypes[enemy.type],enemy);
+          this.addEntity(entityTypes[enemy.type], enemy);
         }
       }
     }
@@ -1113,10 +1126,10 @@ class Area {
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }
   }
-  addEffect(type,pos,power){
-    if(type == 0){
-      var effect = new SweetTooth(new Vector(pos.x,pos.y),power)
-      this.addEntitiesBehind("SweetTooth", effect,1);
+  addEffect(type, pos, power) {
+    if (type == 0) {
+      var effect = new SweetTooth(new Vector(pos.x, pos.y), power)
+      this.addEntitiesBehind("SweetTooth", effect, 1);
     }
   }
   addSniperBullet(type, pos, angle, radius, speed, ...properties) {
@@ -1155,26 +1168,26 @@ class Area {
 
   addEntity(name, entity) {
     const entityName = name + ' ' + entity.radius + ' radius';
-    if(this.entities[entityName] === undefined) this.entities[entityName] = [];
+    if (this.entities[entityName] === undefined) this.entities[entityName] = [];
     this.entities[entityName].push(entity);
   }
-  addEntitiesBehind(name, entity, amount){ // ¯\_(ツ)_/¯
+  addEntitiesBehind(name, entity, amount) { // ¯\_(ツ)_/¯
     const isExists = this.entities[name] !== undefined;
     const newEntities = isExists ? this.entities[name] : [];
-    for(let i = 0; i<amount; i++){
+    for (let i = 0; i < amount; i++) {
       newEntities.push(entity);
     }
-    const entObj = {[name] : newEntities};
+    const entObj = { [name]: newEntities };
     const oldEntites = this.entities;
     this.entities = entObj;
     Object.assign(this.entities, oldEntites)
   }
   addStaticEntity(name, entity) {
-    if(this.static_entities[name] === undefined) this.static_entities[name] = [];
+    if (this.static_entities[name] === undefined) this.static_entities[name] = [];
     this.static_entities[name].push(entity);
   }
   addEffect(name, entity) {
-    if(this.effects[name] === undefined) this.effects[name] = [];
+    if (this.effects[name] === undefined) this.effects[name] = [];
     this.effects[name].push(entity);
   }
 }
