@@ -4586,7 +4586,7 @@ class Toxic extends Enemy {
 
 class Enlarging extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("toxic"), radius, speed, angle, "#4d0163", true, "rgba(77, 1, 99, 0.3)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("enlarging"), radius, speed, angle, "#4d0163", true, "rgba(77, 1, 99, 0.3)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
