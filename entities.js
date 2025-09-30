@@ -1173,7 +1173,7 @@ class Burst extends Player {
         new Vector(velocity.x * 75, velocity.y * 75),
         this.id
       );
-      area.addEntity("dynamites", dynamite);
+      area.addEntity("dynamites", dynamite, true);
     }
   }
 
@@ -1205,7 +1205,7 @@ class Burst extends Player {
     area.entities["dynamites"].forEach(dynamite => {
       if (dynamite.owner === this.id) {
         this.applyExplosionEffect(area, dynamite);
-        area.addEntity("explosionParticle", new ExplosionParticle(dynamite.pos));
+        area.addEntity("explosionParticle", new ExplosionParticle(dynamite.pos), true);
       } else {
         newDynamites.push(dynamite);
       }
@@ -1326,7 +1326,7 @@ class Pole extends Player {
       new Vector(this.pos.x - offset.x, this.pos.y - offset.y),
       new Vector(velocity.x * 60, velocity.y * 60)
     );
-    area.addEntity("monoPole", pole);
+    area.addEntity("monoPole", pole, true);
   }
 
   calculateVelocity() {
@@ -2712,21 +2712,23 @@ class Poop extends Player {
     if (this.firstAbility) {
       if (this.shields.length === 0) {
         this.shields.push(new Shield(new Vector(this.pos.x - offset.x, this.pos.y - offset.y), this.id))
-        area.addEntity("shield", this.shields[this.shields.length - 1])
+        area.addEntity("shield", this.shields[this.shields.length - 1], true)
       } else {
         this.shields[0].toRemove = true;
         this.shields.pop();
       }
     }
-    for (var i in area.entities["shield"]) {
-      if (area.entities["shield"][i].owner == this.id) {
+    const shields = area.entities["shield"];
+    for (var i in shields) {
+      const shield = shields[i];
+      if (shield.owner == this.id) {
         var dist = distance(this.pos, this.oldPos);
         if (dist != 0) {
           var vx = (this.pos.x - this.oldPos.x) / dist;
           var vy = (this.pos.y - this.oldPos.y) / dist;
           var pos = new Vector(this.pos.x - offset.x + vx * 2, this.pos.y - offset.y + vy * 2)
-          area.entities["shield"][i].pos = pos
-          area.entities["shield"][i].rot = Math.atan2(vy, vx) + Math.PI / 2
+          shield.pos = pos
+          shield.rot = Math.atan2(vy, vx) + Math.PI / 2
         }
       }
     }

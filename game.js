@@ -1166,8 +1166,8 @@ class Area {
     }
   }
 
-  addEntity(name, entity) {
-    const entityName = name + ' ' + entity.radius + ' radius';
+  addEntity(name, entity, unique) {
+    const entityName = (unique) ? name : name + ' ' + entity.radius + ' radius';
     if (this.entities[entityName] === undefined) this.entities[entityName] = [];
     this.entities[entityName].push(entity);
   }
