@@ -824,7 +824,7 @@ class Pulsation {
 
 
 function evaluateExpression(rawValue, variables = {}) {
-  if (typeof rawValue === 'string') {
+  if (typeof rawValue === 'string' && !rawValue.includes(',')) {
     let expression = rawValue;
     let hasVariables = false;
 
