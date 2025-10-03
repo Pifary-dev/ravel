@@ -751,6 +751,18 @@ function isKeysEqual(arr1,arr2){
   return JSON.stringify(a1)==JSON.stringify(a2);
 }
 
+function isColorHex(color) {
+  return color[0] === '#';
+}
+
+const RgbatoHex = (array) => {
+  const hex = array.map(x => {
+    const hexValue = Math.round(x).toString(16);
+    return hexValue.length === 1 ? '0' + hexValue : hexValue;
+  }).join('');
+  return '#' + hex;
+}
+
 const hexToRgb = hex =>
   hex.replace(/^#?([a-f\d])([a-f\d])([a-f\d])$/i
              ,(m, r, g, b) => '#' + r + r + g + g + b + b)
