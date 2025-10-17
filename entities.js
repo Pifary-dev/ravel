@@ -839,8 +839,6 @@ class Player {
       const angle = (this.quicksand.angle || this.quicksand.angle === 0) ? this.quicksand.angle * (Math.PI / 180) : this.previousAngle;
       this.pos.x += Math.cos(angle) * power * timeFix;
       this.pos.y += Math.sin(angle) * power * timeFix;
-      this.quicksand.angle = undefined;
-      this.quicksand.active = false;
     }
 
     if (this.charging) {
@@ -1010,6 +1008,8 @@ class Player {
       this.magnetic_nullification = false;
       this.withering = false;
       this.voidDrain = false;
+      this.quicksand.angle = undefined;
+      this.quicksand.active = false;
     }
     this.blocking = false;
     this.radiusAdditioner = 0;
