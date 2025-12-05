@@ -1555,7 +1555,7 @@ class Shade extends Player {
     this.strokeColor = "#423545";
   }
   abilities(time, area, offset) {
-    const firstAbilityCost = 30;
+    const firstAbilityCost = 25;
     const secondAbilityCost = 5;
     if (this.firstAbility && this.ab1L) {
       if (this.energy >= firstAbilityCost && this.firstAbilityCooldown == 0) {
@@ -1911,7 +1911,7 @@ class Magmax extends Player {
   }
 
   abilities(time, area, offset) {
-    const firstAbilityCost = 2;
+    const firstAbilityCost = 1.5;
     const secondAbilityCost = 12;
 
     if (this.firstAbility && this.ab1L) {
@@ -2022,7 +2022,7 @@ class Rime extends Player {
   }
 
   getParalysisRadius() {
-    return (110 + this.ab2L * 20) / 32;
+    return (115 + this.ab2L * 15) / 32;
   }
 }
 
@@ -2093,7 +2093,7 @@ class Chrono extends Player {
     this.lastUpdateTime = 0;
     this.updateInterval = 100; // 100ms update interval
     this.maxTeleportPositions = 75;
-    this.maxEntityPositionAge = 2600; // 2.6 seconds
+    this.maxEntityPositionAge = 2240; // 2.6 seconds
     this.lastTeleportUpdateTime = 0;
     this.teleportUpdateInterval = 1000 / 30; // 30 fps update interval for teleport positions
   }
@@ -2377,7 +2377,7 @@ class Brute extends Player {
   }
 
   getStompRadius() {
-    return (115 + this.ab1L * 15) / 32;
+    return (100 + this.ab1L * 15) / 32;
   }
 }
 
@@ -2507,7 +2507,7 @@ class Candy extends Player {
     this.ab1L = settings.max_abilities ? 5 : 0;
     this.ab2L = settings.max_abilities ? 5 : 0;
     this.firstAbilityUnlocked = this.secondAbilityUnlocked = true;
-    this.firstTotalCooldown = 4000;
+    this.firstTotalCooldown = 4500;
     this.secondTotalCooldown = 5000;
     this.strokeColor = "#cf609d";
   }
@@ -2542,7 +2542,7 @@ class Candy extends Player {
       for (const entityType of Object.values(area.entities)) {
         for (const entity of entityType) {
           if (!entity.immune && distance(entity.pos, new Vector(this.pos.x - offset.x, this.pos.y - offset.y)) < sugarRushRadius + entity.radius) {
-            entity.sugar_rush = 2000;
+            entity.sugar_rush = 1500;
           }
         }
       }
@@ -2575,11 +2575,11 @@ class Candy extends Player {
   }
 
   getSugarRushRadius() {
-    return (100 + Math.abs(greaterMax(this)) * 5) / 32;
+    return (100 + Math.abs(greaterMax(this)) * 2.5) / 32;
   }
 
   updateFirstAbilityCooldown() {
-    this.firstTotalCooldown = this.firstAbilityCooldown = 6500 - 500 * this.ab1L;
+    this.firstTotalCooldown = this.firstAbilityCooldown = 7000 - 500 * this.ab1L;
   }
 }
 class Clown extends Player {
