@@ -164,6 +164,7 @@ class World {
     this.magnetism = false;
     this.pellet_count = 25;
     this.pellet_multiplier = 1;
+    this.map_exp_multiplier = 1;
     this.fromJson(map)
   }
   update(area, time, players) {
@@ -250,6 +251,9 @@ class World {
       }
       if (properties.friction !== undefined) {
         this.friction = properties.friction;
+      }
+      if (properties.map_exp_multiplier !== undefined){
+        this.map_exp_multiplier = properties.map_exp_multiplier;
       }
       if (properties.lighting !== undefined) {
         this.lighting = properties.lighting;

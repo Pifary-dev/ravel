@@ -55,7 +55,7 @@ class Entity {
     }
 
     if (this.sugar_rush > 0) {
-      this.speedMultiplier *= 0.05;
+      this.speedMultiplier *= 0;
       this.sugar_rush -= time;
     }
 
@@ -616,7 +616,7 @@ class Player {
     }
     if (!area.matched && this.area != 0) {
       area.matched = true;
-      this.updateExperience(12 * (parseInt(this.area)));
+      this.updateExperience(12 * (parseInt(this.area)) * world.map_exp_multiplier);
     }
     this.distance_movement *= speed;
     if (this.shouldCentMove() && (!this.slippery || this.collides)) {
