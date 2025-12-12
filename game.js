@@ -2,6 +2,10 @@ class Game {
   constructor() {
     this.worlds = [];
     this.players = [];
+    this.echoManagers = {
+      normal: new EchoManager("Endless Echo", null, false),
+      hard: new EchoManager("Endless Echo Hard", null, true),
+    }
   }
   inputPlayer(player, input) {
     this.players[player].input(input);
@@ -55,6 +59,13 @@ class Game {
         player.world = 0;
         player.area = 0;
         player.pos = new Vector(6, 9);
+
+        if(this.worlds[player.world].name.startsWith("Endless Echo") && !isCustomWorld) {
+          this.echoManagers[this.worlds[player.world].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
+          // Generate random enemies on load
+          new RandomEnemyGenerator(this.worlds[player.world].areas[player.area],this.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
+        }
+
         if (settings.dev) {
           player.victoryTimer = 30000;
           if (player.safePoint) {
@@ -76,9 +87,17 @@ class Game {
             player.area = this.findClosestArea(targetPoint, player.world);
           } else {
             player.world = this.findClosestWorld(targetPoint);
+            player.area = 0;
           }
 
           player.pos = targetPoint;
+
+          if(this.worlds[player.world].name.startsWith("Endless Echo") && !isCustomWorld) {
+            this.echoManagers[this.worlds[player.world].name.endsWith("Hard")?"hard":"normal"].create_areas([],player.area);
+            // Generate random enemies on load
+            new RandomEnemyGenerator(this.worlds[player.world].areas[player.area],this.worlds[player.world].name.endsWith("Hard")).generate_random_enemies(player.area);
+          }
+
           this.worlds[player.world].areas[player.area].load();
           player.dyingPos = new Vector(targetPoint.x, targetPoint.y);
           if (zone.type === 3) player.onTele = true;
@@ -246,7 +265,7 @@ class World {
         this.background_color = "rgba(" + color[0] + "," + color[1] + "," + color[2] + "," + color[3] / 255 + ")"
       }
       if (properties.title_stroke_color !== undefined) {
-        var color = properties.title_stroke_color
+        var color = (isColorHex(properties.title_stroke_color)) ? properties.title_stroke_color : RgbatoHex(properties.title_stroke_color)
         this.title_stroke_color = color;
       }
       if (properties.friction !== undefined) {
@@ -388,7 +407,12 @@ class World {
           if (zone.properties.spawns_pellets !== undefined) block.spawns_pellets = zone.properties.spawns_pellets;
         }
 
-        if (zone.type === "teleport" || zone.type === "exit") {
+        if (zone.type === "teleport")
+        {
+          block.translate = new Vector(zone.translate.x / 18, zone.translate.y / 18)
+        }
+
+        if (zone.type === "exit") {
           block.translate = new Vector(zone.translate.x / 32, zone.translate.y / 32);
         }
 
