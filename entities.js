@@ -2575,7 +2575,7 @@ class Candy extends Player {
   }
 
   getSugarRushRadius() {
-    return (100 + Math.abs(greaterMax(this)) * 2.5) / 32;
+    return (100 + Math.abs(greaterMax(this)) * 4) / 32;
   }
 
   updateFirstAbilityCooldown() {
