@@ -212,6 +212,7 @@ class World {
         turning: ['circle_size', 'turn_speed'],
         summoner: ['spawner'],
         global_spawner: ['spawner', 'cooldown', 'initial_spawner'],
+        custom_boss: ['color', 'max_health', 'name', 'shield_time', 'spawner', 'cycle_interval'],
         variable: ['min_speed', 'max_speed', 'speed_change'],
         wavering: ['min_speed', 'max_speed', 'speed_change'],
         slasher: ['slash_radius']
@@ -764,7 +765,7 @@ class Area {
   }
 
 
-  spawnEnemies(extraSpawner, extraSpawnerProps, relativeSpawn) {
+  spawnEnemies(extraSpawner, extraSpawnerProps, relativeSpawn, randomizeAngle = true) {
     const spawner = extraSpawner ? extraSpawner : this.preset;
     const boundary = this.getActiveBoundary();
     const patterns = this.patterns;
@@ -859,7 +860,7 @@ class Area {
           }
 
           let changing_angle = angle;
-          if (relativeSpawn && angle === undefined) {
+          if (relativeSpawn && angle === undefined && randomizeAngle) {
             changing_angle = (extraSpawnerProps.angle + Math.PI * 2 / count * index) + degrees_to_radians(Math.random() * 45);
           }
           let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, changing_angle, preset, currentAuraRadius, index, count);
@@ -1126,6 +1127,16 @@ class Area {
         return new Thunderbolt(new Vector(posX, posY), radius / 32, speed, angle);
       case "superstar":
         return new Superstar(new Vector(posX, posY), radius / 32, speed, angle);
+      case "eabot":
+        return new Eabot(new Vector(posX, posY), radius / 32, speed, angle);
+      case "wabot":
+        return new Wabot(new Vector(posX, posY), radius / 32, speed, angle);
+      case "aibot":
+        return new Aibot(new Vector(posX, posY), radius / 32, speed, angle);
+      case "fibot":
+        return new Fibot(new Vector(posX, posY), radius / 32, speed, angle);
+      case "custom_boss":
+        return new Boss(new Vector(posX, posY), entityTypes.indexOf("custom_boss"), radius / 32, speed, angle, preset.color, preset.max_health, preset.name, preset.shield_time, preset.spawner, preset.cycle_amount, auraRadius, preset.cycle_interval);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }

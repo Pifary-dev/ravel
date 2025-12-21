@@ -379,6 +379,16 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     ctx.fill();
   }
 
+  if (entity.name) {
+    const health = entity.health / entity.maxHealth;
+    ctx.fillStyle = "black";
+    ctx.fillText(entity.name, x, y - entity.radius * fov - 11 / 32 * fov)
+    ctx.strokeStyle="rgb(255, 68, 68)";
+    ctx.strokeRect(x - 18 / 32 * fov, y - entity.radius * fov - 8 / 32 * fov, 36 / 32 * fov, 7 / 32 * fov);
+    ctx.fillStyle = "red";
+    ctx.fillRect(x - 18 / 32 * fov, y - entity.radius * fov - 8 / 32 * fov, (36 * health) / 32 * fov, 7 / 32 * fov)
+  }
+
   if (settings.fading_effects) {
     const switch_time = entity.switch_total_time - entity.switch_clock;
     if (entity.switching && switch_time <= entity.fading_effects_time) {

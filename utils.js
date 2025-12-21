@@ -91,7 +91,15 @@ var entityTypes = [
   "static",
   "thunderbolt",
   "superstar",
+  // Bosses
+  "aibot",
+  "eabot",
+  "wabot",
+  "fibot",
+  "cybot",
   // Not in evades
+  "custom_boss",
+  "global_spawner",
   "wind", //use wind_ghost instead
   "web",
   "cobweb",

@@ -867,7 +867,7 @@ class Player {
     if (this.voidDrain) {
       this.voidDrainTimer += time * this.effectImmune;
       if (this.voidDrainTimer > 2500) {
-        death(this);
+        this.damage(false);
         this.voidDrainTimer = 0;
       }
     } else {
@@ -918,7 +918,10 @@ class Player {
     this.radius = Math.max(0, this.radius + (this.reducingEffect ? -Math.floor(this.reducingEffect) / 32 : 0) + this.radiusAdditioner / 32);
     this.radiusAdditioner = 0;
 
-    if (this.radius === 0 && this.reducing) death(this);
+    if (this.radius === 0 && this.reducing) {
+      this.damage(false);
+      this.reducingEffect = 0;
+    }
 
     if (this.poisonTime >= this.poisonTimeLeft) {
       this.poison = false;
@@ -1087,6 +1090,21 @@ class Player {
   onWallCollision() {
     this.no_slip = true;
     if (this.isSlipping) this.speedMultiplier *= 2;
+  }
+  damage(corrosive){
+    if(!this.isInvulnerable() && this.bandage && !corrosive){
+      this.bandage = false;
+      this.invincible = true;
+      this.isUnbandaging = true;
+      this.invincible_time = 1000;
+    } else if(!this.isInvulnerable() && this.className == "Cent"){
+        if(this.energy >= 40 && this.secondAbilityCooldown==0 && this.mortarTime<=0 && this.ab2L>0){
+          this.onDeathSecondAb=true;
+          this.invincible=true;
+        }
+      } else if (!this.isInvulnerable() || (corrosive && !this.god)){
+      death(this);
+    }
   }
 }
 class Basic extends Player {
@@ -2811,6 +2829,7 @@ class Summoner extends Enemy {
     this.disappearing = false;
     this.time_to_dissapear = 500;
     this.timer = this.time_to_dissapear;
+    console.log(this.spawner)
   }
   interact(player, worldPos, time) {
     const dx = player.pos.x - (this.pos.x + worldPos.x);
@@ -2855,6 +2874,99 @@ class GlobalSpawner extends Enemy {
       this.spawn_time = 0;
       area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, false);
     }
+  }
+}
+
+class Boss extends Enemy {
+  constructor(pos, enemyType, radius, speed, angle, color, maxHealth, name, shieldTime, spawner, cycle_amount, auraRadius = 180, cycle_interval = 1000) {
+    super(pos, enemyType, radius, speed, angle, color, true, "rgba(0, 0, 0, 0.15)", auraRadius / 32);
+    this.health = maxHealth;
+    this.maxHealth = maxHealth;
+    this.name = name;
+    this.cycle_ready = false;
+		this.cycle_interval = cycle_interval;
+		this.cycle_time = this.cycle_interval;
+    this.spawner = spawner;
+    this.cycle_amount = cycle_amount;
+    this.current_cycle_count = 0;
+    this.radius = radius;
+    this.movement_immune = true;
+		this.losing_health = false;
+		this.shield_time = shieldTime;
+		this.shield_time_left = this.shield_time;
+    this.shield_up = (shieldTime > 0) ? true : false;
+  }
+  behavior(time, area, offset, players) {
+    const timeFix = time / (1000 / 30);
+    const player = players[0];
+    if(this.current_cycle_count < this.cycle_amount){
+      this.cycle_time -= time;
+      if(this.cycle_time < 0){
+        this.spawnEnemies(player);
+        this.current_cycle_count++;
+        this.cycle_time = this.cycle_interval;
+      }
+    }
+    if(this.losing_health)this.damage(13.5 / 30 * timeFix);
+  }
+
+  spawnEnemies(player){
+    const area = game.worlds[player.world].areas[player.area];
+    area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, true, false);
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      this.losing_health = true;
+    }
+  }
+  damage(power){
+    this.health -= power;
+    this.losing_health = false;
+    if (this.health < 0) {
+      this.health = 0;
+      this.toRemove = true;
+    }
+  }
+}
+
+class Eabot extends Boss {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("eabot"), radius, speed, angle, "#b07331", 400, "Eabot", 0, [
+      {types: ["sand"], count: 1, radius: 18, speed: 150},
+      {types: ["sandrock"], count: 1, radius: 24, speed: 450},
+      {types: ["quicksand"], count: 1, radius: 8, speed: 300},
+      {types: ["crumbling"], count: 1, radius: 30, speed: 300}
+    ], 6);
+  }
+}
+class Aibot extends Boss {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("aibot"), radius, speed, angle, "#00b585", 400, "Aibot", 0, [
+      {types: ["wind_ghost"], count: 1, radius: 54, speed: 90},
+      {types: ["repelling_ghost"], count: 1, radius: 90, speed: 180},
+      {types: ["disabling_ghost"], count: 1, radius: 72, speed: 195},
+      {types: ["wind_sniper"], count: 1, radius: 30, speed: 300}
+    ], 4);
+  }
+}
+class Fibot extends Boss {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("fibot"), radius, speed, angle, "#e88409", 400, "Fibot", 0, [
+      {types: ["fire_trail"], count: 1, radius: 30, speed: 150},
+      {types: ["lava"], count: 1, radius: 12, speed: 180},
+      {types: ["lunging"], count: 1, radius: 24, speed: 450},
+      {types: ["sizing"], count: 1, radius: 18, speed: 360}
+    ], 6);
+  }
+}
+class Wabot extends Boss {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("wabot"), radius, speed, angle, "#319bb0", 400, "Wabot", 0, [
+      {types: ["liquid"], count: 1, radius: 18, speed: 90},
+      {types: ["freezing"], count: 1, radius: 3, speed: 300},
+      {types: ["icicle"], count: 1, radius: 30, speed: 360},
+      {types: ["snowman"], count: 1, radius: 15, speed: 360}
+    ], 5);
   }
 }
 
