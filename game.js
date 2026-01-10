@@ -900,7 +900,7 @@ class Area {
       case "dasher":
         return new Dasher(new Vector(posX, posY), radius / 32, speed, angle);
       case "homing":
-        return new Homing(new Vector(posX, posY), radius / 32, speed, angle, preset.increment);
+        return new Homing(new Vector(posX, posY), radius / 32, speed, angle, preset.increment, preset.home_range);
       case "slowing":
         return new Slowing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, preset.slow);
       case "draining":
