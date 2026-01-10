@@ -357,7 +357,7 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     const [r, g, b] = hexToRgb(entity.color);
     ctx.fillStyle = `rgb(${r + entity.color_change},${g - 1.45 * entity.color_change},${b - 1.3 * entity.color_change})`;
   } else {
-    ctx.fillStyle = entity.healing > 0 ? "rgb(0, 221, 0)" : entity.color;
+    ctx.fillStyle = entity.healing > 0 ? "rgb(0, 221, 0)" : (entity.shield_up || entity.infiniteShield) ? "black" : entity.color;
   }
   if (entity.slashTime >= 200 && entity.slashTime <= 600 && settings.fading_effects) {
     const slash = (entity.slashTime - 200) / 400;

@@ -502,8 +502,8 @@ class Player {
         this.moving = true;
         input.isMouse = false;
       }
-      this.dirY = (input.keys[KEYS.S] || input.keys[KEYS.DOWN]) ? 1 :
-        (input.keys[KEYS.W] || input.keys[KEYS.UP]) ? -1 : 0;
+      this.dirY = (input.keys[KEYS.W] || input.keys[KEYS.UP]) ? -1 :
+        (input.keys[KEYS.S] || input.keys[KEYS.DOWN]) ? 1 : 0;
       this.dirX = (input.keys[KEYS.D] || input.keys[KEYS.RIGHT]) ? 1 :
         (input.keys[KEYS.A] || input.keys[KEYS.LEFT]) ? -1 : 0;
       this.input_angle = Math.atan2(this.dirY, this.dirX);
@@ -585,6 +585,14 @@ class Player {
     const world = game.worlds[this.world];
     const area = world.areas[this.area];
     const areaZones = this.calculateAreaZones(area);
+
+    this.energy += (this.regen + this.regenAdditioner) * time / 1000;
+    if (this.energy > this.maxEnergy) {
+      this.energy = this.maxEnergy;
+    } else if (this.energy < 0) {
+      this.energy = 0;
+    }
+
     this.safeZone = areaZones.safeZone;
     this.calculateEffects(time);
     const speed = this.calculateSpeed(areaZones.minimum_speed);
@@ -597,13 +605,6 @@ class Player {
 
     if (this.flashlight_active || this.lantern_active) {
       this.energy -= 1 * time / 1000;
-    }
-
-    this.energy += (this.regen + this.regenAdditioner) * time / 1000;
-    if (this.energy > this.maxEnergy) {
-      this.energy = this.maxEnergy;
-    } else if (this.energy < 0) {
-      this.energy = 0;
     }
 
     if (this.victoryTimer <= 0) {
@@ -1932,7 +1933,7 @@ class Magmax extends Player {
     const firstAbilityCost = 1.5;
     const secondAbilityCost = 12;
 
-    if (this.firstAbility && this.ab1L) {
+    if (this.firstAbility && this.ab1L && this.energy > 0) {
       this.firstAbilityActivated = !this.firstAbilityActivated;
       this.flow = !this.flow;
       if (this.flow && this.harden) {
@@ -1940,7 +1941,7 @@ class Magmax extends Player {
         this.updateHardenCooldown();
       }
     }
-    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.ab2L) {
+    if (this.secondAbility && this.secondAbilityCooldown == 0 && this.ab2L && this.energy > 0) {
       this.secondAbilityActivated = !this.secondAbilityActivated;
       this.harden = !this.harden;
       if (!this.harden) {
@@ -2829,7 +2830,6 @@ class Summoner extends Enemy {
     this.disappearing = false;
     this.time_to_dissapear = 500;
     this.timer = this.time_to_dissapear;
-    console.log(this.spawner)
   }
   interact(player, worldPos, time) {
     const dx = player.pos.x - (this.pos.x + worldPos.x);
@@ -2878,7 +2878,7 @@ class GlobalSpawner extends Enemy {
 }
 
 class Boss extends Enemy {
-  constructor(pos, enemyType, radius, speed, angle, color, maxHealth, name, shieldTime, spawner, cycle_amount, auraRadius = 180, cycle_interval = 1000) {
+  constructor(pos, enemyType, radius, speed, angle, color, maxHealth, name, shieldTime, spawner, cycle_amount, auraRadius = 180, cycle_interval = 1000, phases = null) {
     super(pos, enemyType, radius, speed, angle, color, true, "rgba(0, 0, 0, 0.15)", auraRadius / 32);
     this.health = maxHealth;
     this.maxHealth = maxHealth;
@@ -2895,37 +2895,139 @@ class Boss extends Enemy {
 		this.shield_time = shieldTime;
 		this.shield_time_left = this.shield_time;
     this.shield_up = (shieldTime > 0) ? true : false;
+    
+    // Phase system
+    this.phases = phases || [{
+      healthThreshold: 0,
+      spawner: spawner,
+      cycle_amount: cycle_amount,
+      cycle_interval: cycle_interval,
+      shieldTime: shieldTime,
+      teleportPos: null,
+      hpDrain: 0,
+      infiniteShield: false
+    }];
+    this.currentPhase = 0;
+    this.phaseChanged = false;
   }
   behavior(time, area, offset, players) {
     const timeFix = time / (1000 / 30);
     const player = players[0];
-    if(this.current_cycle_count < this.cycle_amount){
+    
+    this.checkPhaseTransition(area);
+    const currentPhaseData = this.phases[this.currentPhase];
+    
+    if (currentPhaseData.hpDrain > 0) {
+      this.damage(currentPhaseData.hpDrain / 30 * timeFix, area, true);
+    }
+    
+    if(this.current_cycle_count < currentPhaseData.cycle_amount){
       this.cycle_time -= time;
       if(this.cycle_time < 0){
-        this.spawnEnemies(player);
+        this.spawnEnemies(player, area);
         this.current_cycle_count++;
-        this.cycle_time = this.cycle_interval;
+        this.cycle_time = currentPhaseData.cycle_interval;
       }
     }
-    if(this.losing_health)this.damage(13.5 / 30 * timeFix);
+    if(this.losing_health) this.damage(130.5 / 30 * timeFix, area, false);
+    if(this.shield_up && !currentPhaseData.infiniteShield) {
+      this.shield_time_left -= time;
+      if (this.shield_time_left < 0) this.shield_up = false;
+    }
   }
 
-  spawnEnemies(player){
-    const area = game.worlds[player.world].areas[player.area];
-    area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, true, false);
+  checkPhaseTransition(area) {
+    const healthPercentage = (this.health / this.maxHealth) * 100;
+    
+    for (let i = this.currentPhase + 1; i < this.phases.length; i++) {
+      if (healthPercentage <= this.phases[i].healthThreshold) {
+        this.cleanupSpawnedEnemies(area);
+        
+        this.currentPhase = i;
+        this.phaseChanged = true;
+        this.current_cycle_count = 0;
+        this.cycle_time = this.phases[i].cycle_interval;
+        
+        if (this.phases[i].teleportPos) {
+          this.pos.x = this.phases[i].teleportPos.x;
+          this.pos.y = this.phases[i].teleportPos.y;
+        }
+        
+        if (this.phases[i].shieldTime !== undefined) {
+          this.shield_time = this.phases[i].shieldTime;
+          this.shield_time_left = this.shield_time;
+          this.shield_up = (this.shield_time > 0) ? true : false;
+        }
+
+        if(this.phases[i].infiniteShield){
+          this.shield_up = true;
+        }
+        
+        this.onPhaseChange(i);
+        break;
+      }
+    }
+  }
+
+  onPhaseChange(newPhase) {
+    //console.log(`${this.name} entered phase ${newPhase + 1}`);
+  }
+
+  spawnEnemies(player, area){
+    const currentPhaseData = this.phases[this.currentPhase];
+    area.spawnEnemies(game.worlds[player.world].processSpawner(currentPhaseData.spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, true, false, this.name);
+  }
+
+  cleanupSpawnedEnemies(area) {
+    if (area && area.entities) {
+      for(let entityType in area.entities){
+        area.entities[entityType].forEach(entity => {
+        if (entity && entity.spawnedBy === this.name && !entity.toRemove) {
+          entity.toRemove = true;
+        }
+      });
+      }
+    }
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
       this.losing_health = true;
     }
   }
-  damage(power){
+  damage(power, area, passive){
+    const currentPhaseData = this.phases[this.currentPhase];
+    if ((currentPhaseData.infiniteShield || this.shield_up) && !passive) return;
     this.health -= power;
     this.losing_health = false;
     if (this.health < 0) {
       this.health = 0;
       this.toRemove = true;
+      this.cleanupSpawnedEnemies(area);
     }
+  }
+
+  // Helper method to create phase configurations easily
+  static createPhases(phaseConfigs) {
+    return phaseConfigs.map(config => ({
+      healthThreshold: config.healthThreshold || 0,
+      spawner: config.spawner || [],
+      cycle_amount: config.cycle_amount || 1,
+      cycle_interval: config.cycle_interval || 1000,
+      shieldTime: config.shieldTime,
+      teleportPos: config.teleportPos || null,
+      hpDrain: config.hpDrain || 0,
+      infiniteShield: config.infiniteShield || false
+    }));
+  }
+
+  // Get current phase information
+  getCurrentPhaseInfo() {
+    return {
+      phase: this.currentPhase + 1,
+      totalPhases: this.phases.length,
+      healthThreshold: this.phases[this.currentPhase].healthThreshold,
+      healthPercentage: (this.health / this.maxHealth) * 100
+    };
   }
 }
 
@@ -3175,60 +3277,66 @@ class Wall extends Enemy {
 class Dasher extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("dasher"), radius, speed, angle, "#003c66");
-    this.speed = speed;
-    this.time_to_prepare = 750;
-    this.time_to_dash = 3000;
-    this.time_between_dashes = 750;
-    this.normal_speed = speed;
-    this.base_speed = this.normal_speed / 5;
-    this.prepare_speed = this.normal_speed / 5;
-    this.dash_speed = this.normal_speed;
-    this.time_dashing = 0;
-    this.time_preparing = 0;
-    this.time_since_last_dash = 0;
+    this.reset_parameters();
     this.velToAngle();
     this.oldAngle = this.angle;
     this.dasher = true;
     this.returnCollision = true;
   }
-  compute_speed() {
-    this.speed = (this.time_since_last_dash < this.time_between_dashes && this.time_dashing == 0 && this.time_preparing == 0) ? 0 : (this.time_dashing == 0) ? this.prepare_speed : this.base_speed//(this.time_preparing>0) ? this.prepare_speed : this.base_speed
-    this.angleToVel();
-    this.oldAngle = this.angle;
+  
+  reset_parameters() {
+    this.prepare_speed = this.speed / 5;
+    this.dash_speed = this.speed;
+    this.normal_speed = 0;
+    this.time_to_prepare = 750;
+    this.time_to_dash = 3000;
+    this.time_between_dashes = 750;
+    this.time_preparing = 0;
+    this.time_dashing = 0;
+    this.time_since_last_dash = this.time_between_dashes;
+    this.compute_speed();
   }
+  
+  compute_speed() {
+    this.angleToVel();
+  }
+  
   behavior(time, area, offset, players) {
-    this.angle = this.oldAngle;
     if (this.time_preparing == 0) {
       if (this.time_dashing == 0) {
         if (this.time_since_last_dash < this.time_between_dashes) {
           this.time_since_last_dash += time;
-        }
-        else {
+        } else {
           this.time_since_last_dash = 0;
           this.time_preparing += time;
-          this.base_speed = this.prepare_speed;
+          this.speed = this.prepare_speed;
+          this.compute_speed();
         }
-      }
-      else {
+      } else {
         this.time_dashing += time;
         if (this.time_dashing > this.time_to_dash) {
           this.time_dashing = 0;
-          this.base_speed = this.normal_speed;
+          this.speed = this.normal_speed;
         } else {
-          this.base_speed = this.dash_speed * (1 - (this.time_dashing / this.time_to_dash));
+          this.speed = this.dash_speed * (1 - (this.time_dashing / this.time_to_dash));
         }
+        this.compute_speed();
       }
     } else {
       this.time_preparing += time;
       if (this.time_preparing > this.time_to_prepare) {
         this.time_preparing = 0;
         this.time_dashing += time;
-        this.base_speed = this.dash_speed;
+        this.speed = this.dash_speed;
       } else {
-        this.base_speed = this.prepare_speed * (1 - (this.time_preparing / this.time_to_prepare));
+        this.speed = this.prepare_speed * (1 - (this.time_preparing / this.time_to_prepare));
       }
+      this.compute_speed();
     }
-    this.compute_speed();
+  }
+  
+  onCollide() {
+    this.velToAngle();
   }
 }
 
@@ -4000,7 +4108,6 @@ class VoidSwarm extends Sniper {
 
       area.addSniperBullet(this.bulletType, bulletPos, angle, this.bulletRadius, this.bulletSpeed, ...this.additionalProperties);
       this.handleSwarmProgression();
-      console.log(this.swarmSpawnedInGroup)
     }
   }
 

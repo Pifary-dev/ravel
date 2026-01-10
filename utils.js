@@ -63,6 +63,7 @@ var entityTypes = [
   "disabling_ghost",
   "experience_draining",
   "sand",
+  "sandrock",
   "crumbling",
   "flower",
   "seedling",

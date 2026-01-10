@@ -194,7 +194,7 @@ class World {
         flower: ['growth_multiplayer'],
         wind: ['ignore_invulnerability'],
         wind_ghost: ['ignore_invulnerability'],
-        homing: ['increment'],
+        homing: ['increment', 'home_range'],
         speed_sniper: ['speed_loss'],
         regen_sniper: ['regen_loss'],
         gravity: ['gravity'],
@@ -765,7 +765,7 @@ class Area {
   }
 
 
-  spawnEnemies(extraSpawner, extraSpawnerProps, relativeSpawn, randomizeAngle = true) {
+  spawnEnemies(extraSpawner, extraSpawnerProps, relativeSpawn, randomizeAngle = true, spawnedBy) {
     const spawner = extraSpawner ? extraSpawner : this.preset;
     const boundary = this.getActiveBoundary();
     const patterns = this.patterns;
@@ -866,10 +866,13 @@ class Area {
           let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, changing_angle, preset, currentAuraRadius, index, count);
           enemy.isSpawned = true;
           if (this.all_enemies_immune) enemy.immune = true;
-          if (extraSpawner) {
+          if (extraSpawner && !enemy.Harmless) {
             enemy.Harmless = true;
             enemy.HarmlessEffect = (relativeSpawn) ? 450 : 1000;
             enemy.appearing = true;
+          }
+          if (spawnedBy) {
+            enemy.spawnedBy = spawnedBy;
           }
           this.addEntity(entityTypes[enemy.type], enemy);
         }
@@ -1081,6 +1084,8 @@ class Area {
         return switchCombiner(Homing, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#694d0e");
       case "dasher_switch":
         return switchCombiner(Dasher, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#00243d");
+      case "zigzag_switch":
+        return switchCombiner(Zigzag, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#e0c6f9");
       case "vary":
         return new Vary(new Vector(posX, posY), radius / 32, speed, angle, preset.vary_modifier, preset.opacity_modifier)
       case "invisible":
