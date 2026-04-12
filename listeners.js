@@ -8,11 +8,12 @@ const settings = {
   different_outlines: false,
   cooldown: true,
   fps_limit: "60",
-  timer: false,
+  timer: true,
   timer_clear: true,
   mouse_toggle: true,
   fading_effects: true,
   tiles: true,
+  pellets: true,
   dev: false,
   death_cooldown: false,
   no_points: false,
@@ -24,7 +25,7 @@ const settings = {
   wreath: 'Gold',
   hero: 'Basic',
   diff: 'Easy',
-  tick_delay: 2,
+  tick_delay: 0,
   input_delay: 0,
   ui_scale: 1,
   scale: 1,
@@ -130,6 +131,16 @@ window.onload = () => {
     const starting_pos = new Vector(Math.random() * 7 + 2.5, Math.random() * 10 + 2.5);
     if(world.selectedIndex < world.length - 1) [loadMain,loadHard,loadSecondary][world.selectedIndex]();
     const player = new [Basic,Magmax,Rime,Morfe,Aurora,Necro,Brute,Shade,Chrono,Reaper,Rameses,Cent,Jotunn,Candy,Mirage,Clown,Burst,Lantern,Pole,Polygon,Poop][hero.selectedIndex](starting_pos,5);
+    const customWorldIndex = 3;
+    const loadedFileName = inputElement.loadedFileName || '';
+    const isLegacy = loadedFileName.includes('.legacy') || loadedFileName.includes('(legacy)');
+    if (world.selectedIndex != customWorldIndex || isLegacy) {
+      settings.convert_to_legacy_speed = false;
+    } else if (loadedFileName.includes('(60FPS)')) {
+      settings.convert_to_legacy_speed = true;
+    }
+    
+    
     player.name = settings.nick;
     game.players.push(player);
     if(settings.max_stats){
@@ -304,6 +315,7 @@ inputElement.addEventListener("change", handleFiles, false);
 function handleFiles() {
   loaded = true;
   const fileList = this.files[0];
+  inputElement.loadedFileName = fileList.name;
   const reader = new FileReader();
   reader.onloadend = (evt) => {
     if (evt.target.readyState == FileReader.DONE) { // DONE == 2
