@@ -95,6 +95,7 @@ window.onresize = () => {
 
 window.onload = () => {
   window.onresize();
+  document.addEventListener("contextmenu", e => e.preventDefault());
   document.getElementById("hero").value = (typeof window.localStorage.hero === 'string') ? window.localStorage.hero : 'Normal';
   
   // Add event listener for ui_scale range input

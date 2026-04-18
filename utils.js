@@ -502,7 +502,7 @@ function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive
   if (collides(player,enemy,offset) && (!player.safeZone||!killInSafeZone)) {
     inDistance = true;
     if(enemy.healing > 0)player.isDead = false;
-    if((barrierInvulnerable&&player.inBarrier)||player.god)return {dead: false, inDistance: inDistance}
+    if((barrierInvulnerable&&player.inBarrier&&!(corrosive&&!Harmless))||player.god)return {dead: false, inDistance: inDistance}
 
     if(player.night && !immune && !enemy.disabled){
       player.night=false;
