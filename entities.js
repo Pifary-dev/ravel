@@ -6479,7 +6479,7 @@ class Crumbling extends Enemy {
     this.radius = this.realRadius;
   }
   collide(boundary) {
-    if (collisionEnemy(this, boundary, this.vel, this.pos, this.realRadius, true).col) this.collision = true;
+    if (collisionEnemy(this, boundary, this.vel, this.pos, this.realRadius, true).col && this.clock > 3000) this.collision = true;
   }
 }
 
