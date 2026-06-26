@@ -2901,32 +2901,6 @@ class Summoner extends Enemy {
   }
 }
 
-/*class GlobalSpawner extends Enemy {
-  constructor(pos, radius, speed, angle, spawner, cooldown, initial_spawner) {
-    super(pos, entityTypes.indexOf("global_spawner"), radius, speed, angle, "#91bbff");
-    this.spawner = spawner;
-    this.radius = radius;
-    this.Harmless = true;
-    this.immune = true;
-    this.spawn_cooldown = cooldown;
-    this.spawn_time = 0;
-    this.initial_spawner = initial_spawner;
-    this.initialized = false;
-  }
-  behavior(time, area, offset, players) {
-    this.spawn_time += time;
-    const player = players[0];
-    if (!this.initialized && this.initial_spawner) {
-      this.initialized = true;
-      area.spawnEnemies(game.worlds[player.world].processSpawner(this.initial_spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, false);
-    }
-    if (this.spawn_time > this.spawn_cooldown) {
-      this.spawn_time = 0;
-      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, false);
-    }
-  }
-}*/
-
 class GlobalSpawner extends Enemy {
   constructor(
     pos, radius, speed, angle, spawner, cooldown, initial_spawner, enemy_cap = {}, 
@@ -6083,7 +6057,7 @@ class MagneticNullification extends Enemy {
 
 class ExperienceDraining extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 150) {
-    super(pos, entityTypes.indexOf("experience_draining"), radius, speed, angle, "#b19cd9", true, "rgba(60, 0, 0, 0.2)", auraRadius / 32);
+    super(pos, entityTypes.indexOf("experience_drain"), radius, speed, angle, "#b19cd9", true, "rgba(60, 0, 0, 0.2)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
     if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
@@ -6138,7 +6112,7 @@ class Expander extends Enemy {
 
 class Cursed extends Enemy {
   constructor(pos, radius, speed, angle) {
-    super(pos, entityTypes.indexOf("curse"), radius, speed, angle, "#57121f");
+    super(pos, entityTypes.indexOf("cursed"), radius, speed, angle, "#57121f");
   }
   interact(player, worldPos, time) {
     if (!player.isInvulnerable() && !this.Harmless) {

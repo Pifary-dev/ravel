@@ -59,7 +59,7 @@ var entityTypes = [
   "radar",
   "wind_sniper",
   "disabling_ghost",
-  "experience_draining",
+  "experience_drain",
   "sand",
   "sandrock",
   "crumbling",
