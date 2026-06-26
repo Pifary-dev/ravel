@@ -59,6 +59,10 @@ class Entity {
       this.sugar_rush -= time;
     }
 
+    if (this.spawnProtection){
+      this.spawnProtection = Math.max(0, this.spawnProtection - time);
+    }
+
     const dim = 1 - this.friction;
     this.vel.x *= dim;
     this.vel.y *= dim;
@@ -73,8 +77,9 @@ class Entity {
   behavior(time, area, offset, players) { }
   interact(player, worldPos) { }
   isHarmless() {
-    return this.Harmless || this.disabled || this.clownHarm || this.healing > 0;
+    return this.Harmless || this.disabled || this.clownHarm || this.healing > 0 || this.spawnProtection > 0;
   }
+  syncAfterSpawning(area) {}
 }
 
 class Enemy extends Entity {
@@ -122,11 +127,6 @@ class Enemy extends Entity {
     if (this.HarmlessEffect > 0) {
       this.HarmlessEffect -= time;
       this.Harmless = this.HarmlessEffect > 0;
-      if (this.appearing) {
-        if (this.HarmlessEffect <= 0) {
-          this.appearing = false;
-        }
-      }
     }
 
     let speedMult = this.speedMultiplier;
@@ -137,6 +137,11 @@ class Enemy extends Entity {
     if (this.sugar_rush > 0) {
       speedMult *= 0.05;
       this.sugar_rush -= time;
+    }
+
+    if (this.spawnProtection){
+      if (this.useDifferentMovement) speedMult *= 0;
+      this.spawnProtection = Math.max(0, this.spawnProtection - time);
     }
 
     if (this.freeze > 0) {
@@ -156,6 +161,7 @@ class Enemy extends Entity {
   }
 
   interact(player, worldPos, time) {
+    if(this.spawnProtection) return;
     this.beforeInteract(player, worldPos, time);
     interactionWithEnemy(player, this, worldPos, true, this.corrosive, this.immune);
     if (this.aura && !player.isEffectImmune()) {
@@ -165,6 +171,20 @@ class Enemy extends Entity {
 
   auraEffect(player, worldPos) { }
   beforeInteract(player, worldPos, time) { }
+
+  syncAfterSpawning(area){
+    if(!this.spawnProtectionDuration || !this.syncRequiredProperties) return;
+    this.spawnProtectionDuration = false;
+    for (let i in area.entities) {
+      if(!area.entities[i].length) continue;
+      const enemy = area.entities[i][0];
+      if(enemy.constructor.name == this.constructor.name){
+        for (const property of this.syncRequiredProperties){
+          this[property] = enemy[property];
+        }
+      }
+    }
+  }
 }
 
 class Pellet extends Entity {
@@ -543,6 +563,8 @@ class Player {
     this.speed = this.maxSpeed;
     this.regen = this.maxRegen;
   }
+  onEnemyCollide(enemy, immune) { return null; }
+  onFatalBlow(corrosive) { return null; }
   calculateAreaZones(area) {
     let minimum_speed = 0;
     let safeZone = true;
@@ -1605,6 +1627,17 @@ class Shade extends Player {
     this.secondTotalCooldown = 3000 - 500 * (this.ab2L - 1);
     this.secondAbilityCooldown = this.secondTotalCooldown;
   }
+  onEnemyCollide(enemy, immune) {
+    if (this.night && !immune && !enemy.disabled) {
+      this.night = false;
+      this.speedAdditioner = 0;
+      enemy.Harmless = true;
+      enemy.HarmlessEffect = 2000;
+      
+      return { forceHarmless: true };
+    }
+    return null;
+  }
 }
 
 class shadeVengeance extends Entity {
@@ -1876,6 +1909,15 @@ class Cent extends Player {
   getSecondAbilityCooldown(level) {
     return [18000, 16000, 14000, 12000, 10000][level - 1];
   }
+  onFatalBlow(corrosive) {
+    if (!this.invincible) {
+      const canSave = this.energy >= 40 && this.secondAbilityCooldown === 0 && this.mortarTime <= 0 && this.ab2L > 0;
+      if (canSave) {
+        this.onDeathSecondAb = true;
+        this.invincible = true;
+      }
+    }
+  }
 }
 class Rameses extends Player {
   constructor(pos, speed) {
@@ -1913,6 +1955,14 @@ class Rameses extends Player {
     const firstCooldown = 12000 - (this.ab1L - 1) * 1000;
     this.firstTotalCooldown = (this.safeZone) ? firstCooldown / 3 : firstCooldown;
     this.firstAbilityCooldown = this.firstTotalCooldown;
+  }
+  onFatalBlow(corrosive) {
+    if (this.bandage) {
+      this.bandage = false;
+      this.invincible = true;
+      this.isUnbandaging = true;
+      this.invincible_time = 1000;
+    }
   }
 }
 class Magmax extends Player {
@@ -2846,12 +2896,12 @@ class Summoner extends Enemy {
     if (!this.disappearing) {
       this.disappearing = true;
       const area = game.worlds[player.world].areas[player.area];
-      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, true);
+      area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, true, 450);
     }
   }
 }
 
-class GlobalSpawner extends Enemy {
+/*class GlobalSpawner extends Enemy {
   constructor(pos, radius, speed, angle, spawner, cooldown, initial_spawner) {
     super(pos, entityTypes.indexOf("global_spawner"), radius, speed, angle, "#91bbff");
     this.spawner = spawner;
@@ -2873,6 +2923,120 @@ class GlobalSpawner extends Enemy {
     if (this.spawn_time > this.spawn_cooldown) {
       this.spawn_time = 0;
       area.spawnEnemies(game.worlds[player.world].processSpawner(this.spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, false);
+    }
+  }
+}*/
+
+class GlobalSpawner extends Enemy {
+  constructor(
+    pos, radius, speed, angle, spawner, cooldown, initial_spawner, enemy_cap = {}, 
+    cooldown_multiplier = 1.0, max_spawns = Infinity, cooldown_increment = 0, 
+    min_cooldown = null, max_cooldown = null, burst_count = 1, 
+    burst_cooldown = undefined, rest_cooldown = undefined, 
+    only_inside_active = false, player_detection_radius = null,
+    spawn_protection = 1000, initial_spawn_protection,
+    despawn_time = undefined
+  ) {
+    super(pos, entityTypes.indexOf("global_spawner"), radius, speed, angle, "#91bbff");
+    this.spawner = spawner;
+    this.radius = radius;
+    this.Harmless = true;
+    this.immune = true;
+    this.base_cooldown = cooldown;
+    this.spawn_time = 0;
+    this.initial_spawner = initial_spawner;
+    this.initialized = false;
+    this.enemy_cap = enemy_cap || {}; 
+    this.cooldown_multiplier = cooldown_multiplier !== undefined ? cooldown_multiplier : 1.0;
+    this.max_spawns = max_spawns !== undefined ? max_spawns : Infinity;
+    this.spawn_count = 0;
+    this.cooldown_increment = cooldown_increment || 0;
+    this.min_cooldown = min_cooldown !== undefined ? min_cooldown : null;
+    this.max_cooldown = max_cooldown !== undefined ? max_cooldown : null;
+    this.burst_count = burst_count || 1; 
+    this.burst_cooldown = burst_cooldown !== undefined ? burst_cooldown : cooldown;
+    this.rest_cooldown = rest_cooldown !== undefined ? rest_cooldown : cooldown;
+    this.spawn_cooldown = (cooldown) ? cooldown : (burst_cooldown) ? burst_cooldown : cooldown;
+    this.current_burst_index = 0;
+    this.only_inside_active = only_inside_active;
+    this.player_detection_radius = player_detection_radius;
+    this.spawn_protection = spawn_protection;
+    this.initial_spawn_protection = (initial_spawn_protection !== undefined) ? initial_spawn_protection : this.spawn_protection;
+    this.despawn_time = despawn_time;
+  }
+
+  behavior(time, area, offset, players) {
+    const player = players[0];
+    if (!player) return;
+    const world = game.worlds[player.world];
+    if (this.spawn_count >= this.max_spawns) {
+      this.toRemove = true;
+      return;
+    }
+
+    if (this.only_inside_active || this.player_detection_radius != null) {
+      for (const player of players) {
+        if (player.safeZone) return;
+
+        if (this.player_detection_radius != null){
+          const spawnerAbsolutePos = new Vector(this.pos.x + offset.x, this.pos.y + offset.y);
+
+          if (!player.isDetectable() || distance(player.pos, spawnerAbsolutePos) > this.player_detection_radius / 32) {
+            return; 
+          }
+        }
+      }
+    }
+
+    this.processInitialSpawner(area, world);
+
+    this.spawn_time += time;
+    if (this.spawn_time > this.spawn_cooldown) {
+      this.spawn_time = 0;
+      
+      area.spawnEnemies(world.processSpawner(this.spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, false, this.spawn_protection, true, this);
+      this.spawn_count++;
+      this.current_burst_index++;
+
+      this.calculateNextCooldown();
+    }
+  }
+
+  calculateNextCooldown() {
+    if (this.cooldown_multiplier !== 1 || this.cooldown_increment !== 0) {
+      const minimal_cooldown = 16;
+      const scale = (cooldown) => cooldown != null ? Math.max(minimal_cooldown, (cooldown * this.cooldown_multiplier) + this.cooldown_increment) : cooldown;
+
+      this.base_cooldown  = scale(this.base_cooldown);
+      this.min_cooldown   = scale(this.min_cooldown);
+      this.max_cooldown   = scale(this.max_cooldown);
+      if (this.current_burst_index == this.burst_count) this.rest_cooldown = scale(this.rest_cooldown);
+    }
+    
+    if (this.burst_count > 1) {
+      if (this.current_burst_index == this.burst_count) {
+        this.spawn_cooldown = this.rest_cooldown;
+        this.current_burst_index = 0; 
+      } else {
+        this.spawn_cooldown = this.burst_cooldown;
+      }
+      return;
+    }
+
+    if (this.min_cooldown !== null && this.max_cooldown !== null) {
+      this.spawn_cooldown = this.min_cooldown + Math.random() * (this.max_cooldown - this.min_cooldown);
+      return;
+    }
+
+    this.spawn_cooldown = this.base_cooldown;
+  }
+
+  processInitialSpawner(area, world) {
+    if (!this.initialized) {
+      this.initialized = true;
+      if (this.initial_spawner) {
+        area.spawnEnemies(world.processSpawner(this.initial_spawner), { pos: this.pos, angle: this.angle, radius: this.radius }, false, this.initial_spawn_protection, true, this);
+      }
     }
   }
 }
@@ -3282,8 +3446,8 @@ class Dasher extends Enemy {
     this.oldAngle = this.angle;
     this.dasher = true;
     this.returnCollision = true;
+    this.syncRequiredProperties = ['prepare_speed','normal_speed', 'dash_speed','time_preparing','time_dashing','time_since_last_dash'];
   }
-  
   reset_parameters() {
     this.prepare_speed = this.speed / 5;
     this.dash_speed = this.speed;
@@ -3740,6 +3904,7 @@ class Invisible extends Enemy {
     this.opacity = 1;
     this.opacity_direction = 'down';
     this.opacity_modifier = opacity_modifier;
+    this.syncRequiredProperties = ['opacity','opacity_direction'];
   }
 
   behavior(time, area, offset) {
@@ -3857,6 +4022,7 @@ class Vary extends Invisible {
     this.speedChange = 0.15;
     this.isInvisible = (opacity_modifier !== undefined) ? true : false;
     this.varyModifier = varyModifier;
+    this.syncRequiredProperties = ['speed','varyDirection',...(this.isInvisible ? ['opacity', 'opacity_direction'] : [])];
   }
 
   behavior(time, area, offset, players) {
@@ -3904,8 +4070,11 @@ class Sizing extends Enemy {
     this.sizing_lower_bound = this.sizing_multiplier / this.sizing_bound_multiplier;
     this.sizing_upper_bound = this.sizing_multiplier * this.sizing_bound_multiplier;
     this.sizing_changing_speed = 0.04;
+
+    this.syncRequiredProperties = ['sizing_multiplier','growing'];
   }
   behavior(time, area, offset, players) {
+    this.syncAfterSpawning(area);
     const timeFix = (time / (1000 / 30));
     if (this.growing) {
       this.sizing_multiplier += this.sizing_changing_speed * timeFix;
@@ -3941,6 +4110,8 @@ class Switch extends Enemy {
       this.switch_total_time = 3000;
       this.switch_clock = 3000 - 250;
     }
+
+    this.syncRequiredProperties = ['switch_clock'];
   }
   behavior(time, area, offset, players) {
     this.switch_clock += time;
@@ -4675,6 +4846,8 @@ class Teleporting extends Enemy {
     this.pause_interval = 1400 / teleport_speed;
     this.pause_time = this.pause_interval;
     this.teleporting = true;
+    this.syncRequiredProperties = ['pause_time'];
+    this.useDifferentMovement = true;
   }
   behavior(time, area, offset, players) {
     this.pause_time -= time;
@@ -4693,6 +4866,8 @@ class Star extends Enemy {
     this.starPos = true;
     this.immune = false;
     this.moveMultiplier = (settings.convert_to_legacy_speed) ? 42 : 2;
+    this.useDifferentMovement = true;
+    this.syncRequiredProperties = ['clock'];
   }
   update(time) {
     const timeFix = time / (1000 / 30);
@@ -4946,6 +5121,7 @@ class Spiral extends Enemy {
     this.dir = 1;
     this.turning = true;
     this.returnCollision = true;
+    this.syncRequiredProperties = ['angleIncrement'];
   }
   behavior(time, area, offset, players) {
     const timeFix = time / (1000 / 30);
@@ -5082,6 +5258,7 @@ class Wavy extends Enemy {
     this.switch_time = this.switch_interval;
     this.turning = true;
     this.returnCollision = true;
+    this.syncRequiredProperties = ['switch_time']
   }
   behavior(time, area, offset, players) {
     const timeFix = time / (1000 / 30);
@@ -5114,6 +5291,7 @@ class Zigzag extends Enemy {
     this.noAngleUpdate = true;
     this.turning = true;
     this.returnCollision = true;
+    this.syncRequiredProperties = ['switch_time','base_speed'];
   }
   behavior(time, area, offset, players) {
     const timeFix = time / (1000 / 30);
@@ -5174,6 +5352,7 @@ class Zoning extends Enemy {
     this.maximum_speed = this.base_speed * 1.4;
     this.turning = true;
     this.returnCollision = true;
+    this.syncRequiredProperties = ['switch_time', 'base_speed'];
   }
   behavior(time, area, offset, players) {
     const timeFix = time / (1000 / 30);
@@ -5599,6 +5778,7 @@ class Tree extends Enemy {
     this.noAngleUpdate = true;
     this.velToAngle();
     this.reset_parameters();
+    this.syncRequiredProperties = ['movement_time'];
   }
   behavior(time, area, offset, players) {
     this.movement_time += time;

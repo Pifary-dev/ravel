@@ -208,7 +208,7 @@ function renderEntities(area, players, focus) {
 
       // Check if the effect is within the visible range
       if (effectX + effectRadius < 0 || effectX - effectRadius > width ||
-        effectY + effectRadius < 0 || effectY - effectRadius > height) {
+        effectY + effectRadius < 0 || effectY - effectRadius > height || entity.spawnProtection) {
         continue;
       }
 
@@ -338,15 +338,16 @@ function renderShieldEntity(ctx, entity, x, y) {
 
 function renderNormalEntity(ctx, entity, x, y, radius) {
   let alpha = 1;
-  const harmlessDuration = (entity.appearing) ? 450 : 1000;
+  const harmlessDuration = (entity.spawnProtectionDuration) ? entity.spawnProtectionDuration : 1000;
+  const harmlessEffect = Math.max(entity.HarmlessEffect || 0, entity.spawnProtection || 0);
   if (entity.static) {
     alpha = 1;
   } else if (entity.alpha) {
     alpha = entity.alpha;
   } else if (entity.star_visibility > 0) {
     alpha = entity.star_visibility / entity.wall_time;
-  } else if (settings.fading_effects && entity.HarmlessEffect > 0 && entity.HarmlessEffect < harmlessDuration) {
-    alpha = 0.4 + 0.6 * (1 - entity.HarmlessEffect / harmlessDuration);
+  } else if (settings.fading_effects && harmlessEffect > 0 && harmlessEffect < harmlessDuration) {
+    alpha = 0.4 + 0.6 * (1 - harmlessEffect / harmlessDuration);
   } else if (entity.isHarmless()) {
     alpha = 0.4;
   }

@@ -114,7 +114,7 @@ window.onload = () => {
     if(head.value){
       const additionalInfo = (head.selectedIndex <= 5) ? "-wreath" : "";
       const formatHead = head.value.toLowerCase().replaceAll(' ', '-') + additionalInfo;
-      images.hat.src = `texture/${formatHead}.png`;
+      if(formatHead != "none") images.hat.src = `texture/${formatHead}.png`;
     }
 
     for(const i in settings){

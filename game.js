@@ -12,6 +12,7 @@ class Game {
 
     for (const player of this.players) {
       player.update(time, this.worlds[player.world].friction);
+
       if (!player.ghost && !player.reaperShade) {
         this.teleport(player);
         this.worlds[player.world].collisionPlayer(player.area, player);
@@ -19,6 +20,7 @@ class Game {
 
       const worldKey = player.world;
       const areaKey = player.area;
+
       if (!loaded.has(worldKey)) {
         loaded.set(worldKey, new Set());
       }
@@ -35,18 +37,20 @@ class Game {
       for (const areaKey of areas) {
         const key = `${worldKey},${areaKey}`;
         const players = playersByWorldAndArea.get(key) || [];
-        this.worlds[worldKey].update(areaKey, time, players);
+        const world = this.worlds[worldKey];
+        world.update(areaKey, time, players);
       }
     }
   }
   teleport(player) {
-    const area = this.worlds[player.world].areas[player.area];
+    const world = this.worlds[player.world];
+    const area = world.areas[player.area];
     let onTele = false;
 
     for (const zone of area.zones) {
       const zonePos = new Vector(
-        this.worlds[player.world].pos.x + area.pos.x + zone.pos.x,
-        this.worlds[player.world].pos.y + area.pos.y + zone.pos.y
+        world.pos.x + area.pos.x + zone.pos.x,
+        world.pos.y + area.pos.y + zone.pos.y
       );
       const teleporter = closestPointToRectangle(player.pos, zonePos, zone.size);
       const dist = distance(player.pos, teleporter);
@@ -90,13 +94,14 @@ class Game {
   }
 
   findClosestArea(targetPoint, worldIndex) {
+    const world = this.worlds[worldIndex];
     let minDist = Infinity;
     let closestArea = 0;
 
-    this.worlds[worldIndex].areas.forEach((area, index) => {
+    world.areas.forEach((area, index) => {
       const rect = area.getBoundary();
-      rect.x += area.pos.x + this.worlds[worldIndex].pos.x;
-      rect.y += area.pos.y + this.worlds[worldIndex].pos.y;
+      rect.x += area.pos.x + world.pos.x;
+      rect.y += area.pos.y + world.pos.y;
       const closest = closestPointToRectangle(targetPoint, new Vector(rect.x, rect.y), new Vector(rect.w, rect.h));
       const dist = distance(targetPoint, closest);
       if (dist < minDist) {
@@ -168,10 +173,10 @@ class World {
     this.fromJson(map)
   }
   update(area, time, players) {
-    this.areas[area].update(time, players, this.pos)
+    this.areas[area].update(time, players, this.pos);
   }
   collisionPlayer(area, players) {
-    this.areas[area].collisionPlayer(players, this.pos)
+    this.areas[area].collisionPlayer(players, this.pos);
   }
   processSpawner(spawner) {
     const preset = [];
@@ -211,7 +216,7 @@ class World {
         invisible: ['opacity_modifier'],
         turning: ['circle_size', 'turn_speed'],
         summoner: ['spawner'],
-        global_spawner: ['spawner', 'cooldown', 'initial_spawner'],
+        global_spawner: ['spawner', 'cooldown', 'initial_spawner', 'enemy_cap', 'cooldown_multiplier', 'max_spawns', 'cooldown_increment', 'min_cooldown', 'max_cooldown', 'burst_count', 'burst_cooldown', 'rest_cooldown', 'only_inside_active', 'player_detection_radius', 'spawn_protection', 'initial_spawn_protection', 'despawn_time'],
         custom_boss: ['color', 'max_health', 'name', 'shield_time', 'spawner', 'cycle_interval'],
         variable: ['min_speed', 'max_speed', 'speed_change'],
         wavering: ['min_speed', 'max_speed', 'speed_change'],
@@ -243,12 +248,17 @@ class World {
     const properties = json.properties
     if (properties) {
       if (properties.background_color !== undefined) {
-        var color = properties.background_color
-        this.background_color = "rgba(" + color[0] + "," + color[1] + "," + color[2] + "," + color[3] / 255 + ")"
+        const color = properties.background_color;
+        this.background_color = "rgba(" + color[0] + "," + color[1] + "," + color[2] + "," + color[3] / 255 + ")";
       }
+
       if (properties.title_stroke_color !== undefined) {
-        var color = properties.title_stroke_color
-        this.title_stroke_color = color;
+        const color = properties.title_stroke_color;
+        if (Array.isArray(color)) {
+          this.title_stroke_color = "rgb(" + color[0] + "," + color[1] + "," + color[2] + ")";
+        } else {
+          this.title_stroke_color = color;
+        }
       }
       if (properties.friction !== undefined) {
         this.friction = properties.friction;
@@ -491,7 +501,10 @@ class Area {
           entity.curDefend = false;
         }
 
-        entity.behavior(time, this, areaOffset, players);
+        if(!entity.spawnProtection) {
+          entity.syncAfterSpawning(this);
+          entity.behavior(time, this, areaOffset, players);
+        }
 
         if (!entity.toRemove) {
           const entityBoundary = entity.area_collide ? areaBoundary : boundary;
@@ -765,7 +778,7 @@ class Area {
   }
 
 
-  spawnEnemies(extraSpawner, extraSpawnerProps, relativeSpawn, randomizeAngle = true, spawnedBy) {
+  spawnEnemies(extraSpawner, extraSpawnerProps, relativeSpawn, spawnProtection = 0, randomizeAngle = true, spawnedBy) {
     const spawner = extraSpawner ? extraSpawner : this.preset;
     const boundary = this.getActiveBoundary();
     const patterns = this.patterns;
@@ -780,17 +793,18 @@ class Area {
       } = preset;
 
       if (settings.convert_to_legacy_speed && !preset.converted_to_legacy) {
-        if (preset.turn_speed) preset.turn_speed /= 30;
-        if (preset.turn_acceleration) preset.turn_acceleration /= 30;
-        if (preset.shot_acceleration) preset.shot_acceleration /= 30;
-        if (preset.projectile_speed) preset.projectile_speed /= 30;
-        if (preset.speed_loss) preset.speed_loss /= 30;
-        if (preset.increment) preset.increment /= 30;
-        if (preset.gravity) preset.gravity /= 30;
-        if (preset.repulsion) preset.repulsion /= 30;
-        if (preset.quicksand_strength) preset.quicksand_strength /= 30;
-        if (preset.min_speed) preset.min_speed /= 30;
-        if (preset.max_speed) preset.max_speed /= 30;
+        const speedProperties = [
+          'turn_speed', 'turn_acceleration', 'shot_acceleration', 'projectile_speed',
+          'speed_loss', 'increment', 'gravity', 'repulsion', 'quicksand_strength',
+          'min_speed', 'max_speed'
+        ];
+
+        for (const key of speedProperties) {
+          if (preset[key]) {
+            preset[key] = convert_to_legacy_speed(preset[key]);
+          }
+        }
+
         preset.converted_to_legacy = true;
       }
 
@@ -808,9 +822,9 @@ class Area {
       if (patternTypes.length > 0 && matchingPattern) {
         this.spawnPattern(preset, boundary, matchingPattern);
       } else {
-        const count = (typeof countRaw === 'object') ? random_between(countRaw) : countRaw;
-        const radius = (typeof radiusRaw === 'object') ? random_between(radiusRaw) : radiusRaw;
-        const speed = (typeof speedRaw === 'object') ? random_between(speedRaw) / (settings.convert_to_legacy_speed ? 30 : 1) : speedRaw / (settings.convert_to_legacy_speed ? 30 : 1);
+        const count = (typeof countRaw === 'object') ? random_between(countRaw) : parseRange(countRaw);
+        const radius = (typeof radiusRaw === 'object') ? random_between(radiusRaw) : parseRange(radiusRaw);
+        const speed = convert_to_legacy_speed((typeof speedRaw === 'object') ? random_between(speedRaw) : parseRange(speedRaw));
         let x, y;
 
         const xResult = evaluateExpression(xRaw, { last_x: lastX, last_y: lastY });
@@ -842,18 +856,14 @@ class Area {
 
           let posX, posY;
           if (x !== undefined) {
-            posX = typeof x === "string" && x.includes(',')
-              ? min_max(...x.split(',').map(parseFloat)) / 32
-              : x / 32;
+            posX = parseRange(x) / 32;
           } else {
             posX = (relativeSpawn) ? extraSpawnerProps.pos.x + Math.cos(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
               : Math.random() * (boundary.w - radius / 16) + boundary.x + radius / 32;
           }
 
           if (y !== undefined) {
-            posY = typeof y === "string" && y.includes(',')
-              ? min_max(...y.split(',').map(parseFloat)) / 32
-              : y / 32;
+            posY = parseRange(y) / 32;
           } else {
             posY = (relativeSpawn) ? extraSpawnerProps.pos.y + Math.sin(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
               : Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
@@ -866,10 +876,9 @@ class Area {
           let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, changing_angle, preset, currentAuraRadius, index, count);
           enemy.isSpawned = true;
           if (this.all_enemies_immune) enemy.immune = true;
-          if (extraSpawner && !enemy.Harmless) {
-            enemy.Harmless = true;
-            enemy.HarmlessEffect = (relativeSpawn) ? 450 : 1000;
-            enemy.appearing = true;
+          if (extraSpawner) {
+            enemy.spawnProtection = spawnProtection;
+            enemy.spawnProtectionDuration = spawnProtection;
           }
           if (spawnedBy) {
             enemy.spawnedBy = spawnedBy;
@@ -1102,7 +1111,7 @@ class Area {
       case "summoner":
         return new Summoner(new Vector(posX, posY), radius / 32, speed, angle, preset.spawner);
       case "global_spawner":
-        return new GlobalSpawner(new Vector(posX, posY), radius / 32, speed, angle, preset.spawner, preset.cooldown, preset.initial_spawner);
+        return new GlobalSpawner(new Vector(posX, posY), radius / 32, speed, angle, preset.spawner, preset.cooldown, preset.initial_spawner, preset.enemy_cap, preset.cooldown_multiplier, preset.max_spawns, preset.cooldown_increment, preset.min_cooldown, preset.max_cooldown, preset.burst_count, preset.burst_cooldown, preset.rest_cooldown, preset.only_inside_active, preset.player_detection_radius, preset.spawn_protection, preset.initial_spawn_protection, preset.despawn_time);
       case "slasher":
         return new Slasher(new Vector(posX, posY), radius / 32, speed, angle, preset.slash_radius);
       case "withering":

@@ -14,7 +14,6 @@ var entityTypes = [
   "freezing",
   "sniper",
   "teleporting",
-  "draining",
   "immune",
   "ice_sniper",
   "disabling",
@@ -44,7 +43,6 @@ var entityTypes = [
   "negative_magnetic_sniper",
   "positive_magnetic_ghost",
   "negative_magnetic_ghost",
-  "experience_drain",
   "fire_trail",
   "wind_ghost",
   "ice_ghost",
@@ -492,7 +490,30 @@ function collisionEnemy(enemy,boundary,vel,pos,radius,returnCollision){
   }
   return {col:collision};
 }
+function interactionWithEnemy(player, enemy, offset, barrierInvulnerable, corrosive, immune, harmless, killInSafeZone = false) {
+  const hasCollision = collides(player, enemy, offset);
+  const isPlayerSafe = player.safeZone && killInSafeZone;
+  let isHarmless = harmless !== undefined ? harmless : enemy.isHarmless();
+  const protectedByBarrier = (barrierInvulnerable && player.inBarrier && !(corrosive && !isHarmless)) || player.inEnemyBarrier;
 
+  if (!hasCollision || isPlayerSafe) return { dead: false, inDistance: false };
+  if (enemy.healing > 0) player.isDead = false;
+
+  const collisionResult = player.onEnemyCollide(enemy, immune);
+  if (collisionResult && collisionResult.forceHarmless) isHarmless = true;
+  if (player.god || protectedByBarrier) return { dead: false, inDistance: true };
+
+  const enemyCannotKill = enemy.texture === "pumpkinOff" || enemy.radius <= 0 || isHarmless || enemy.shatterTime > 0;
+  let dead = !enemyCannotKill;
+
+  if (dead) player.onFatalBlow(corrosive);
+  if ((player.invincible && !corrosive) || isHarmless || !enemy.able_to_kill) dead = false;
+
+  if (dead && !player.isDead) death(player);
+
+  return { dead, inDistance: true };
+}
+/*
 function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive, immune, Harmless, killInSafeZone = false){
   let dead = true;
   let inDistance = false;
@@ -539,7 +560,7 @@ function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive
   }
   return {dead: dead, inDistance: inDistance}
 }
-
+*/
 const toRGBArray = rgbStr => {
   const match = rgbStr.match(/\d+(?:\.\d+)?(?:e[-+]\d+)?/g);
   return match.map(Number);
@@ -578,6 +599,16 @@ function min_max(min,max) {
 
 function random_between(array){
   return array[random((array.length-1))]
+}
+
+function convert_to_legacy_speed(value){
+  return value / (settings.convert_to_legacy_speed ? 30 : 1);
+}
+
+function parseRange(value) {
+    return typeof value === "string" && value.includes(',')
+        ? min_max(...value.split(',').map(parseFloat))
+        : value;
 }
 
 function loadImages(character) {
