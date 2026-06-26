@@ -4102,15 +4102,6 @@ class Switch extends Enemy {
     this.switch_total_time = 3000;
     this.fading_effects_time = 1500;
 
-    // evades code
-    if (radius == 1919) {
-      this.switch_total_time = 5500;
-      this.switch_clock = 5500 - 2000;
-    } else if (radius == 159) {
-      this.switch_total_time = 3000;
-      this.switch_clock = 3000 - 250;
-    }
-
     this.syncRequiredProperties = ['switch_clock'];
   }
   behavior(time, area, offset, players) {
