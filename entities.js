@@ -2024,6 +2024,7 @@ class Rameses extends Player {
     this.firstTotalCooldown = 8000;
     this.secondTotalCooldown = 6000;
     this.strokeColor = "#686b2a";
+    this.bandage = (settings.speedrun_mode || settings.tournament_mode) ? true : false;
   }
   abilities(time, area, offset) {
     const firstAbilityCost = 40;
