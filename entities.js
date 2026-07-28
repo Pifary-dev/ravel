@@ -363,7 +363,7 @@ class Player {
     this.prevSlippery = false;
     this.dyingPos = new Vector(0, 0);
     this.level = 1;
-    this.points = (settings.no_points) ? 0 : 150;
+    this.points = (settings.no_points) ? (settings.tournament_mode) ? 10 : 0 : 150;
     this.upgradeBrightness = new Pulsation(175, 255, 5);
     this.experience = 0;
     this.deathCounter = 0;
@@ -413,22 +413,28 @@ class Player {
     this.knockback_limit_count = 0;
     this.expander_interactions = 0;
     this.isDead = false;
+    this.tournamentPoints = 0;
+    this.tournamentTimeLimit = 0;
+    this.tournamentAreaPoints = 0;
   }
   input(input) {
     // Dev overlay ping calculation
     if (this.overlay && settings.dev) {
       const now = Date.now();
+      let latency;
       if (input.isMouse && (ping.mouse.x !== input.mouse.x || ping.mouse.y !== input.mouse.y)) {
         ping.mouse.x = input.mouse.x;
         ping.mouse.y = input.mouse.y;
         const index = ping.mouseArray.findIndex(m => m.x === input.mouse.x && m.y === input.mouse.y);
-        ping.array.push(now - ping.mouseTimer[index]);
+        latency = now - ping.mouseTimer[index];
       } else if (input.keys[68] && !ping.previous) {
-        ping.array.push(now - ping.activationTime);
+        latency = now - ping.activationTime;
         ping.previous = true;
       } else if (!input.keys[68]) {
         ping.previous = false;
       }
+      
+      if(!isNaN(latency) && latency !== undefined) ping.array.push(latency);
       if (ping.array.length > 25) ping.array.shift();
     }
 
@@ -535,6 +541,84 @@ class Player {
       this.cent_is_moving = true;
     }
   }
+  resetPosition(){
+    const safeZone = game.worlds[0].areas[0].zones.find(zone => zone.type === 1);
+    if (safeZone) {
+      this.pos = new Vector(
+        safeZone.pos.x + safeZone.size.x / 2,
+        safeZone.pos.y + safeZone.size.y / 2
+      );
+      return
+    }
+    this.pos = new Vector(Math.random() * 7 + 2.5, Math.random() * 10 + 2.5);
+  }
+  reset(){
+    this.world = 0;
+    this.area = 0;
+    this.resetPosition();
+    game.worlds[this.world].areas.forEach(area => area.loadCount = 0);
+    this.area = 0;
+    tilesCanvas = undefined;
+    this.sweetToothTimer = 0;
+    this.flow = false;
+    this.rejoicing = false;
+    this.timer = 0;
+    this.firstAbilityCooldown = 0;
+    this.secondAbilityCooldown = 0;
+    this.deathCounter = 0;
+    if (settings.no_points){
+      this.points = (settings.tournament_mode) ? 10 : 0;
+      if(!settings.max_stats){
+        if(!settings.tournament_mode) this.speed = 5;
+        this.regen = 1;
+        this.maxEnergy = 30;
+        this.tournamentAreaPoints = 0;
+        this.invincible = true;
+        this.invincible_time = 1500;
+      }
+      this.experience = 0;
+      this.previousLevelExperience = 0;
+      this.nextLevelExperience = 4;
+      this.tempPrevExperience=0;
+      this.tempNextExperience=4;
+      this.level = 1;
+    }
+    if (!settings.max_abilities){
+      this.ab1L = 0;
+      this.ab2L = 0;
+    }
+    this.energy = this.maxEnergy;
+    game.worlds[this.world].areas[this.area].load();
+    for(const i in game.worlds[this.world].areas){
+      const area = game.worlds[this.world].areas[i];
+      area.matched = false;
+    }
+  }
+  calculateTimeLimit(){
+    const areas = game.worlds[this.world].areas;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    areas.forEach(area => {
+      const boundary = area.getBoundary();
+      const left = area.pos.x + boundary.x;
+      const top = area.pos.y + boundary.y;
+      const right = left + boundary.w;
+      const bottom = top + boundary.h;
+      minX = Math.min(minX, left);
+      minY = Math.min(minY, top);
+      maxX = Math.max(maxX, right);
+      maxY = Math.max(maxY, bottom);
+    });
+
+    const totalWidth = maxX - minX;
+    const totalHeight = maxY - minY;
+    const mapDistance = Math.sqrt(totalWidth * totalWidth + totalHeight * totalHeight);
+
+    const seconds = mapDistance / 10 + 180;
+    const minutes = Math.ceil(seconds / 60);
+
+    this.tournamentTimeLimit = minutes * 60;
+  }
   shouldCentMove() {
     //special case for harden
     if (this.harden) return false;
@@ -560,6 +644,7 @@ class Player {
   }
   upgradeToMaxStats() {
     this.maxEnergy = this.maxUpgradableEnergy;
+    this.energy = this.maxEnergy;
     this.speed = this.maxSpeed;
     this.regen = this.maxRegen;
   }
@@ -639,6 +724,7 @@ class Player {
     }
     if (!area.matched && this.area != 0) {
       area.matched = true;
+      if(settings.tournament_mode) if (this.timer < this.tournamentTimeLimit * 1000) this.tournamentAreaPoints = Math.max(3 * this.area, this.tournamentAreaPoints);
       this.updateExperience(12 * (parseInt(this.area)) * world.map_exp_multiplier);
     }
     this.distance_movement *= speed;
@@ -2769,6 +2855,17 @@ class Polygon extends Player {
     if (this.firstAbilityCooldown > 0) {
       this.firstAbilityCooldown -= time;
     }
+  }
+
+  onEnemyCollide(enemy, immune) {
+    if (this.shape == 2 && !immune && !enemy.disabled) {
+      this.night = false;
+      enemy.Harmless = true;
+      enemy.HarmlessEffect = 2000;
+      
+      return { forceHarmless: true };
+    }
+    return null;
   }
 }
 class Poop extends Player {
@@ -7127,16 +7224,17 @@ class ReverseProjectile extends Enemy {
     super(pos, entityTypes.indexOf("reverse_projectile"), 11 / 32, undefined, undefined, "#00dd00");
     this.clock = 0;
     this.angle = angle;
-    this.no_collide = true;
+    this.area_collide = true;
     this.immune = true;
-    this.speed = 15;
+    this.speed = 22;
     this.outline = false;
     this.projectile_outline = false;
     this.angleToVel();
+    this.distance = 0;
   }
   behavior(time, area, offset, players) {
-    this.clock += time;
-    if (this.clock >= 1500) {
+    this.distance += this.speed;
+    if (this.distance >= 350*2) {
       this.toRemove = true;
     }
     for (var i in area.entities) {
@@ -7180,7 +7278,8 @@ class ObscureProjectile extends Enemy {
         const entity = entities[j];
         const player = players[0];
         if (distance(this.pos, new Vector(entity.pos.x, entity.pos.y)) < this.radius + entity.radius && !entity.toRemove && entity.isEnemy && !entity.obscure) {
-          player.pos = new Vector(entity.pos.x + offset.x, entity.pos.y + offset.y)
+          player.pos = new Vector(entity.pos.x + offset.x, entity.pos.y + offset.y);
+          player.safeZone = player.calculateAreaZones(area).safeZone;
           player.invincible_time = 1000;
           player.invincible = true;
           this.toRemove = true;
@@ -7194,18 +7293,18 @@ class ObscureProjectile extends Enemy {
 class MinimizeProjectile extends Enemy {
   constructor(pos, angle) {
     super(pos, entityTypes.indexOf("minimize_projectile"), 11 / 32, undefined, undefined, "#ff0000");
-    this.clock = 0;
     this.angle = angle;
-    this.no_collide = true;
+    this.area_collide = true;
     this.immune = true;
-    this.speed = 15;
+    this.speed = 22;
     this.outline = false;
     this.projectile_outline = false;
     this.angleToVel();
+    this.distance = 0;
   }
   behavior(time, area, offset, players) {
-    this.clock += time;
-    if (this.clock >= 1500) {
+    this.distance += this.speed;
+    if (this.distance >= 450*2) {
       this.toRemove = true;
     }
     for (var i in area.entities) {
