@@ -80,6 +80,7 @@ class Game {
             player.area = this.findClosestArea(targetPoint, player.world);
           } else {
             player.world = this.findClosestWorld(targetPoint);
+            if(settings.tournament_mode) player.calculateTimeLimit();
           }
 
           player.pos = targetPoint;
@@ -465,6 +466,7 @@ class Area {
     this.name = "undefined";
     this.lighting = 1;
     this.magnetism = false;
+    this.loadCount = 0;
   }
   update(time, players, worldPos) {
     const boundary = this.getActiveBoundary();
@@ -663,6 +665,10 @@ class Area {
     }
   }
   load() {
+    if(settings.seeded_area_resets) this.loadCount++;
+    if (settings.seed !== undefined && !settings.speedrun_mode) {
+      Math.random = seededRandom(settings.seed ^ hashString(this.name) ^ this.loadCount);
+    }
     this.entities = {};
     this.static_entities = {};
     this.effects = {};
@@ -725,8 +731,6 @@ class Area {
       const baseAngle = (angleRaw !== undefined)
         ? (Math.PI * angleRaw) / 180
         : Math.random() * Math.PI * 2;
-
-      // Spawn each entity in the pattern
       for (const patternSpawner of matchingPattern.spawner) {
         // Calculate entity-specific properties
         const entityRadius = patternSpawner.radius
@@ -858,20 +862,26 @@ class Area {
           if (x !== undefined) {
             posX = parseRange(x) / 32;
           } else {
-            posX = (relativeSpawn) ? extraSpawnerProps.pos.x + Math.cos(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
+            posX = (relativeSpawn)
+              ? extraSpawnerProps.pos.x + Math.cos(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
               : Math.random() * (boundary.w - radius / 16) + boundary.x + radius / 32;
           }
 
           if (y !== undefined) {
             posY = parseRange(y) / 32;
           } else {
-            posY = (relativeSpawn) ? extraSpawnerProps.pos.y + Math.sin(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
+            posY = (relativeSpawn)
+              ? extraSpawnerProps.pos.y + Math.sin(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
               : Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
           }
 
           let changing_angle = angle;
-          if (relativeSpawn && angle === undefined && randomizeAngle) {
-            changing_angle = (extraSpawnerProps.angle + Math.PI * 2 / count * index) + degrees_to_radians(Math.random() * 45);
+          if (angle === undefined && randomizeAngle) {
+            if (relativeSpawn) {
+              changing_angle = (extraSpawnerProps.angle + Math.PI * 2 / count * index) + degrees_to_radians(Math.random() * 45);
+            } else {
+              changing_angle = Math.random() * Math.PI * 2;
+            }
           }
           let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, changing_angle, preset, currentAuraRadius, index, count);
           enemy.isSpawned = true;

@@ -330,10 +330,8 @@ function death(player,enemy){
     player.pos = new Vector(player.dyingPos.x, player.dyingPos.y);
     if(diff == "Medium") player.lives--;
   } else {
-    player.world = 0;
-    player.area = 0;
-    player.pos = new Vector(6,9);
-    player.lives = player.maxLives;
+    player.reset();
+    if(diff == "Medium") player.lives = player.maxLives;
   }
   if(settings.dev && player.safePoint){
     returnToSafePoint(player);
@@ -587,6 +585,34 @@ function createOffscreenCanvas (width,height){
   canvas.width=width;
   canvas.height=height;
   return canvas;
+}
+
+/**
+ * Mulberry32 seeded PRNG — returns a function that produces [0, 1) floats.
+ * @param {number} seed - 32-bit integer seed
+ */
+function seededRandom(seed) {
+  let s = seed >>> 0;
+  return function() {
+    s += 0x6D2B79F5;
+    let t = Math.imul(s ^ s >>> 15, 1 | s);
+    t ^= t + Math.imul(t ^ t >>> 7, 61 | t);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Cheap string hash to fold an enemy type name into a seed contribution.
+ * @param {string} str
+ */
+function hashString(str) {
+  if (!str) return 0;
+  let h = 0x811C9DC5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
 }
 
 function random (number) {
@@ -894,4 +920,87 @@ function evaluateExpression(rawValue, variables = {}) {
   } else {
     return { value: rawValue, wasExpression: false };
   }
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+const STATS_PANEL_WIDTH = 210;
+
+function drawStatsPanel(context, x, y, sections, uiScale) {
+  const panelWidth = STATS_PANEL_WIDTH * uiScale;
+  const padding = 8 * uiScale;
+  const lineHeight = 16 * uiScale;
+  const headerHeight = 18 * uiScale;
+  const sectionGap = 6 * uiScale;
+
+  const fontFamily = "Tahoma, Verdana, Segoe, sans-serif";
+  const headerFont = `bold ${11 * uiScale}px ${fontFamily}`;
+  const rowFont = `${11 * uiScale}px ${fontFamily}`;
+
+  const UI_BACKGROUND = "rgba(0, 0, 0, 0.8)";
+  const SEPARATOR = "rgba(128, 128, 128, 0.75)";
+  const YELLOW = "yellow";
+  const WHITE = "white";
+
+  context.save();
+  context.textBaseline = "top";
+  context.lineWidth = 1;
+
+  let panelHeight = padding * 2;
+  sections.forEach((section, i) => {
+    panelHeight += headerHeight + section.rows.length * lineHeight;
+    if (i < sections.length - 1) panelHeight += sectionGap;
+  });
+
+  context.fillStyle = UI_BACKGROUND;
+  context.fillRect(x, y, panelWidth, panelHeight);
+
+  // --- content ---
+  let cursorY = y + padding;
+  sections.forEach((section, si) => {
+    context.font = headerFont;
+    context.textAlign = "center";
+    context.fillStyle = YELLOW;
+    context.fillText(section.title, x + panelWidth / 2, cursorY);
+    cursorY += headerHeight;
+
+    context.strokeStyle = SEPARATOR;
+    context.beginPath();
+    context.moveTo(x + padding, cursorY - 4 * uiScale);
+    context.lineTo(x + panelWidth - padding, cursorY - 4 * uiScale);
+    context.stroke();
+
+    context.font = rowFont;
+    section.rows.forEach(row => {
+      context.textAlign = "left";
+      context.fillStyle = "rgba(255, 255, 255, 0.6)";
+      context.fillText(row.label, x + padding, cursorY);
+
+      context.textAlign = "right";
+      context.fillStyle = WHITE;
+      context.fillText(row.value, x + panelWidth - padding, cursorY);
+
+      cursorY += lineHeight;
+    });
+
+    if (si < sections.length - 1) cursorY += sectionGap;
+  });
+
+  // clear the path so nothing lingers for stray fill()/stroke() calls elsewhere
+  context.beginPath();
+  context.restore();
+}
+
+function formatDuration(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
