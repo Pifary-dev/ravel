@@ -416,6 +416,7 @@ class Player {
     this.tournamentPoints = 0;
     this.tournamentTimeLimit = 0;
     this.tournamentAreaPoints = 0;
+    this.tournamentFinished = false;
   }
   input(input) {
     // Dev overlay ping calculation
@@ -555,6 +556,7 @@ class Player {
   reset(){
     this.world = 0;
     this.area = 0;
+    this.tournamentFinished = false;
     this.resetPosition();
     game.worlds[this.world].areas.forEach(area => area.loadCount = 0);
     this.area = 0;
@@ -724,7 +726,7 @@ class Player {
     }
     if (!area.matched && this.area != 0) {
       area.matched = true;
-      if(settings.tournament_mode) if (this.timer < this.tournamentTimeLimit * 1000) this.tournamentAreaPoints = Math.max(3 * this.area, this.tournamentAreaPoints);
+      if(settings.tournament_mode && !this.tournamentFinished) if (this.timer < this.tournamentTimeLimit * 1000) this.tournamentAreaPoints = Math.max(3 * this.area, this.tournamentAreaPoints);
       this.updateExperience(12 * (parseInt(this.area)) * world.map_exp_multiplier);
     }
     this.distance_movement *= speed;

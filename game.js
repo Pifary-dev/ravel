@@ -59,8 +59,8 @@ class Game {
         player.world = 0;
         player.area = 0;
         player.pos = new Vector(6, 9);
+        if(settings.tournament_mode || settings.dev) player.victoryTimer = 30000; player.tournamentFinished = true; player.tournamentAreaPoints+=3;
         if (settings.dev) {
-          player.victoryTimer = 30000;
           if (player.safePoint) {
             player.energy = player.maxEnergy;
             player.firstAbilityCooldown = 0;

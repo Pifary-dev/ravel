@@ -137,7 +137,7 @@ function renderArea(area, players, focus, areaUpdated) {
 
           drawStatsPanel(context, 0, 0, [{ title: "DEBUG", rows }], uiScale);
         } else if (settings.tournament_mode) {
-          player.tournamentPoints = player.tournamentAreaPoints - Math.floor(Math.min(player.timer / 1000, player.tournamentTimeLimit)) / 30 - player.deathCounter;
+          if (!player.tournamentFinished) player.tournamentPoints = player.tournamentAreaPoints - Math.floor(Math.min(player.timer / 1000, player.tournamentTimeLimit)) / 30 - player.deathCounter;
           const rows = [
             { label: primaryLabel, value: primaryValue },
             { label: "Delay", value: `${avgPing}` },
