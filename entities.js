@@ -621,6 +621,11 @@ class Player {
 
     this.tournamentTimeLimit = minutes * 60;
   }
+  updateTournamentPoints(){
+    if(this.tournamentFinished) return;
+    if(this.timer / 1000 > this.tournamentTimeLimit) this.tournamentFinished = true;
+    this.tournamentPoints = this.tournamentAreaPoints - Math.floor(Math.min(this.timer / 1000, this.tournamentTimeLimit)) / 20 - this.deathCounter;
+  }
   shouldCentMove() {
     //special case for harden
     if (this.harden) return false;
