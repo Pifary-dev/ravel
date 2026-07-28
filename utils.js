@@ -334,6 +334,7 @@ function death(player,enemy){
     if(diff == "Medium") player.lives = player.maxLives;
   }
   if(settings.dev && player.safePoint){
+    if(settings.seed !== undefined && settings.seeded_area_resets) game.worlds[player.world].areas.forEach(area => area.loadCount = 0);
     returnToSafePoint(player);
   }
 }
