@@ -178,6 +178,7 @@ function renderArea(area, players, focus, areaUpdated) {
 function renderStaticEntities(area, players, focus) {
   context.globalAlpha = 1;
   for (const entityType in area.static_entities) {
+    if(!settings.pellets && entityType == "pellet") continue;
     const entities = area.static_entities[entityType];
     for (const entity of entities) {
       const enemyX = width / 2 + (area.pos.x + entity.pos.x - focus.x) * fov;

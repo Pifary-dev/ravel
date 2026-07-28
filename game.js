@@ -905,7 +905,6 @@ class Area {
   }
 
   spawnPellets(boundary) {
-    if (!settings.pellets) return;
     const pelletZones = this.zones.filter(zone => zone.spawns_pellets);
     const pelletsAtZone = boundary.t ? 200 : this.pellet_count;
     const pelletMultiplier = this.pellet_multiplier;
