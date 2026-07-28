@@ -105,37 +105,65 @@ function renderArea(area, players, focus, areaUpdated) {
 
       const roughDelay = settings.fps_limit === "unlimited" ? 0 : Math.round((settings.tick_delay * (1000 / parseInt(settings.fps_limit))) + settings.input_delay);
       const avgPing = ping.array.length > 5 ? Math.round(ping.array.reduce((e, t) => e + t) / ping.array.length) : roughDelay;
-      const devStat = `Delay: ${avgPing}, FPS: ${Math.round(1000 / frameTime)}`;
+      const fps = Math.round(1000 / frameTime);
 
-      let text, color;
-      if (settings.diff === "Easy") {
-        text = settings.dev ? `Deaths: ${player.deathCounter}, ${devStat}` : `Deaths: ${player.deathCounter}`;
-        color = "gray";
-      } else if (settings.diff === "Medium") {
-        text = settings.dev ? `Lives: ${player.lives}, ${devStat}` : `Lives: ${player.lives}`;
-        color = ["red", "orange", "yellow", "green"][player.lives] || "gray";
-      } else if (settings.dev) {
-        text = devStat;
-        color = "gray";
-      }
+      const primaryLabel = settings.diff === "Medium" ? "Lives" : "Deaths";
+      const primaryValue = settings.diff === "Medium" ? `${player.lives}` : `${player.deathCounter}`;
 
-      if (text) {
-        context.fillStyle = context.strokeStyle = color;
-        context.fillText(text, 0, 20 * uiScale);
-        context.strokeText(text, 0, 20 * uiScale);
-      }
+      const seedUsed = settings.seed !== undefined;
 
-      if (settings.dev) {
-        context.fillStyle = context.strokeStyle = "gray";
-        const texts = [
-          player.safePoint ? `Safe Point: {X:${Math.round(player.safePoint.pos.x * fov)}, Y:${Math.round(player.safePoint.pos.y * fov)}} ([), to clear (])` : "None ([)",
-          `Player: {X:${Math.round(player.pos.x * fov)}, Y:${Math.round(player.pos.y * fov)}, Speed:${greaterMax(player)}}`,
-          `Timer-clear: ${settings.timer_clear} (P), (O)`
-        ];
-        texts.forEach((text, i) => {
-          context.fillText(text, 0, (45 + i * 25) * uiScale);
-          context.strokeText(text, 0, (45 + i * 25) * uiScale);
-        });
+      if (settings.dev || settings.tournament_mode) {
+        if (settings.dev) {
+          const rows = [
+            { label: primaryLabel, value: primaryValue },
+            { label: "Delay", value: `${avgPing}` },
+            { label: "FPS", value: `${fps}` },
+            {
+              label: "Safe Point",
+              value: player.safePoint
+                ? `X:${Math.round(player.safePoint.pos.x * fov)} Y:${Math.round(player.safePoint.pos.y * fov)}`
+                : "None ([)"
+            },
+            {
+              label: "Player",
+              value: `X:${Math.round(player.pos.x * fov)} Y:${Math.round(player.pos.y * fov)} Spd:${greaterMax(player)}`
+            },
+            {
+              label: "Timer-clear",
+              value: `${settings.timer_clear} (P/O)`
+            }
+          ];
+          if (seedUsed) rows.push({ label: "Seed", value: `${settings.seed}` });
+
+          drawStatsPanel(context, 0, 0, [{ title: "DEBUG", rows }], uiScale);
+        } else if (settings.tournament_mode) {
+          player.tournamentPoints = player.tournamentAreaPoints - Math.floor(Math.min(player.timer / 1000, player.tournamentTimeLimit)) / 30 - player.deathCounter;
+          const rows = [
+            { label: primaryLabel, value: primaryValue },
+            { label: "Delay", value: `${avgPing}` },
+            { label: "Points", value: `${player.tournamentPoints.toFixed(1)}` },
+            { label: "Time Limit", value: formatDuration(player.tournamentTimeLimit) }
+          ];
+          if (seedUsed) rows.push({ label: "Seed", value: `${settings.seed}` });
+
+          drawStatsPanel(context, 0, 0, [{ title: "TOURNAMENT", rows }], uiScale);
+        }
+      } else {
+        let text, color;
+        if (settings.diff === "Easy") {
+          text = `Deaths: ${player.deathCounter}`;
+          color = "gray";
+        } else if (settings.diff === "Medium") {
+          text = `Lives: ${player.lives}`;
+          color = ["red", "orange", "yellow", "green"][player.lives] || "gray";
+        }
+
+        if (text) {
+          if (seedUsed) text += `, Seed: ${settings.seed}`;
+          context.fillStyle = context.strokeStyle = color;
+          context.fillText(text, 0, 20 * uiScale);
+          context.strokeText(text, 0, 20 * uiScale);
+        }
       }
 
       context.fill();

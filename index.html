@@ -9,7 +9,7 @@
   <div id="menu">
     <div id="main">
       <div id="play">
-        <button type="button" name="button" id="connect">Enter game</button><br><br>
+        <button type="button" name="button" id="connect">Enter game</button>
         <div id="name">
           <input type="text" id="nick" value="Sandbox" placeholder="Username">
         </div>
@@ -40,23 +40,32 @@
     </div>
     <div id='alert'></div>
     <div id="panel">
-      <div id="interact">
+      <div class="panel-item" id="interact">
+        <span class="panel-label">Load Map</span>
         <label for="load" class="file-upload-label">
           <input type="file" id="load" accept="application/x-yaml, .json, .yaml, .txt" name="file">
         </label>
       </div>
-      <select id='world'>
+      <div class="panel-item">
+        <span class="panel-label">World</span>
+        <select id='world'>
         <option>Original</option>
         <option>Hard</option>
         <option>Bruh</option>
         <option>Custom</option>
-      </select>
-      <select id='diff'>
+        </select>
+      </div>
+      <div class="panel-item">
+        <span class="panel-label">Difficulty</span>
+        <select id='diff'>
         <option>Easy</option>
         <option>Medium</option>
         <option>Hard</option>
-      </select>
-      <select id='wreath'>
+        </select>
+      </div>
+      <div class="panel-item">
+        <span class="panel-label">Wreath</span>
+        <select id='wreath'>
         <option>Gold</option>
         <option>Spring</option>
         <option>Autumn</option>
@@ -89,86 +98,113 @@
         <option>Summer Olympics</option>
         <option>Summer Olympics 2</option>
         <option>None</option>
-      </select>
-    </div>
-    <div id="settings">
-      <div>Settings:</div>
-      <div class="settingsElement" style="line-height:75%;">
-        <input type="checkbox" id="mouse_toggle" checked>
-        <label for="mouse_toggle">Mouse Toggle Movement</label>
-        <br><br>
-        <input type="checkbox" id="outline" checked>
-        <label for="outline">Enemy outline</label>
-        <br><br>
-        <input type="checkbox" id="projectile_outline" checked>
-        <label for="projectile_outline">Projectile outline</label>
-        <br><br>
-        <input type="checkbox" id="different_outlines">
-        <label for="different_outlines">Different outlines</label>
-        <br><br>
-        <input type="checkbox" id="timer" checked>
-        <label for="timer">Timer</label>
-        <br><br>
-        <input type="checkbox" id="tiles" checked>
-        <label for="tiles">Tiles</label>
-        <br><br>
-        <input type="checkbox" id="pellets" checked>
-        <label for="pellets">Pellets</label>
-        <br><br>
-        <input type="checkbox" id="fading_effects" checked>
-        <label for="fading_effects">Fading Effects</label>
-        <br><br>
-        <input type="checkbox" id="no_points">
-        <label for="no_points">No Points</label>
-        <br><br>
-        <input type="checkbox" id="max_abilities">
-        <label for="max_abilities">Max Abilities</label>
-        <br><br>
-        <input type="checkbox" id="max_stats">
-        <label for="max_stats">Max Stats</label>
-        <br><br>
-        <input type="checkbox" id="slow_upgrade">
-        <label for="slow_upgrade">Evades Upgrade System</label>
-        <br><br>
-        <input type="checkbox" id="convert_to_legacy_speed">
-        <label for="convert_to_legacy_speed">Convert To Legacy Speed</label>
-        <br><br>
-        <input type="checkbox" id="death_cooldown">
-        <label for="death_cooldown">After Death Cooldown</label>
-        <br><br>
-        <input type="checkbox" id="effect_blending" checked>
-        <label for="effect_blending">Effect Blending</label>
-        <br><br>
-        <input type="checkbox" id="dev">
-        <label for="dev">Test Mode</label>
-        <br><br>
-        <input type="checkbox" id="cheats">
-        <label for="cheats">Cheats</label>
-        <br><br>
-        <input type="checkbox" id="v_sync">
-        <label for="v_sync">V-Sync</label>
-        <br><br>
-        <label for="fps_limit">FPS Limit:</label>
-        <select id="fps_limit">
-          <option value="unlimited">Unlimited FPS</option>
-          <option value="60" selected>60 FPS</option>
-          <option value="30">30 FPS</option>
         </select>
-        <br><br>
-        <label for="ui_scale">UI Scale:</label>
-        <input type="range" id="ui_scale" min="0.2" max="1" step="0.1" value="1" style="width: 100px;">
-        <span id="ui_scale_value">1.0</span>
-        <br><br>
-        <label for="input_delay">Input Delay:</label>
-        <input type="number" id="input_delay" placeholder="Default is 0ms" value="0" min="0" style="width:100px">
-        <br><br>
-        <label for="tick_delay">Tick Delay:</label>
-        <input type="number" id="tick_delay" placeholder="1 tick is 33ms" value="0" min="0" style="width:100px">
       </div>
     </div>
-    <div id="hotkeys" style="position: absolute; top: 10px; right: 10px; background-color: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; color: white;">
-      <h3 style="color: #ffcc00; text-align: center;">Hotkeys</h3>
-      <ul style="list-style-type: none; padding: 0;">
+    <div id="settings">
+      <div>Settings</div>
+      <div class="tabs">
+        <input type="radio" name="settingsTab" id="tab-visuals" checked>
+        <input type="radio" name="settingsTab" id="tab-gameplay">
+        <input type="radio" name="settingsTab" id="tab-advanced">
+        <div class="tab-bar">
+          <label for="tab-visuals">Visuals</label>
+          <label for="tab-gameplay">Gameplay</label>
+          <label for="tab-advanced">Advanced</label>
+        </div>
+
+        <div class="tab-panel settingsElement" id="panel-visuals" style="line-height:75%;">
+          <input type="checkbox" id="outline" checked>
+          <label for="outline">Enemy outline</label>
+          <br><br>
+          <input type="checkbox" id="projectile_outline" checked>
+          <label for="projectile_outline">Projectile outline</label>
+          <br><br>
+          <input type="checkbox" id="different_outlines">
+          <label for="different_outlines">Different outlines</label>
+          <br><br>
+          <input type="checkbox" id="tiles" checked>
+          <label for="tiles">Tiles</label>
+          <br><br>
+          <input type="checkbox" id="pellets" checked>
+          <label for="pellets">Pellets</label>
+          <br><br>
+          <input type="checkbox" id="fading_effects" checked>
+          <label for="fading_effects">Fading Effects</label>
+          <br><br>
+          <input type="checkbox" id="effect_blending" checked>
+          <label for="effect_blending">Effect Blending</label>
+          <br><br>
+          <input type="checkbox" id="timer" checked>
+          <label for="timer">Timer</label>
+          <br><br>
+          <label for="ui_scale">UI Scale:</label>
+          <input type="range" id="ui_scale" min="0.40" max="1" step="0.05" value="1" style="width: 100px;">
+          <span id="ui_scale_value">1.00</span>
+        </div>
+
+        <div class="tab-panel settingsElement" id="panel-gameplay" style="line-height:75%;">
+          <input type="checkbox" id="mouse_toggle" checked>
+          <label for="mouse_toggle">Mouse Toggle Movement</label>
+          <br><br>
+          <input type="checkbox" id="no_points">
+          <label for="no_points">No Points</label>
+          <br><br>
+          <input type="checkbox" id="max_abilities">
+          <label for="max_abilities">Max Abilities</label>
+          <br><br>
+          <input type="checkbox" id="max_stats">
+          <label for="max_stats">Max Stats</label>
+          <br><br>
+          <input type="checkbox" id="slow_upgrade">
+          <label for="slow_upgrade">Evades Upgrade System</label>
+          <br><br>
+          <input type="checkbox" id="convert_to_legacy_speed">
+          <label for="convert_to_legacy_speed">Convert To Legacy Speed</label>
+          <br><br>
+          <input type="checkbox" id="death_cooldown">
+          <label for="death_cooldown">After Death Cooldown</label>
+        </div>
+
+        <div class="tab-panel settingsElement" id="panel-advanced" style="line-height:75%;">
+          <input type="checkbox" id="tournament_mode">
+          <label for="tournament_mode">Tournament Mode</label>
+          <br><br>
+          <input type="checkbox" id="speedrun_mode">
+          <label for="speedrun_mode">Speedrun Mode</label>
+          <div class="settings-divider"></div>
+          <input type="checkbox" id="dev">
+          <label for="dev">Advanced Mode</label>
+          <br><br>
+          <input type="checkbox" id="cheats">
+          <label for="cheats">Cheats</label>
+          <br><br>
+          <input type="checkbox" id="v_sync">
+          <label for="v_sync">V-Sync</label>
+          <br><br>
+          <input type="checkbox" id="seeded_area_resets">
+          <label for="seeded_area_resets">Seeded Area Resets</label>
+          <br><br>
+          <label for="seed">Seed:</label>
+          <input type="number" id="seed" placeholder="Empty = random" min="0" style="width:120px">
+          <br><br>
+          <label for="fps_limit">FPS Limit:</label>          <select id="fps_limit">
+            <option value="unlimited">Unlimited FPS</option>
+            <option value="60" selected>60 FPS</option>
+            <option value="30">30 FPS</option>
+          </select>
+          <br><br>
+          <label for="input_delay">Input Delay:</label>
+          <input type="number" id="input_delay" placeholder="Default is 0ms" value="0" min="0" style="width:100px">
+          <br><br>
+          <label for="tick_delay">Tick Delay:</label>
+          <input type="number" id="tick_delay" placeholder="1 tick is 33ms" value="0" min="0" style="width:100px">
+        </div>
+      </div>
+    </div>
+    <div id="hotkeys">
+      <h3>Hotkeys</h3>
+      <ul>
         <li>W/↑ - Move Up</li>
         <li>S/↓ - Move Down</li>
         <li>A/← - Move Left</li>
@@ -180,9 +216,10 @@
         <li>H - Hide Herocard</li>
         <li>M - Hide Minimap</li>
         <li>, - Hide Overlay</li>
+        <li>END - Reset Your Run</li>
       </ul>
-      <h4 style="color: #ffcc00; margin-top: 10px;">Cheats:</h4>
-      <ul style="list-style-type: none; padding: 0;">
+      <h4>Cheats:</h4>
+      <ul>
         <li>T - Teleport Forward</li>
         <li>E - Teleport Backward</li>
         <li>R - Teleport 10 Areas Forward</li>
@@ -190,13 +227,12 @@
         <li>B - Unlimited Energy</li>
         <li>N - No Collision</li>
       </ul>
-      <h4 style="color: #ffcc00; margin-top: 10px;">Test Mode:</h4>
-      <ul style="list-style-type: none; padding: 0;">
+      <h4>Advanced Mode:</h4>
+      <ul>
         <li>[ - Create SafePoint</li>
         <li>] - Clear SafePoint</li>
         <li>P - Change Timer Clear</li>
         <li>O - Reset Timer</li>
-        <li>END - Reset Your Run</li>
       </ul>
     </div>
   </div>
