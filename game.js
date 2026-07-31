@@ -82,9 +82,13 @@ class Game {
           const targetPoint = new Vector(player.pos.x + zone.translate.x, player.pos.y + zone.translate.y);
 
           if (zone.type === 2) {
+            const previousArea = player.area;
             player.area = this.findClosestArea(targetPoint, player.world);
+            if (previousArea != player.area) player.onTeleport('area');
           } else {
+            const previousWorld = player.world;
             player.world = this.findClosestWorld(targetPoint);
+            if (previousWorld != player.world) player.onTeleport('world');
             if(settings.tournament_mode) player.calculateTimeLimit();
           }
 
@@ -851,7 +855,7 @@ class Area {
         const auraRadius = auraRadiusRaw;
 
         let angle;
-        if (angleRaw !== undefined) {
+        if (angleRaw !== undefined && typeof angleRaw !== 'string') {
           angle = (Math.PI * angleRaw) / 180;
         }
 
@@ -879,6 +883,8 @@ class Area {
               ? extraSpawnerProps.pos.y + Math.sin(extraSpawnerProps.angle + Math.PI * 2 / count * index) * extraSpawnerProps.radius
               : Math.random() * (boundary.h - radius / 16) + boundary.y + radius / 32;
           }
+
+          if (angleRaw !== undefined && typeof angleRaw === 'string') angle = (Math.PI * parseRange(angleRaw)) / 180;
 
           let changing_angle = angle;
           if (angle === undefined && randomizeAngle) {

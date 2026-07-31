@@ -282,14 +282,11 @@ function death(player,enemy){
     let longestHealingEffect = 0;
     for(let i in entities){
       const entityType = entities[i];
-      if(entityType!="Pellet"){
-        for(let j in entityType){
-          const entity = entityType[j];
-          if(entity.healing){
-            if(entity.healing>longestHealingEffect){
-              longestHealingEffect = entity.healing;
-            }
-          }
+      if(entityType == "Pellet") continue;
+      for(let j in entityType){
+        const entity = entityType[j];
+        if(entity.healing && entity.healing>longestHealingEffect){
+          longestHealingEffect = entity.healing;
         }
       }
     }
@@ -308,22 +305,23 @@ function death(player,enemy){
     player.distance_moved_previously = [0,0];
     return;
   }
-  const diff = settings.diff;
   if(enemy){
     if(enemy.radius===0){
       return;
     }
   }
-  player.teleportPosition = [];
+  kill(player)
+}
+
+function kill(player){
+  const diff = settings.diff;
   player.deathCounter++;
   player.reducingPower = 0;
+  player.isDead = false;
   if(!settings.death_cooldown){
     player.firstAbilityCooldown = 0; 
     player.secondAbilityCooldown = 0;
-    if(player.className=="Rameses"){player.bandage=true;}
-    if(player.className=="Necro"){player.resurrectAvailable=true;player.firstPellet = 0;}
-    if(player.className=="Candy"){player.sugarRushing = 0;}
-    if(player.className=="Shade"){player.shadeNight = 0;}
+    player.onDeath();
   }
 
   if(diff == "Easy" || (diff == "Medium" && player.lives-1>=0)){
@@ -505,7 +503,7 @@ function interactionWithEnemy(player, enemy, offset, barrierInvulnerable, corros
   const enemyCannotKill = enemy.texture === "pumpkinOff" || enemy.radius <= 0 || isHarmless || enemy.shatterTime > 0;
   let dead = !enemyCannotKill;
 
-  if (dead) player.onFatalBlow(corrosive);
+  if (dead && enemy.able_to_kill) player.onFatalBlow(corrosive);
   if ((player.invincible && !corrosive) || isHarmless || !enemy.able_to_kill) dead = false;
 
   if (dead && !player.isDead) death(player);

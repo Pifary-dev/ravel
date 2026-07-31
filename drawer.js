@@ -367,6 +367,12 @@ function renderShieldEntity(ctx, entity, x, y) {
   }
 }
 
+function renderTimedOverlay(ctx, effectTime, effectTimeLeft, alpha, rgbaString) {
+    let adjustedAlpha = alpha - alpha * ((effectTime - effectTimeLeft) / effectTime);
+    if (adjustedAlpha < 0 || adjustedAlpha > alpha) adjustedAlpha = 0;
+    ctx.fillStyle = `${rgbaString}${adjustedAlpha})`;
+    ctx.fill();
+}
 function renderNormalEntity(ctx, entity, x, y, radius) {
   let alpha = 1;
   const harmlessDuration = (entity.spawnProtectionDuration) ? entity.spawnProtectionDuration : 1000;
@@ -432,10 +438,12 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
 
   if (entity.sugar_rush > 0) {
     const sugarRushMaxTime = 2000;
-    const highestAlpha = 0.7;
-    const adjustedAlpha = Math.min(Math.max(highestAlpha - highestAlpha * ((sugarRushMaxTime - entity.sugar_rush) / sugarRushMaxTime), 0), highestAlpha);
-    ctx.fillStyle = `rgba(255, 128, 189, ${adjustedAlpha})`;
-    ctx.fill();
+    renderTimedOverlay(ctx, sugarRushMaxTime, entity.sugar_rush, 0.7, 'rgba(255, 128, 189, ');
+  }
+
+  if(entity.freeze > 0){
+    const freezeMaxTime = 2000;
+    renderTimedOverlay(ctx, freezeMaxTime, entity.freeze, 0.7, 'rgba(137, 231, 255, ');
   }
 
   if (entity.decayed) {
@@ -558,6 +566,21 @@ function renderPlayers(area, players, focus) {
       }
     }
 
+    
+    // debug chrono
+    /*if(settings.dev && player.className == "Chrono"){
+    const shadowPos = player.teleportPosition[0];
+      if(shadowPos){
+        const shadowX = width / 2 + (shadowPos.x - focus.x) * fov;
+        const shadowY = height / 2 + (shadowPos.y - focus.y) * fov;
+        context.beginPath();
+        context.fillStyle = 'rgba(41, 138, 38, 0.2)';
+        context.arc(shadowX, shadowY, player.radius * fov, 0, Math.PI * 2);
+        context.fill();
+      }
+    }*/
+
+    
     // Render heavy balloon
     if (player.heavyBallon) {
       context.beginPath();

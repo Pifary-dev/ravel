@@ -102,9 +102,16 @@ class Enemy extends Entity {
     this.able_to_kill = true;
     this.self_destruction = false;
     this.projectile_outline = true;
+    this.radiusRecovery = 1;
+    this.speedRecovery = 1;
   }
   getRandomAngle() {
     return Math.random() * Math.PI * 2;
+  }
+
+  recover(value, timeFix) {
+    if (value >= 1) return 1;
+    return Math.min(1, value + (0.0425 / (60 * timeFix * 2)) * (21 - value * 20));
   }
 
   update(time) {
@@ -114,22 +121,27 @@ class Enemy extends Entity {
     this.auraSize = this.auraStaticSize * this.radiusMultiplier;
     this.radiusMultiplier = 1;
 
+    let speedMult = this.speedMultiplier;
+    let radiusMult = this.radiusMultiplier;
+
     if (!this.noAngleUpdate) {
       this.velToAngle();
       this.angleToVel();
     }
 
     if (this.healing > 0) this.healing -= time;
+
     if (this.minimized > 0) {
-      this.radiusMultiplier *= 0.5;
+      speedMult *= 0.25;
+      radiusMult *= 0.5;
       this.minimized -= time;
     }
+
     if (this.HarmlessEffect > 0) {
       this.HarmlessEffect -= time;
       this.Harmless = this.HarmlessEffect > 0;
     }
 
-    let speedMult = this.speedMultiplier;
     if (this.slowdown_time > 0) {
       this.slowdown_time = Math.max(0, this.slowdown_time - time);
       speedMult *= this.slowdown_amount;
@@ -139,16 +151,23 @@ class Enemy extends Entity {
       this.sugar_rush -= time;
     }
 
-    if (this.spawnProtection){
+    if (this.spawnProtection) {
       if (this.useDifferentMovement) speedMult *= 0;
       this.spawnProtection = Math.max(0, this.spawnProtection - time);
     }
 
+    if (this.freeze > 0) speedMult = 0;
+
+    this.radiusRecovery = this.recover(Math.min(radiusMult, this.radiusRecovery), timeFix);
+    this.speedRecovery = this.recover(Math.min(speedMult, this.speedRecovery), timeFix);
+
+    this.radiusMultiplier *= this.radiusRecovery;
+
     if (this.freeze > 0) {
       this.freeze = Math.max(0, this.freeze - time);
     } else {
-      this.pos.x += this.vel.x * speedMult / 32 * timeFix;
-      this.pos.y += this.vel.y * speedMult / 32 * timeFix;
+      this.pos.x += this.vel.x * this.speedRecovery / 32 * timeFix;
+      this.pos.y += this.vel.y * this.speedRecovery / 32 * timeFix;
     }
 
     const dim = 1 - this.friction * timeFix;
@@ -556,6 +575,7 @@ class Player {
   reset(){
     this.world = 0;
     this.area = 0;
+    this.isDead = false;
     this.tournamentFinished = false;
     this.resetPosition();
     game.worlds[this.world].areas.forEach(area => area.loadCount = 0);
@@ -657,6 +677,7 @@ class Player {
   }
   onEnemyCollide(enemy, immune) { return null; }
   onFatalBlow(corrosive) { return null; }
+  onDeath() {return null}
   calculateAreaZones(area) {
     let minimum_speed = 0;
     let safeZone = true;
@@ -918,7 +939,7 @@ class Player {
       this.webstickness = this.webstickness <= 0 ? 0.1 : this.webstickness + (Math.pow(0.85 - this.webstickness, 2) * 0.2) * timeFix;
       if (this.cobweb && this.web) this.applySlowness(this.webstickness, 1 - this.webstickness, true);
       else if (this.cobweb) this.applySlowness(this.webstickness, 1 - this.webstickness, false);
-      else if (this.web) this.applySlowness(this.webstickness);
+      else if (this.web) this.applySlowness(this.webstickness, 1 - this.webstickness, false);
     } else if (this.webstickness > 0) this.webstickness = 0;
 
     if (this.sticky || this.stickness > 0) this.applySlowness(0.3);
@@ -1190,9 +1211,10 @@ class Player {
     this.pos.x = x;
     this.pos.y = y;
   }
+  onTeleport(type){
+  }
   cent_can_change_input_angle() {
-    return this.cent_input_ready/*(this.cent_input_ready) ? 
-    true : this.cent_accelerating && 2 * this.cent_distance < this.cent_max_distance;*/
+    return this.cent_input_ready;
   }
   isDetectable() {
     return !this.god && !this.isDead && !this.night && !this.safeZone;
@@ -1731,6 +1753,9 @@ class Shade extends Player {
     }
     return null;
   }
+  onDeath(){
+    this.shadeNight = 0;
+  }
 }
 
 class shadeVengeance extends Entity {
@@ -2058,6 +2083,9 @@ class Rameses extends Player {
       this.invincible_time = 1000;
     }
   }
+  onDeath(){
+    this.bandage=true;
+  }
 }
 class Magmax extends Player {
   constructor(pos, speed) {
@@ -2253,16 +2281,17 @@ class Chrono extends Player {
     this.teleportPosition = [];
     this.strokeColor = "#009260";
     this.entityPositions = new Map();
-    this.lastUpdateTime = 0;
-    this.updateInterval = 100; // 100ms update interval
-    this.maxTeleportPositions = 75;
-    this.maxEntityPositionAge = 2240; // 2.6 seconds
-    this.lastTeleportUpdateTime = 0;
-    this.teleportUpdateInterval = 1000 / 30; // 30 fps update interval for teleport positions
+    this.gameTime = 0;                 // running clock, advanced by delta each tick
+    this.entityUpdateAccumulator = 0;
+    this.updateInterval = 100;         // ms between entity position samples
+    this.maxTeleportPositions = 51;
+    this.maxEntityPositionAge = 2240;
+    this.teleportAccumulator = 0;
+    this.teleportUpdateInterval = 50; // ms == 6 frames @ ~60fps
   }
 
   abilities(time, area, offset) {
-    const timeFix = time / (1000 / 30);
+    this.gameTime += time;
     this.updateTeleportPosition(time);
     this.updateEntityPositions(area, time);
     this.handleFirstAbility(area, offset, time);
@@ -2270,26 +2299,31 @@ class Chrono extends Player {
   }
 
   updateTeleportPosition(time) {
-    const currentTime = Date.now();
-    if (currentTime - this.lastTeleportUpdateTime >= this.teleportUpdateInterval) {
-      this.teleportPosition.push(new Vector(this.pos.x, this.pos.y));
+    this.teleportAccumulator += time;
+    if (this.teleportAccumulator >= this.teleportUpdateInterval) {
+      this.teleportPosition.push({
+        x: this.pos.x, 
+        y: this.pos.y,
+        dead: this.isDead,
+        timer: this.deathTimer
+      });
       if (this.teleportPosition.length > this.maxTeleportPositions) {
         this.teleportPosition.shift();
       }
-      this.lastTeleportUpdateTime = currentTime;
+      this.teleportAccumulator -= this.teleportUpdateInterval;
     }
   }
 
   updateEntityPositions(area, time) {
-    const currentTime = Date.now();
-    if (currentTime - this.lastUpdateTime >= this.updateInterval || (this.secondAbility && this.secondAbilityCooldown === 0 && this.ab2L)) {
+    this.entityUpdateAccumulator += time;
+    if (this.entityUpdateAccumulator >= this.updateInterval || (this.secondAbility && this.secondAbilityCooldown === 0 && this.ab2L)) {
       for (const entities of Object.values(area.entities)) {
         for (const entity of entities) {
           if (entity.immune) continue;
-          this.updateEntityPosition(entity, currentTime);
+          this.updateEntityPosition(entity, this.gameTime);
         }
       }
-      this.lastUpdateTime = currentTime;
+      this.entityUpdateAccumulator = 0;
     }
   }
 
@@ -2311,11 +2345,18 @@ class Chrono extends Player {
     if (this.firstAbility && this.firstAbilityCooldown === 0 && this.energy >= 30 && this.ab1L) {
       this.firstAbilityActivated = !this.firstAbilityActivated;
       this.updateFirstAbilityCooldown();
-      this.pos = this.teleportPosition[0];
-      this.energy -= 30;
+      const teleportPos = this.teleportPosition[0];
+      this.pos = new Vector(teleportPos.x, teleportPos.y);
       if (this.isDead) {
-        this.deathTimer = Math.min(this.deathTimer + 2500 + time, 60000);
-        this.isDead = this.deathTimer < 60000;
+        if (!teleportPos.dead) {
+          this.isDead = false; 
+          return;
+        }
+        this.deathTimer = (teleportPos.timer !== undefined) ? teleportPos.timer : 60001;
+        this.isDead = this.deathTimer < 59950;
+        if(this.isDead) {
+          kill(this);
+        }
       }
     }
   }
@@ -2367,6 +2408,14 @@ class Chrono extends Player {
   updateSecondAbilityCooldown() {
     this.secondTotalCooldown = 7500 - 500 * this.ab2L;
     this.secondAbilityCooldown = this.secondTotalCooldown;
+  }
+
+  onDeath() {
+    this.teleportPosition = [];
+  }
+
+  onTeleport(){
+    this.teleportPosition = [];
   }
 }
 
@@ -2658,6 +2707,10 @@ class Necro extends Player {
       this.resurrectAvailable = true;
     }
   }
+  onDeath(){
+    this.resurrectAvailable=true;
+    this.firstPellet = 0;
+  }
 }
 
 class Candy extends Player {
@@ -2743,6 +2796,10 @@ class Candy extends Player {
 
   updateFirstAbilityCooldown() {
     this.firstTotalCooldown = this.firstAbilityCooldown = 7000 - 500 * this.ab1L;
+  }
+
+  onDeath() {
+    this.sugarRushing = 0;
   }
 }
 class Clown extends Player {
@@ -6479,7 +6536,7 @@ class VoidDrain extends Enemy {
     super(pos, entityTypes.indexOf("void_drain"), radius, speed, angle, "#261235", true, "rgba(38, 18, 53, 0.15)", auraRadius / 32);
   }
   auraEffect(player, worldPos) {
-    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize && !player.isInvulnerable()) {
       player.voidDrain = true;
     }
   }
@@ -6698,38 +6755,26 @@ class Crumbling extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("crumbling"), radius, speed, angle, "#bd9476");
     this.collision = false;
-    this.staticRadius = radius;
-    this.staticSpeed = speed;
-    this.realRadius = radius;
-    this.radius = radius;
-    this.speed = speed;
     this.clock = 3001;
   }
+
   behavior(time, area, offset, players) {
-    const timeFix = time / (1000 / 30);
     if (this.collision && this.clock > 3000) {
       this.collision = false;
-      this.angle = this.velToAngle()
       this.clock = 0;
-      this.realRadius = this.staticRadius / 2;
-      this.velToAngle();
-      this.speed = this.staticSpeed / 2;
-      this.angleToVel();
-      area.addSniperBullet(14, this.pos, Math.random() * Math.PI, this.staticRadius / 3, this.staticSpeed / 3)
-    } else if (this.clock > 3000 && this.radius != this.realRadius) {
-      this.realRadius += timeFix * this.staticRadius / 2 / 2000 * 30;
-      if (this.realRadius > this.radius) {
-        this.realRadius = this.radius;
-      }
-      this.velToAngle();
-      this.speed = this.staticSpeed;
-      this.angleToVel();
+      area.addSniperBullet(14, this.pos, Math.random() * Math.PI, this.fixedRadius * 0.4, this.speed * 0.16);
     }
+
+    if (this.clock <= 3000) {
+      this.radiusRecovery = Math.min(this.radiusRecovery, 0.5);
+      this.speedRecovery = Math.min(this.speedRecovery, 0.5);
+    }
+
     this.clock += time;
-    this.radius = this.realRadius;
   }
+
   collide(boundary) {
-    if (collisionEnemy(this, boundary, this.vel, this.pos, this.realRadius, true).col && this.clock > 3000) this.collision = true;
+    if (collisionEnemy(this, boundary, this.vel, this.pos, this.radius, true).col && this.clock > 3000) this.collision = true;
   }
 }
 
@@ -6900,7 +6945,7 @@ class Cactus extends Enemy {
     if (distance(player.pos, new Vector(this.pos.x + offset.x, this.pos.y + offset.y)) < player.radius + this.radius && !player.safeZone) {
       if (player.knockback_limit_count < 100) {
         if (!player.shadowed_invulnerability) {
-          player.knockback_player(time, this, this.push_time, this.radius * 8 * 32 + 50, offset);
+          player.knockback_player(time, this, this.push_time, this.radius * 4 * 32 + 50, offset);
         }
       }
       this.radius = this.realRadius = this.staticRadius / 2;
