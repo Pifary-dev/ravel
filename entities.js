@@ -115,69 +115,74 @@ class Enemy extends Entity {
   }
 
   update(time) {
-    const timeFix = this.teleporting ? 1 : time / (1000 / 30);
+  const timeFix = this.teleporting ? 1 : time / (1000 / 30);
 
-    this.radius = this.fixedRadius * this.radiusMultiplier;
-    this.auraSize = this.auraStaticSize * this.radiusMultiplier;
-    this.radiusMultiplier = 1;
+  this.radius = this.fixedRadius * this.radiusMultiplier;
+  this.auraSize = this.auraStaticSize * this.radiusMultiplier;
+  this.radiusMultiplier = 1;
 
-    let speedMult = this.speedMultiplier;
-    let radiusMult = this.radiusMultiplier;
-
-    if (!this.noAngleUpdate) {
-      this.velToAngle();
-      this.angleToVel();
-    }
-
-    if (this.healing > 0) this.healing -= time;
-
-    if (this.minimized > 0) {
-      speedMult *= 0.25;
-      radiusMult *= 0.5;
-      this.minimized -= time;
-    }
-
-    if (this.HarmlessEffect > 0) {
-      this.HarmlessEffect -= time;
-      this.Harmless = this.HarmlessEffect > 0;
-    }
-
-    if (this.slowdown_time > 0) {
-      this.slowdown_time = Math.max(0, this.slowdown_time - time);
-      speedMult *= this.slowdown_amount;
-    }
-    if (this.sugar_rush > 0) {
-      speedMult *= 0.05;
-      this.sugar_rush -= time;
-    }
-
-    if (this.spawnProtection) {
-      if (this.useDifferentMovement) speedMult *= 0;
-      this.spawnProtection = Math.max(0, this.spawnProtection - time);
-    }
-
-    if (this.freeze > 0) speedMult = 0;
-
-    this.radiusRecovery = this.recover(Math.min(radiusMult, this.radiusRecovery), timeFix);
-    this.speedRecovery = this.recover(Math.min(speedMult, this.speedRecovery), timeFix);
-
-    this.radiusMultiplier *= this.radiusRecovery;
-
-    if (this.freeze > 0) {
-      this.freeze = Math.max(0, this.freeze - time);
-    } else {
-      this.pos.x += this.vel.x * this.speedRecovery / 32 * timeFix;
-      this.pos.y += this.vel.y * this.speedRecovery / 32 * timeFix;
-    }
-
-    const dim = 1 - this.friction * timeFix;
-    this.vel.x *= dim;
-    this.vel.y *= dim;
-
-    this.decayed = this.repelled = false;
-    this.shatterTime = Math.max(0, this.shatterTime - time);
-    this.speedMultiplier = 1;
+  if (!this.noAngleUpdate) {
+    this.velToAngle();
+    this.angleToVel();
   }
+
+  if (this.healing > 0) this.healing -= time;
+
+  // Status effects only — this is what gets the smooth recovery bounce-back.
+  // Subclass-controlled this.speedMultiplier stays untouched here.
+  let statusSpeedMult = 1;
+  let radiusMult = 1;
+
+  if (this.minimized > 0) {
+    statusSpeedMult *= 0.25;
+    radiusMult *= 0.5;
+    this.minimized -= time;
+  }
+
+  if (this.HarmlessEffect > 0) {
+    this.HarmlessEffect -= time;
+    this.Harmless = this.HarmlessEffect > 0;
+  }
+
+  if (this.slowdown_time > 0) {
+    this.slowdown_time = Math.max(0, this.slowdown_time - time);
+    statusSpeedMult *= this.slowdown_amount;
+  }
+  if (this.sugar_rush > 0) {
+    statusSpeedMult *= 0.05;
+    this.sugar_rush -= time;
+  }
+
+  if (this.spawnProtection) {
+    if (this.useDifferentMovement) statusSpeedMult *= 0;
+    this.spawnProtection = Math.max(0, this.spawnProtection - time);
+  }
+
+  if (this.freeze > 0) statusSpeedMult = 0;
+
+  this.radiusRecovery = this.recover(Math.min(radiusMult, this.radiusRecovery), timeFix);
+  this.speedRecovery = this.recover(Math.min(statusSpeedMult, this.speedRecovery), timeFix);
+
+  this.radiusMultiplier *= this.radiusRecovery;
+
+  // Instant subclass control re-applied on top of the recovered status speed.
+  const speedMult = this.speedRecovery * this.speedMultiplier;
+
+  if (this.freeze > 0) {
+    this.freeze = Math.max(0, this.freeze - time);
+  } else {
+    this.pos.x += this.vel.x * speedMult / 32 * timeFix;
+    this.pos.y += this.vel.y * speedMult / 32 * timeFix;
+  }
+
+  const dim = 1 - this.friction * timeFix;
+  this.vel.x *= dim;
+  this.vel.y *= dim;
+
+  this.decayed = this.repelled = false;
+  this.shatterTime = Math.max(0, this.shatterTime - time);
+  this.speedMultiplier = 1;
+}
 
   interact(player, worldPos, time) {
     if(this.spawnProtection) return;
