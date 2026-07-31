@@ -329,6 +329,7 @@ class Player {
     this.herocard = true;
     this.minimap = true;
     this.overlay = true;
+    this.title = true;
     this.experienceDraining = false;
     this.maxEnergy = 30;
     this.vertSpeed = -1;

@@ -128,7 +128,7 @@ function animate(time) {
     
     renderArea(game.getStates(0), game.players, player.pos, areaUpdated);
     
-    applyScale(context, settings.scale, () => {
+    if(player.title) applyScale(context, settings.scale, () => {
       drawAreaHeader(context, 6, strokeColor, areaText, staticWidth, 40, world);
       
       if (settings.timer) {

@@ -367,6 +367,9 @@ function keydownKeys(e) {
     if (e.keyCode == 188) {
       player.overlay = !player.overlay;
     }
+    if (e.keyCode == 85) {
+      player.title = !player.title;
+    }
     if (e.keyCode == 35) {
       player.reset();
     }
