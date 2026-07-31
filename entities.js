@@ -332,6 +332,7 @@ class Player {
     this.title = true;
     this.experienceDraining = false;
     this.maxEnergy = 30;
+    this.aegisShieldPoints = 0;
     this.vertSpeed = -1;
     this.reaperShade = false;
     this.magnetDirection = "Down"
@@ -719,6 +720,9 @@ class Player {
   calculateSpeed(minimum_speed) {
     return Math.max(this.calculateSpeedChanges(minimum_speed), this.calculateSpeedChanges(this.speed));
   }
+  getEnergyCap() {
+    return this.maxEnergy * (1 - 0.25 * this.aegisShieldPoints);
+  }
   update(time, friction) {
     this.update_knockback(time);
     this.upgradeBrightness.update(time);
@@ -728,8 +732,9 @@ class Player {
     const areaZones = this.calculateAreaZones(area);
 
     this.energy += (this.regen + this.regenAdditioner) * time / 1000;
-    if (this.energy > this.maxEnergy) {
-      this.energy = this.maxEnergy;
+    const energyCap = this.getEnergyCap();
+    if (this.energy > energyCap) {
+      this.energy = energyCap;
     } else if (this.energy < 0) {
       this.energy = 0;
     }
@@ -926,6 +931,10 @@ class Player {
       }
     }
     if (this.expander_interactions > 5) death(this);
+
+    if(this.safeZone){
+      this.aegisShieldPoints = 0;
+    }
 
     if (this.poison) {
       this.poisonTime += time;
@@ -4964,6 +4973,40 @@ class LeadSniperBullet extends SniperBullet {
     }
   }
 }
+
+class AegisSniper extends Sniper {
+  constructor(pos, radius, speed, angle) {
+    super(pos, radius, speed, angle, "#d4c48a");
+    this.type = entityTypes.indexOf("aegis_sniper");
+    this.bulletType = 22;
+    this.bulletSpeed = 14;
+    this.releaseTime = 4000;
+    this.bulletRadius = this.radius / 4;
+    this.clock = Math.random() * this.releaseTime;
+  }
+}
+
+class AegisSniperBullet extends SniperBullet {
+  constructor(pos, angle, radius, speed) {
+    super(pos, angle, radius, speed);
+    this.color = "#f0e0a0";
+    this.weak = true;
+    this.Harmless = true;
+    this.shieldPoints = 2;
+  }
+  interact(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius && !player.isInvulnerable()) {
+      this.addAegisShield(player, this.shieldPoints);
+      this.toRemove = true;
+    }
+  }
+  addAegisShield(player, points) {
+    player.aegisShieldPoints = Math.min(4, player.aegisShieldPoints + points);
+    const cap = player.getEnergyCap();
+    if (player.energy > cap) player.energy = cap;
+  }
+}
+
 class Freezing extends Enemy {
   constructor(pos, radius, speed, angle, auraRadius = 100) {
     super(pos, entityTypes.indexOf("freezing"), radius, speed, angle, "#64c1b9", true, "rgba(58, 117, 112, 0.3)", auraRadius / 32);
@@ -6312,7 +6355,7 @@ class Cursed extends Enemy {
     super(pos, entityTypes.indexOf("cursed"), radius, speed, angle, "#57121f");
   }
   interact(player, worldPos, time) {
-    if (!player.isInvulnerable() && !this.Harmless) {
+    if (!player.isInvulnerable() && !this.Harmless && (!this.healing || this.healing <= 0) ) {
       if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.radius) {
         player.curse = true;
         if (player.curseEffect > 0) {

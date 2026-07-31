@@ -105,6 +105,7 @@ const entityTypes = [
   "defender",
   "burning",
   "sticky_sniper",
+  "aegis_sniper",
 
   // og evades
   "vary",
@@ -496,9 +497,18 @@ function interactionWithEnemy(player, enemy, offset, barrierInvulnerable, corros
   if (!hasCollision || isPlayerSafe) return { dead: false, inDistance: false };
   if (enemy.healing > 0) player.isDead = false;
 
+  if (player.god || protectedByBarrier) return { dead: false, inDistance: true };
+
+  if (!isHarmless && !enemy.disabled && enemy.able_to_kill && player.aegisShieldPoints > 0) {
+    player.aegisShieldPoints -= 1;
+    enemy.HarmlessEffect = 1500;
+    enemy.Harmless = true
+    isHarmless = true;
+  }
+
   const collisionResult = player.onEnemyCollide(enemy, immune);
   if (collisionResult && collisionResult.forceHarmless) isHarmless = true;
-  if (player.god || protectedByBarrier) return { dead: false, inDistance: true };
+
 
   const enemyCannotKill = enemy.texture === "pumpkinOff" || enemy.radius <= 0 || isHarmless || enemy.shatterTime > 0;
   let dead = !enemyCannotKill;
@@ -510,54 +520,7 @@ function interactionWithEnemy(player, enemy, offset, barrierInvulnerable, corros
 
   return { dead, inDistance: true };
 }
-/*
-function interactionWithEnemy(player,enemy,offset,barrierInvulnerable, corrosive, immune, Harmless, killInSafeZone = false){
-  let dead = true;
-  let inDistance = false;
-  if(Harmless === undefined){
-    Harmless = enemy.isHarmless();
-  }
-  if (collides(player,enemy,offset) && (!player.safeZone||!killInSafeZone)) {
-    inDistance = true;
-    if(enemy.healing > 0)player.isDead = false;
-    if((barrierInvulnerable&&player.inBarrier&&!(corrosive&&!Harmless))||player.god)return {dead: false, inDistance: inDistance}
 
-    if(player.night && !immune && !enemy.disabled){
-      player.night=false;
-      player.speedAdditioner=0;
-      enemy.Harmless=true;
-      enemy.HarmlessEffect = 2000; 
-      Harmless = true;
-    }
-    if(enemy.texture=="pumpkinOff" || enemy.radius <= 0 || Harmless || enemy.shatterTime > 0){
-      dead = false;
-    }
-    if(dead){
-      if(player.className == "Cent" && !player.invincible){
-        if(player.energy >= 40 && player.secondAbilityCooldown==0 && player.mortarTime<=0 && player.ab2L>0){
-          player.onDeathSecondAb=true;
-          player.invincible=true;
-        }
-      }
-      if(player.bandage){
-        player.bandage = false;
-        player.invincible = true;
-        player.isUnbandaging = true;
-        player.invincible_time = 1000;
-      }
-  }
-    if((player.invincible&&!corrosive)||Harmless||!enemy.able_to_kill){
-      dead = false;
-    }
-    if(dead && !player.isDead){
-      death(player)
-    }
-  } else {
-    dead = false;
-  }
-  return {dead: dead, inDistance: inDistance}
-}
-*/
 const toRGBArray = rgbStr => {
   const match = rgbStr.match(/\d+(?:\.\d+)?(?:e[-+]\d+)?/g);
   return match.map(Number);

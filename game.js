@@ -1084,6 +1084,8 @@ class Area {
         return new Charging(new Vector(posX, posY), radius / 32, speed, angle);
       case "lead_sniper":
         return new LeadSniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "aegis_sniper":
+        return new AegisSniper(new Vector(posX, posY), radius / 32, speed, angle);
       case "reducing":
         return new Reducing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       case "blocking":
@@ -1205,7 +1207,8 @@ class Area {
       18: { name: "ForceSniperBProjectile", class: ForceSniperBBullet },
       19: { name: "NinjaStarSniperProjectile", class: NinjaStarSniperBullet },
       20: { name: "VoidSniperProjectile", class: VoidSniperBullet },
-      21: { name: "VoidSwarmProjectile", class: VoidSwarmBullet }
+      21: { name: "VoidSwarmProjectile", class: VoidSwarmBullet },
+      22: { name: "AegisSniperProjectile", class: AegisSniperBullet }
     };
 
     if (bulletTypes[type]) {
