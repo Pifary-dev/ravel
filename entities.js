@@ -1949,8 +1949,8 @@ class Reaper extends Player {
     const invisibilityTime = 3500;
     if (this.secondAbility) {
       this.secondAbilityActivated = !this.secondAbilityActivated;
-      if (this.energy >= 30 && this.secondAbilityCooldown == 0) {
-        this.energy -= 30;
+      if (this.energy >= 25 && this.secondAbilityCooldown == 0) {
+        this.energy -= 25;
         this.secondAbilityCooldown = this.secondTotalCooldown;
         this.reaperShadeTimer = invisibilityTime;
         this.reaperShade = true;
