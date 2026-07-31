@@ -1,4 +1,4 @@
-var entityTypes = [
+const entityTypes = [
   "unknown", // this is used if enemy type is not known
   "normal",
   "wall",
@@ -126,8 +126,8 @@ function pointInRectangle(pos, rectpos, rectsize) {
 }
 
 function closestPointToRectangle(pos, rectpos, rectsize) {
-  var xpos = pos.x;
-  var ypos = pos.y;
+  let xpos = pos.x;
+  let ypos = pos.y;
   if (xpos < rectpos.x) {
     xpos = rectpos.x
   }
@@ -740,7 +740,7 @@ function zoneTypeToId(type){
 }
 
 function interval(duration, fn){
-  var _this = this
+  let _this = this
   this.baseline = undefined
   
   this.run = function(){
@@ -748,10 +748,10 @@ function interval(duration, fn){
       _this.baseline = new Date().getTime();
     }
     fn();
-    var end = new Date().getTime();
+    const end = new Date().getTime();
     _this.baseline += duration;
-    var nextTick = duration - (end - _this.baseline);
-    var progressToBeDone = end - _this.baseline; // make progress while afk
+    let nextTick = duration - (end - _this.baseline);
+    let progressToBeDone = end - _this.baseline; // make progress while afk
     if(progressToBeDone>100){
       _this.baseline = new Date().getTime();
     }

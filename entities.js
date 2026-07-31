@@ -47,8 +47,8 @@ class Entity {
 
     const speedMult = this.speedMultiplier;
 
-    if (this.freeze > 0) {
-      this.freeze = Math.max(0, this.freeze - time);
+    if (this.frozenTimeLeft > 0) {
+      this.frozenTimeLeft = Math.max(0, this.frozenTimeLeft - time);
     } else {
       this.pos.x += this.vel.x * speedMult / 32 * timeFix;
       this.pos.y += this.vel.y * speedMult / 32 * timeFix;
@@ -158,7 +158,7 @@ class Enemy extends Entity {
     this.spawnProtection = Math.max(0, this.spawnProtection - time);
   }
 
-  if (this.freeze > 0) statusSpeedMult = 0;
+  if (this.frozenTimeLeft > 0) statusSpeedMult = 0;
 
   this.radiusRecovery = this.recover(Math.min(radiusMult, this.radiusRecovery), timeFix);
   this.speedRecovery = this.recover(Math.min(statusSpeedMult, this.speedRecovery), timeFix);
@@ -168,8 +168,8 @@ class Enemy extends Entity {
   // Instant subclass control re-applied on top of the recovered status speed.
   const speedMult = this.speedRecovery * this.speedMultiplier;
 
-  if (this.freeze > 0) {
-    this.freeze = Math.max(0, this.freeze - time);
+  if (this.frozenTimeLeft > 0) {
+    this.frozenTimeLeft = Math.max(0, this.frozenTimeLeft - time);
   } else {
     this.pos.x += this.vel.x * speedMult / 32 * timeFix;
     this.pos.y += this.vel.y * speedMult / 32 * timeFix;
@@ -1771,167 +1771,172 @@ class shadeVengeance extends Entity {
     this.wall_push = true;
     this.isEnemy = false;
     this.acceleration = 2;
-    this.weak = false; //affects if destroyed outside of map bounds
+    this.weak = false;
     this.toRemove = false;
-    this.no_collide = true; //(false - maybe makes a ball bounce off the walls inside area
+    this.no_collide = true;
     this.isSpawned = false;
     this.returning = false;
-    this.vel.x = Math.cos(angle + 10e-8) * speed;
-    this.vel.y = Math.sin(angle + 10e-8) * speed;
+    this.vel.x = Math.cos(angle) * speed;
+    this.vel.y = Math.sin(angle) * speed;
     this.oldAngle = this.angle;
     this.targetAngle = this.angle;
     this.texture = "vengeance_projectile";
-    this.clock = 0
+    this.clock = 0;
   }
+
   compute_speed() {
-    if (this.returning && this.speed < 70) {
-      this.speed += this.acceleration * (this.clock * (60 / 1000));
-    } else if (!this.returning) {
-      this.speed -= this.acceleration * (this.clock * (60 / 1000))
-      if ((this.speed - this.acceleration) < 0) {
-        this.angle = Math.atan2(this.vel.y, this.vel.x);
-        this.speed == 0
+    const dt = this.clock * (60 / 1000);
+
+    if (this.returning) {
+      if (this.speed < 70) this.speed += this.acceleration * dt;
+    } else {
+      this.speed -= this.acceleration * dt;
+      if (this.speed - this.acceleration < 0) {
+        this.angle = Math.atan2(this.vel.y, this.vel.x) + Math.PI;
         this.returning = true;
-        this.angle = this.angle + Math.PI;
+        this.speed = 0;
       }
     }
+
     this.angleToVel();
     this.oldAngle = this.angle;
   }
+
   behavior(time, area, offset, players) {
-    this.clock = time
+    this.clock = time;
+
     if (this.returning) {
-      let index;
-      for (var i in players) {
-        index = i;
-      }
+      const keys = Object.keys(players);
+      const target = keys.length ? players[keys[keys.length - 1]] : undefined;
+
       this.velToAngle();
-      if (index != undefined) {
-        let dX = (players[index].pos.x - offset.x) - this.pos.x;
-        let dY = (players[index].pos.y - offset.y) - this.pos.y;
+      if (target) {
+        const dX = (target.pos.x - offset.x) - this.pos.x;
+        const dY = (target.pos.y - offset.y) - this.pos.y;
         this.targetAngle = Math.atan2(dY, dX);
-        this.angle = this.targetAngle
+        this.angle = this.targetAngle;
       }
       this.angleToVel();
     }
+
     this.compute_speed();
-    for (let j in area.entities) {
-      for (let k in area.entities[j]) {
-        if ((area.entities[j][k].isEnemy || area.entities[j][k].weak) && !area.entities[j][k].immune) {
-          if (distance(area.entities[j][k].pos, new Vector(this.pos.x, this.pos.y)) < this.radius + area.entities[j][k].radius) {
-            if (this.returning) {
-              area.entities[j][k].freeze = 6000;
-            } else if (!this.returning) {
-              area.entities[j][k].freeze = 0;
-              area.entities[j][k].slowdown_amount = 0.25;
-              area.entities[j][k].slowdown_time = 6000;
-            }
-          }
+    this._freezeNearbyEnemies(area);
+  }
+
+  _freezeNearbyEnemies(area) {
+    const { x: px, y: py } = this.pos;
+    const myRadius = this.radius;
+    const freezing = this.returning;
+    const groups = Object.values(area.entities);
+
+    for (let g = 0; g < groups.length; g++) {
+      const group = groups[g];
+      for (let k = 0; k < group.length; k++) {
+        const entity = group[k];
+        if (entity.immune || !(entity.isEnemy || entity.weak)) continue;
+
+        const dx = entity.pos.x - px;
+        const dy = entity.pos.y - py;
+        const rSum = myRadius + entity.radius;
+        if (dx * dx + dy * dy >= rSum * rSum) continue;
+
+        if (freezing) {
+          entity.frozenTimeLeft = 6000;
+          entity.frozenTime = 6000;
+        } else {
+          entity.frozenTimeLeft = 0;
+          entity.slowdown_amount = 0.25;
+          entity.slowdown_time = 6000;
         }
       }
     }
   }
+
   collide() {
-    let local_area = game.worlds[game.players[0].world].areas[game.players[0].area]
-    let local_boundary = local_area.getBoundary()
-    let local_assets = local_area.assets
-    for (let i in local_assets) {
-      if (local_assets[i].type == 1) {
-        let rectHalfSizeX_1 = local_assets[i].size.x / 2;
-        let rectHalfSizeY_1 = local_assets[i].size.y / 2;
-        let rectCenterX_1 = local_assets[i].pos.x + rectHalfSizeX_1;
-        let rectCenterY_1 = local_assets[i].pos.y + rectHalfSizeY_1;
-        let distX_1 = Math.abs(this.pos.x - rectCenterX_1);
-        let distY_1 = Math.abs(this.pos.y - rectCenterY_1);
-        if ((distX_1 < rectHalfSizeX_1 + this.radius) && (distY_1 < rectHalfSizeY_1 + this.radius)) {
-          // Collision
-          let relX_1 = (this.pos.x - rectCenterX_1) / rectHalfSizeX_1;
-          let relY_1 = (this.pos.y - rectCenterY_1) / rectHalfSizeY_1;
-          if (Math.abs(relX_1) > Math.abs(relY_1)) {
-            // Horizontal collision.
-            if (relX_1 > 0) {
-              // Right collision
-              this.pos.x = rectCenterX_1 + rectHalfSizeX_1 + this.radius;
-              this.vel.x = Math.abs(this.vel.x);
-              this.velToAngle();
-              this.targetAngle = this.angle;
-            } else {
-              // Left collision
-              this.pos.x = rectCenterX_1 - rectHalfSizeX_1 - this.radius;
-              this.vel.x = -Math.abs(this.vel.x);
-              this.velToAngle();
-              this.targetAngle = this.angle;
-            }
-          } else {
-            // Vertical collision
-            if (relY_1 < 0) {
-              // Up collision
-              this.pos.y = rectCenterY_1 - rectHalfSizeY_1 - this.radius;
-              this.vel.y = -Math.abs(this.vel.y);
-              this.velToAngle();
-              this.targetAngle = this.angle;
-            } else {
-              // Bottom collision
-              this.pos.y = rectCenterY_1 + rectHalfSizeY_1 + this.radius;
-              this.vel.y = Math.abs(this.vel.y);
-              this.velToAngle();
-              this.targetAngle = this.angle;
-            }
-          }
-        }
+    const local_area = game.worlds[game.players[0].world].areas[game.players[0].area];
+    const boundary = local_area.getBoundary();
+    const assets = Object.values(local_area.assets);
+
+    for (let i = 0; i < assets.length; i++) {
+      const asset = assets[i];
+      if (asset.type === 1) this._collideWithRect(asset);
+    }
+
+    this._clampToBoundary(boundary);
+  }
+
+  _collideWithRect(rect) {
+    const halfW = rect.size.x / 2;
+    const halfH = rect.size.y / 2;
+    const centerX = rect.pos.x + halfW;
+    const centerY = rect.pos.y + halfH;
+    const distX = Math.abs(this.pos.x - centerX);
+    const distY = Math.abs(this.pos.y - centerY);
+
+    if (distX >= halfW + this.radius || distY >= halfH + this.radius) return;
+
+    const relX = (this.pos.x - centerX) / halfW;
+    const relY = (this.pos.y - centerY) / halfH;
+
+    if (Math.abs(relX) > Math.abs(relY)) {
+      if (relX > 0) {
+        this.pos.x = centerX + halfW + this.radius;
+        this.vel.x = Math.abs(this.vel.x);
+      } else {
+        this.pos.x = centerX - halfW - this.radius;
+        this.vel.x = -Math.abs(this.vel.x);
+      }
+    } else {
+      if (relY < 0) {
+        this.pos.y = centerY - halfH - this.radius;
+        this.vel.y = -Math.abs(this.vel.y);
+      } else {
+        this.pos.y = centerY + halfH + this.radius;
+        this.vel.y = Math.abs(this.vel.y);
       }
     }
-    if (this.returning) {
-      if (this.pos.x - this.radius < 0) {
-        this.pos.x = this.radius;
-        this.vel.x = Math.abs(this.vel.x);
-        this.velToAngle();
-        this.targetAngle = this.angle;
-      }
-      if (this.pos.x + this.radius > local_boundary.w) {
-        this.pos.x = local_boundary.w - this.radius;
-        this.vel.x = -Math.abs(this.vel.x);
-        this.velToAngle();
-        this.targetAngle = this.angle;
-      }
-      if (this.pos.y - this.radius < 0) {
-        this.pos.y = this.radius;
-        this.vel.y = Math.abs(this.vel.y);
-        this.velToAngle();
-        this.targetAngle = this.angle;
-      }
-      if (this.pos.y + this.radius > local_boundary.h) {
-        this.pos.y = local_boundary.h - this.radius;
-        this.vel.y = -Math.abs(this.vel.y);
-        this.velToAngle();
-        this.targetAngle = this.angle;
-      }
+
+    this.velToAngle();
+    if (this.returning) this.targetAngle = this.angle;
+  }
+
+  _clampToBoundary(boundary) {
+    const r = this.radius;
+    let hit = false;
+
+    if (this.pos.x - r < 0) {
+      this.pos.x = r;
+      this.vel.x = Math.abs(this.vel.x);
+      hit = true;
+    } else if (this.pos.x + r > boundary.w) {
+      this.pos.x = boundary.w - r;
+      this.vel.x = -Math.abs(this.vel.x);
+      hit = true;
     }
-    if (!this.returning) {
-      if (this.pos.x - this.radius < 0) {
-        this.pos.x = this.radius;
-        this.vel.x = Math.abs(this.vel.x);
-        this.velToAngle();
-      }
-      if (this.pos.x + this.radius > local_boundary.w) {
-        this.pos.x = local_boundary.w - this.radius;
-        this.vel.x = -Math.abs(this.vel.x);
-        this.velToAngle();
-      }
-      if (this.pos.y - this.radius < 0) {
-        this.pos.y = this.radius;
-        this.vel.y = Math.abs(this.vel.y);
-        this.velToAngle();
-      }
-      if (this.pos.y + this.radius > local_boundary.h) {
-        this.pos.y = local_boundary.h - this.radius;
-        this.vel.y = -Math.abs(this.vel.y);
-        this.velToAngle();
-      }
+
+    if (this.pos.y - r < 0) {
+      this.pos.y = r;
+      this.vel.y = Math.abs(this.vel.y);
+      hit = true;
+    } else if (this.pos.y + r > boundary.h) {
+      this.pos.y = boundary.h - r;
+      this.vel.y = -Math.abs(this.vel.y);
+      hit = true;
+    }
+
+    if (hit) {
+      this.velToAngle();
+      if (this.returning) this.targetAngle = this.angle;
     }
   }
+
   interact(player, worldPos) {
-    if (this.returning && distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < this.radius) {
+    if (!this.returning) return;
+
+    const dx = player.pos.x - (this.pos.x + worldPos.x);
+    const dy = player.pos.y - (this.pos.y + worldPos.y);
+
+    if (dx * dx + dy * dy < this.radius * this.radius) {
       this.toRemove = true;
     }
   }
@@ -2481,7 +2486,9 @@ class Brute extends Player {
   }
 
   applyStompEffect(entity, playerPos, stompRadius, currentArea) {
-    entity.freeze = 4000;
+    entity.frozenTimeLeft = 4000;
+    entity.frozenTime = 4000;
+
     const prevVel = { x: entity.vel.x, y: entity.vel.y };
     const dir = {
       x: entity.pos.x - (this.pos.x - game.worlds[this.world].pos.x - currentArea.pos.x),
@@ -2944,29 +2951,40 @@ class Poop extends Player {
     this.shields = [];
     this.dist = 2;
   }
+
   abilities(time, area, offset) {
     if (this.firstAbility) {
       if (this.shields.length === 0) {
-        this.shields.push(new Shield(new Vector(this.pos.x - offset.x, this.pos.y - offset.y), this.id))
-        area.addEntity("shield", this.shields[this.shields.length - 1], true)
+        const shield = new Shield(
+          new Vector(this.pos.x - offset.x, this.pos.y - offset.y),
+          this.id
+        );
+        this.shields.push(shield);
+        area.addEntity("shield", shield, true);
       } else {
         this.shields[0].toRemove = true;
         this.shields.pop();
       }
     }
+
+    const dist = distance(this.pos, this.oldPos);
+    if (dist === 0) return;
+
+    const vx = (this.pos.x - this.oldPos.x) / dist;
+    const vy = (this.pos.y - this.oldPos.y) / dist;
+    const rot = Math.atan2(vy, vx) + Math.PI / 2;
+    const posX = this.pos.x - offset.x + vx * 2;
+    const posY = this.pos.y - offset.y + vy * 2;
+
     const shields = area.entities["shield"];
-    for (var i in shields) {
+    if (!shields) return;
+
+    for (let i = 0; i < shields.length; i++) {
       const shield = shields[i];
-      if (shield.owner == this.id) {
-        var dist = distance(this.pos, this.oldPos);
-        if (dist != 0) {
-          var vx = (this.pos.x - this.oldPos.x) / dist;
-          var vy = (this.pos.y - this.oldPos.y) / dist;
-          var pos = new Vector(this.pos.x - offset.x + vx * 2, this.pos.y - offset.y + vy * 2)
-          shield.pos = pos
-          shield.rot = Math.atan2(vy, vx) + Math.PI / 2
-        }
-      }
+      if (shield.owner !== this.id) continue;
+      shield.pos = new Vector(posX, posY);
+      shield.rot = rot;
+      break;
     }
   }
 }
@@ -2975,7 +2993,7 @@ class Shield extends Entity {
   constructor(pos, owner) {
     super(pos, 0.7, "black");
     this.owner = owner;
-    this.rot = 0
+    this.rot = 0;
     this.isShield = true;
     this.size = new Vector(2, 0.3);
     this.wall_push = false;
@@ -2983,23 +3001,35 @@ class Shield extends Entity {
     this.projectile_outline = false;
     this.outline = false;
   }
+
   behavior(time, area, offset, players) {
-    for (var j in area.entities) {
-      for (var k in area.entities[j]) {
-        if (area.entities[j][k].isEnemy || area.entities[j][k].weak) {
-          var angle = Math.atan2(area.entities[j][k].pos.y - this.pos.y, area.entities[j][k].pos.x - this.pos.x)
-          var newAngle = angle - this.rot;
-          var posX = Math.cos(newAngle) * distance(this.pos, area.entities[j][k].pos);
-          var posY = Math.sin(newAngle) * distance(this.pos, area.entities[j][k].pos);
-          if (pointInRectangle(new Vector(posX, posY), new Vector(-this.size.x - area.entities[j][k].radius, -this.size.y - area.entities[j][k].radius), new Vector(this.size.x * 2 + area.entities[j][k].radius * 2, this.size.y * 2 + area.entities[j][k].radius * 2))) {
-            area.entities[j][k].vel.x = Math.cos(this.rot - Math.PI / 2) * area.entities[j][k].speed;
-            area.entities[j][k].vel.y = Math.sin(this.rot - Math.PI / 2) * area.entities[j][k].speed;
-          }
+    const cosR = Math.cos(this.rot);
+    const sinR = Math.sin(this.rot);
+    const pushX = Math.cos(this.rot - Math.PI / 2);
+    const pushY = Math.sin(this.rot - Math.PI / 2);
+
+    const groups = Object.values(area.entities);
+    for (let g = 0; g < groups.length; g++) {
+      const group = groups[g];
+      for (let k = 0; k < group.length; k++) {
+        const entity = group[k];
+        if (!(entity.isEnemy || entity.weak)) continue;
+        const dx = entity.pos.x - this.pos.x;
+        const dy = entity.pos.y - this.pos.y;
+        const localX = dx * cosR + dy * sinR;
+        const localY = -dx * sinR + dy * cosR;
+        const limX = this.size.x + entity.radius;
+        const limY = this.size.y + entity.radius;
+
+        if (Math.abs(localX) <= limX && Math.abs(localY) <= limY) {
+          entity.vel.x = pushX * entity.speed;
+          entity.vel.y = pushY * entity.speed;
         }
       }
     }
   }
 }
+
 class Unknown extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("unknown"), radius, speed, angle, "purple");
@@ -3464,9 +3494,8 @@ class Wall extends Enemy {
     this.returnCollision = true;
     this.boundary = boundary
     this.move_clockwise = !move_clockwise;
-    var x, y;
-    var radius = radius;
-    var distance = wallIndex * (
+    let x, y;
+    let distance = wallIndex * (
       (boundary.w - radius * 2) * 2 +
       (boundary.h - radius * 2) * 2) / count
 
@@ -3492,7 +3521,7 @@ class Wall extends Enemy {
     }
 
     this.direction = this.rotate(this.initial_side, this.move_clockwise)
-    var anti_crash = 0;
+    let anti_crash = 0;
     while (distance > 0) {
       if (anti_crash > 1000) {
         console.error("It sometimes crashes, but this is in evades code... Check your wall enemies!");
@@ -3983,11 +4012,11 @@ class Quicksand extends Enemy {
     this.quicksand = push_direction;
     this.quicksand_strength = strength;
     this.immune = immune;
-    var player = game.players[0];
+    const player = game.players[0];
     if (classic) {
       if (!this.quicksand && this.quicksand !== 0) {
-        var world = game.worlds[player.world];
-        var area = world.areas[player.area];
+        const world = game.worlds[player.world];
+        const area = world.areas[player.area];
         if (area.entities['quicksand'] && area.entities['quicksand'].length > 0) {
           this.quicksand = area.entities['quicksand'][min_max(0, area.entities['quicksand'].length - 1)].quicksand;
         } else {
@@ -5616,7 +5645,7 @@ class Radiating extends Enemy {
   behavior(time, area, offset, players) {
     this.clock += time;
     if (this.clock > this.releaseTime) {
-      for (var i = 0; i < 9; i++) {
+      for (let i = 0; i < 9; i++) {
         area.addSniperBullet(2, this.pos, i * Math.PI / 4, 8 / 32, 8)
       }
       this.clock = 0;
@@ -5806,14 +5835,14 @@ class FrostGiant extends Enemy {
   }
   quadspiral_pattern(area) {
     if (this.prepare_shot()) {
-      for (var i = 0; i < 4; i++) {
+      for (let i = 0; i < 4; i++) {
         this.addBullet(this.pos, this.angle + i * Math.PI / 2, area)
       }
     }
   }
   twinspiral_pattern(area) {
     if (this.prepare_shot()) {
-      for (var i = 0; i < 2; i++) {
+      for (let i = 0; i < 2; i++) {
         this.addBullet(this.pos, this.angle + i * Math.PI, area)
       }
     }
@@ -6169,7 +6198,7 @@ class Snowman extends Enemy {
     if (this.wallHit) {
       if (!this.fixatedShink) this.shrinkingRemaining = this.snowmanRadiusMultiplier;
       this.fixatedShink = true;
-      var radiusDifference = this.shrinkingRemaining * (Math.ceil(this.wallDuration2) / this.wallTime);
+      const radiusDifference = this.shrinkingRemaining * (Math.ceil(this.wallDuration2) / this.wallTime);
       this.snowmanRadiusMultiplier = radiusDifference;
       this.snowmanRadiusMultiplier = Math.max(this.snowmanRadiusMultiplier, 1)
       this.radiusMultiplier *= this.snowmanRadiusMultiplier;
@@ -6942,7 +6971,7 @@ class Cactus extends Enemy {
     this.staticRadius = this.realRadius = radius;
   }
   interact(player, offset, time) {
-    var timeFix = time / (1000 / 30);
+    const timeFix = time / (1000 / 30);
     this.realRadius += timeFix * this.staticRadius / 2 / 2000 * 30;
     if (this.realRadius > this.staticRadius) this.realRadius = this.staticRadius;
     this.radius = this.realRadius;
@@ -7290,26 +7319,38 @@ class ReverseProjectile extends Enemy {
     this.angleToVel();
     this.distance = 0;
   }
+
   behavior(time, area, offset, players) {
     this.distance += this.speed;
-    if (this.distance >= 350*2) {
+    if (this.distance >= 700) { // 350 * 2
       this.toRemove = true;
     }
-    for (var i in area.entities) {
-      const entities = area.entities[i];
-      for (var j in entities) {
-        const entity = entities[j];
-        if (distance(this.pos, new Vector(entity.pos.x, entity.pos.y)) < this.radius + entity.radius && !entity.immune) {
-          if (!entity.healing || entity.healing < 3700) {
-            entity.angle += Math.PI;
-            entity.angleToVel();
-          }
-          entity.healing = 4000;
+
+    const px = this.pos.x, py = this.pos.y;
+    const myRadius = this.radius;
+    const groups = Object.values(area.entities);
+
+    for (let g = 0; g < groups.length; g++) {
+      const group = groups[g];
+      for (let k = 0; k < group.length; k++) {
+        const entity = group[k];
+        if (entity.immune) continue;
+
+        const dx = entity.pos.x - px;
+        const dy = entity.pos.y - py;
+        const rSum = myRadius + entity.radius;
+        if (dx * dx + dy * dy >= rSum * rSum) continue;
+
+        if (!entity.healing || entity.healing < 3700) {
+          entity.angle += Math.PI;
+          entity.angleToVel();
         }
+        entity.healing = 4000;
       }
     }
   }
-  interact() { }
+
+  interact() {}
 }
 
 class ObscureProjectile extends Enemy {
@@ -7325,27 +7366,41 @@ class ObscureProjectile extends Enemy {
     this.projectile_outline = false;
     this.area_collide = true;
   }
+
   behavior(time, area, offset, players) {
     this.clock += time;
     if (this.clock >= 500) {
       this.toRemove = true;
     }
-    for (var i in area.entities) {
-      const entities = area.entities[i];
-      for (var j in entities) {
-        const entity = entities[j];
-        const player = players[0];
-        if (distance(this.pos, new Vector(entity.pos.x, entity.pos.y)) < this.radius + entity.radius && !entity.toRemove && entity.isEnemy && !entity.obscure) {
-          player.pos = new Vector(entity.pos.x + offset.x, entity.pos.y + offset.y);
-          player.safeZone = player.calculateAreaZones(area).safeZone;
-          player.invincible_time = 1000;
-          player.invincible = true;
-          this.toRemove = true;
-        }
+
+    const px = this.pos.x, py = this.pos.y;
+    const myRadius = this.radius;
+    const player = players[0];
+    const groups = Object.values(area.entities);
+
+    outer:
+    for (let g = 0; g < groups.length; g++) {
+      const group = groups[g];
+      for (let k = 0; k < group.length; k++) {
+        const entity = group[k];
+        if (entity.toRemove || !entity.isEnemy || entity.obscure) continue;
+
+        const dx = entity.pos.x - px;
+        const dy = entity.pos.y - py;
+        const rSum = myRadius + entity.radius;
+        if (dx * dx + dy * dy >= rSum * rSum) continue;
+
+        player.pos = new Vector(entity.pos.x + offset.x, entity.pos.y + offset.y);
+        player.safeZone = player.calculateAreaZones(area).safeZone;
+        player.invincible_time = 1000;
+        player.invincible = true;
+        this.toRemove = true;
+        break outer;
       }
     }
   }
-  interact() { }
+
+  interact() {}
 }
 
 class MinimizeProjectile extends Enemy {
@@ -7360,20 +7415,32 @@ class MinimizeProjectile extends Enemy {
     this.angleToVel();
     this.distance = 0;
   }
+
   behavior(time, area, offset, players) {
     this.distance += this.speed;
-    if (this.distance >= 450*2) {
+    if (this.distance >= 900) { // 450 * 2
       this.toRemove = true;
     }
-    for (var i in area.entities) {
-      const entities = area.entities[i];
-      for (var j in entities) {
-        const entity = entities[j];
-        if (distance(this.pos, new Vector(entity.pos.x, entity.pos.y)) < this.radius + entity.radius && !entity.immune) {
-          entity.minimized = 4000;
-        }
+
+    const px = this.pos.x, py = this.pos.y;
+    const myRadius = this.radius;
+    const groups = Object.values(area.entities);
+
+    for (let g = 0; g < groups.length; g++) {
+      const group = groups[g];
+      for (let k = 0; k < group.length; k++) {
+        const entity = group[k];
+        if (entity.immune) continue;
+
+        const dx = entity.pos.x - px;
+        const dy = entity.pos.y - py;
+        const rSum = myRadius + entity.radius;
+        if (dx * dx + dy * dy >= rSum * rSum) continue;
+
+        entity.minimized = 4000;
       }
     }
   }
-  interact() { }
+
+  interact() {}
 }

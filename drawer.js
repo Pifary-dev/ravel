@@ -441,9 +441,8 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     renderTimedOverlay(ctx, sugarRushMaxTime, entity.sugar_rush, 0.7, 'rgba(255, 128, 189, ');
   }
 
-  if(entity.freeze > 0){
-    const freezeMaxTime = 2000;
-    renderTimedOverlay(ctx, freezeMaxTime, entity.freeze, 0.7, 'rgba(137, 231, 255, ');
+  if(entity.frozenTimeLeft > 0){
+    renderTimedOverlay(ctx, entity.frozenTime, entity.frozenTimeLeft, 0.7, 'rgba(137, 231, 255, ');
   }
 
   if (entity.decayed) {

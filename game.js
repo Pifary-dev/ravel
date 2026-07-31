@@ -142,9 +142,9 @@ class Game {
     return closestWorld;
   }
   getStates(index) {
-    var player = this.players[index];
-    var obj = {}
-    var area = this.worlds[player.world].areas[player.area]
+    const player = this.players[index];
+    const obj = {}
+    const area = this.worlds[player.world].areas[player.area]
     obj.name = this.worlds[player.world].name;
     obj.zones = area.zones;
     obj.assets = area.assets;
@@ -1178,7 +1178,7 @@ class Area {
   }
   addEffect(type, pos, power) {
     if (type == 0) {
-      var effect = new SweetTooth(new Vector(pos.x, pos.y), power)
+      const effect = new SweetTooth(new Vector(pos.x, pos.y), power)
       this.addEntitiesBehind("SweetTooth", effect, 1);
     }
   }
