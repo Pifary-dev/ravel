@@ -1,5 +1,4 @@
-let tilesCanvas;
-let minimapCanvas;
+let tilesCanvas, minimapCanvas, lightCanvas, lightCtx;
 let shouldRenderPartially = undefined;
 let effects = [];
 
@@ -11,10 +10,18 @@ let width = canvas.width,
 function renderArea(area, players, focus, areaUpdated) {
   if (!images.tiles.complete) return;
   const player = players[0];
-  const light = document.createElement('canvas');
-  const lightCtx = light.getContext("2d");
-  light.width = width;
-  light.height = height;
+
+  if (area.lighting !== 1) {
+    if (!lightCanvas) {
+      lightCanvas = document.createElement('canvas');
+      lightCtx = lightCanvas.getContext("2d");
+    }
+    if (lightCanvas.width !== width || lightCanvas.height !== height) {
+      lightCanvas.width = width;
+      lightCanvas.height = height;
+    }
+    lightCtx.clearRect(0, 0, width, height);
+  }
   if (areaUpdated || !tilesCanvas) {
     tilesCanvas = undefined;
     minimapCanvas = undefined;
@@ -90,7 +97,7 @@ function renderArea(area, players, focus, areaUpdated) {
     lightCtx.fillRect(0, 0, width, height);
 
     context.globalCompositeOperation = "destination-in";
-    context.drawImage(light, 0, 0);
+    context.drawImage(lightCanvas, 0, 0);
     context.globalCompositeOperation = "source-over";
   }
   applyScale(context, settings.scale, () => {
