@@ -106,13 +106,16 @@ function animate(time) {
     
     const player = game.players[0];
     
-    if (inputArray.length > settings.tick_delay && settings.fps_limit !== "unlimited" && settings.tick_delay > 0) {
+    const delayActive = settings.tick_delay > 0 && settings.fps_limit !== "unlimited";
+
+    if (delayActive && inputArray.length > settings.tick_delay) {
       inputArray.splice(0, inputArray.length - settings.tick_delay);
       game.inputPlayer(0, inputArray[0]);
     } else {
       game.inputPlayer(0, input);
     }
-    inputArray.push(input);
+
+    if (delayActive) inputArray.push(input);
     
     const oldArea = player.area;
     const oldWorld = player.world;
