@@ -909,13 +909,14 @@ function renderUI(area, players, focus) {
   renderRect(centerX - UI_CONSTANTS.BASE_WIDTH / 2, bottomY - UI_CONSTANTS.EXP_BAR_HEIGHT, totalWidth * expPercentage, UI_CONSTANTS.EXP_BAR_HEIGHT, player.color);
 
   if (player.hasAB) {
-    const texts = ["[X] or [K]", "[Z] or [J]", "[C] or [L]"];
-    const abilities = [
+    const HOTKEY_LABELS = ["[X] or [K]", "[Z] or [J]", "[C] or [L]"];
+    const ABILITY_SLOTS = [
       { key: "ab1", cooldown: "firstAbilityCooldown", totalCooldown: "firstTotalCooldown", pellet: "firstPellet", pelletTotal: "firstPelletTotal", upgradeIndex: 4 },
       { key: "ab2", cooldown: "secondAbilityCooldown", totalCooldown: "secondTotalCooldown", pellet: "secondPellet", pelletTotal: "secondPelletTotal", upgradeIndex: 5 },
       { key: "specialItem", upgradeIndex: 6 }
     ];
 
+    // Pellet-based classes track cooldown via pellet count instead of a timer
     if (player.usesPellets === 1 || player.usesPellets === 3) {
       player.firstAbilityCooldown = player.firstPellet;
       player.firstTotalCooldown = player.firstPelletTotal;
@@ -925,17 +926,24 @@ function renderUI(area, players, focus) {
       player.secondTotalCooldown = player.secondPelletTotal;
     }
 
-    abilities.forEach((ability, index) => {
+    ABILITY_SLOTS.forEach((slot, index) => {
+      const isMainAbility = index < 2; // slots 0/1 are ab1/ab2; slot 2 is the special item
       if (index === 2 && !hasSpecialItem) return; // Skip rendering special item if player doesn't have it
 
-      const { key, cooldown, totalCooldown, upgradeIndex } = ability;
-      const text = texts[index];
+      const { key, cooldown, totalCooldown, upgradeIndex } = slot;
+      const hotkeyLabel = HOTKEY_LABELS[index];
       const x = staticWidth / 2 - UI_CONSTANTS.BASE_WIDTH / 2 + UI_CONSTANTS.SEPARATOR_X + 41 * uiScale + 246 * uiScale + index * UI_CONSTANTS.ABILITY_SPACING;
       const y = staticHeight - UI_CONSTANTS.UI_HEIGHT;
 
+      // Vertical positions for this slot's elements, all measured from the ability row baseline (y)
+      const iconTop = y + 41 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2;      // top-left corner of the icon square
+      const upgradeIconY = y + 45 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2; // upgrade icon / label, just below the icon
+      const hotkeyTextY = y + 52.5 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2; // fallback hotkey text, a bit lower than the upgrade icon
+      const levelDotsY = y + 80 * uiScale - 1.5 * UI_CONSTANTS.ABILITY_SIZE;  // row of level-up dots below everything else
+
       // Draw ability icon
-      if (index < 2) {
-        context.drawImage(player[key], x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
+      if (isMainAbility) {
+        context.drawImage(player[key], x - UI_CONSTANTS.ABILITY_SIZE / 2, iconTop, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
       } else if (hasSpecialItem) {
         let itemImage;
         if (player.magnet) {
@@ -945,7 +953,7 @@ function renderUI(area, players, focus) {
         } else if (player.lantern) {
           itemImage = images.lantern;
         }
-        context.drawImage(itemImage, x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
+        context.drawImage(itemImage, x - UI_CONSTANTS.ABILITY_SIZE / 2, iconTop, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
       }
 
       // Render text or upgrade
@@ -953,28 +961,29 @@ function renderUI(area, players, focus) {
       context.font = `${UI_CONSTANTS.FONT_SIZES.TINY} Tahoma, Verdana, Segoe, sans-serif`;
       context.textAlign = "center";
       if (player.points > 0) {
-        const active = index < 2 ? player[`${key}L`] !== player[`${key}ML`] : false;
-        renderUpgrade(context, x, y + 17 / 2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 9.5 * uiScale, upgradeIndex, player, active);
+        const active = isMainAbility ? player[`${key}L`] !== player[`${key}ML`] : false;
+        renderUpgrade(context, x, upgradeIconY, upgradeIndex, player, active);
       } else {
-        context.fillText(text, x, y + 17 / 2 * uiScale + 44 * uiScale - 17 * uiScale + UI_CONSTANTS.ABILITY_SIZE / 2 + 17 * uiScale);
+        context.fillText(hotkeyLabel, x, hotkeyTextY);
       }
 
       // Draw cooldown overlay
-      if (index < 2) {
+      if (isMainAbility) {
         const cooldownTime = player[cooldown] / player[totalCooldown];
         context.fillStyle = !player[`${key}L`] || cooldownTime === 1 ? "rgba(0, 0, 0, 0.6)" : "rgba(0, 0, 0, 0.2)";
-        context.fillRect(x - UI_CONSTANTS.ABILITY_SIZE / 2, y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
+        context.fillRect(x - UI_CONSTANTS.ABILITY_SIZE / 2, iconTop, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE);
       }
 
-      // Draw ability level indicators
-      const dotY = y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2 + 45 * uiScale - UI_CONSTANTS.ABILITY_SIZE - 6 * uiScale;
-      const maxLevel = index < 2 ? player[`${key}ML`] : 1;
-      const currentLevel = index < 2 ? player[`${key}L`] : 1;
+      // Draw ability level indicators (dots that fill in as the ability is leveled up)
+      const maxLevel = isMainAbility ? player[`${key}ML`] : 1;
+      const currentLevel = isMainAbility ? player[`${key}L`] : 1;
+      const dotX = (p) => x - UI_CONSTANTS.ABILITY_SIZE / 2 + 5 * uiScale + (40 * uiScale * (maxLevel !== 5 ? 2 : p) / 4);
+
+      const isOnCooldown = !player[`${key}L`] || (isMainAbility && player[cooldown] === player[totalCooldown]);
+      context.strokeStyle = isOnCooldown ? "rgb(150, 150, 150)" : "rgb(200, 200, 200)";
       for (let p = 0; p < 5; p++) {
-        context.strokeStyle = !player[`${key}L`] || (index < 2 && player[cooldown] === player[totalCooldown]) ? "rgb(150, 150, 150)" : "rgb(200, 200, 200)";
-        const dotX = x - UI_CONSTANTS.ABILITY_SIZE / 2 + 5 * uiScale + (40 * uiScale * (maxLevel !== 5 ? 2 : p) / 4);
         context.beginPath();
-        context.arc(dotX, dotY, UI_CONSTANTS.ABILITY_DOT_RADIUS, 0, Math.PI * 2);
+        context.arc(dotX(p), levelDotsY, UI_CONSTANTS.ABILITY_DOT_RADIUS, 0, Math.PI * 2);
         context.stroke();
       }
 
@@ -982,19 +991,17 @@ function renderUI(area, players, focus) {
       context.fillStyle = UI_CONSTANTS.COLORS.YELLOW;
       context.strokeStyle = UI_CONSTANTS.COLORS.YELLOW;
       for (let p = 0; p < currentLevel; p++) {
-        const dotX = x - UI_CONSTANTS.ABILITY_SIZE / 2 + 5 * uiScale + (40 * uiScale * (maxLevel !== 5 ? 2 : p) / 4);
         context.beginPath();
-        context.arc(dotX, dotY, UI_CONSTANTS.ABILITY_DOT_RADIUS, 0, Math.PI * 2);
+        context.arc(dotX(p), levelDotsY, UI_CONSTANTS.ABILITY_DOT_RADIUS, 0, Math.PI * 2);
         context.fill();
         context.stroke();
       }
 
       // Draw cooldown arc for first two abilities only
-      if (index < 2) {
+      if (isMainAbility) {
         context.fillStyle = "rgba(0, 0, 0, 0.6)";
-        const abilityX = x - UI_CONSTANTS.ABILITY_SIZE / 2;
-        const abilityY = y - 3 * uiScale + 17 * uiScale + 44 * uiScale - 17 * uiScale - UI_CONSTANTS.ABILITY_SIZE / 2;
-        sectorInRect(context, abilityX, abilityY, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE, 360 * (1 - player[cooldown] / player[totalCooldown]) - 90);
+        const cooldownFraction = player[cooldown] / player[totalCooldown];
+        sectorInRect(context, x - UI_CONSTANTS.ABILITY_SIZE / 2, iconTop, UI_CONSTANTS.ABILITY_SIZE, UI_CONSTANTS.ABILITY_SIZE, 360 * (1 - cooldownFraction) - 90);
       }
     });
   }
