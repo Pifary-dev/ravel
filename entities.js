@@ -2907,6 +2907,16 @@ class Clown extends Player {
   }
 }
 class Polygon extends Player {
+  static SHAPE = { NORMAL: 0, FAST: 1, GHOST: 2, SMALL: 3 };
+  static SWITCH_COOLDOWN = 300;
+
+  static MORPH_NORMAL_IMMUNE = [1, 0.9, 0.8, 0.7, 0.6, 0.5];
+  static MORPH_FAST_SPEED = [0, 0.5, 1, 1.75, 2.75, 4];
+  static MORPH_GHOST_COOLDOWN_MS = [7000, 6000, 5000, 4000, 3000, 2000];
+  static MORPH_SMALL_RADIUS = [1, 0.9, 0.8, 0.7, 0.6, 0.5];
+
+  static RESILIENCE_IMMUNE = [1, 0.95, 0.85, 0.8, 0.75, 0.7];
+
   constructor(pos, speed) {
     super(pos, 7, speed, "#000000", "Polygon");
     this.hasAB = true;
@@ -2914,52 +2924,60 @@ class Polygon extends Player {
     this.ab2L = (settings.max_abilities) ? 5 : 0;
     this.firstAbilityUnlocked = true;
     this.secondAbilityUnlocked = true;
-    this.shape = 0;
+    this.shape = Polygon.SHAPE.NORMAL;
     this.firstAbilityCooldown = 0;
-    this.firstTotalCooldown = 2000;
+    this.firstTotalCooldown = Polygon.SWITCH_COOLDOWN;
   }
   abilities(time, area, offset) {
-    const previous = this.shape;
-    let polygonEffectImmune = 1;
+    const previousShape = this.shape;
+    let effectImmune = 1;
 
-    if (this.firstAbility && this.firstAbilityCooldown <= 0) {
-      this.shape++;
-      this.shape = this.shape % 4;
-    }
-    if (this.shape == 1) {
-      this.speedAdditioner += 4;
-    } else if (this.shape == 2) {
-      if (previous != 2) this.night = true;
-      if (this.night === false) {
-        this.firstAbilityCooldown = this.firstTotalCooldown;
-        this.shape = 0;
-      }
-    }
-    if (this.shape == 3) {
-      this.radiusMultiplier *= 0.5;
-    }
-    if (this.shape === 0) {
-      polygonEffectImmune *= 0.5;
+    if (this.firstAbility && this.ab1L > 0 && this.firstAbilityCooldown <= 0) {
+      this.shape = (this.shape + 1) % 4;
+      this.firstTotalCooldown = Polygon.SWITCH_COOLDOWN;
+      this.firstAbilityCooldown = Polygon.SWITCH_COOLDOWN;
     }
 
-    if (this.shape !== 2) this.night = false;
+    switch (this.shape) {
+      case Polygon.SHAPE.FAST:
+        this.speedAdditioner += Polygon.MORPH_FAST_SPEED[this.ab1L];
+        break;
+
+      case Polygon.SHAPE.GHOST:
+        if (previousShape !== Polygon.SHAPE.GHOST) this.night = true;
+        if (this.night === false) {
+          this.firstTotalCooldown = Polygon.MORPH_GHOST_COOLDOWN_MS[this.ab1L];
+          this.firstAbilityCooldown = this.firstTotalCooldown;
+          this.shape = Polygon.SHAPE.NORMAL;
+        }
+        break;
+
+      case Polygon.SHAPE.SMALL:
+        this.radiusMultiplier *= Polygon.MORPH_SMALL_RADIUS[this.ab1L];
+        break;
+
+      case Polygon.SHAPE.NORMAL:
+        effectImmune *= Polygon.MORPH_NORMAL_IMMUNE[this.ab1L];
+        break;
+    }
+
+    if (this.shape !== Polygon.SHAPE.GHOST) this.night = false;
 
     if (this.firstAbilityCooldown > 0) {
       this.firstAbilityCooldown -= time;
     }
 
-    if (this.ab2L) {
-      polygonEffectImmune *= [1, 0.9, 0.85, 0.8, 0.75][this.ab2L - 1];
-    }
-    this.effectImmune = polygonEffectImmune;
+    effectImmune *= Polygon.RESILIENCE_IMMUNE[this.ab2L];
+    this.effectImmune = effectImmune;
   }
 
   onEnemyCollide(enemy, immune) {
-    if (this.shape == 2 && !immune && !enemy.disabled) {
+    const inGhostForm = this.shape === Polygon.SHAPE.GHOST;
+    if (inGhostForm && !immune && !enemy.disabled) {
       this.night = false;
       enemy.Harmless = true;
       enemy.HarmlessEffect = 2000;
-      
+
       return { forceHarmless: true };
     }
     return null;
