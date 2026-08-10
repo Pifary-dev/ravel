@@ -2909,12 +2909,19 @@ class Clown extends Player {
 class Polygon extends Player {
   constructor(pos, speed) {
     super(pos, 7, speed, "#000000", "Polygon");
+    this.hasAB = true;
+    this.ab1L = (settings.max_abilities) ? 5 : 0;
+    this.ab2L = (settings.max_abilities) ? 5 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
     this.shape = 0;
     this.firstAbilityCooldown = 0;
     this.firstTotalCooldown = 2000;
   }
   abilities(time, area, offset) {
     const previous = this.shape;
+    let polygonEffectImmune = 1;
+
     if (this.firstAbility && this.firstAbilityCooldown <= 0) {
       this.shape++;
       this.shape = this.shape % 4;
@@ -2932,9 +2939,7 @@ class Polygon extends Player {
       this.radiusMultiplier *= 0.5;
     }
     if (this.shape === 0) {
-      this.effectImmune = 0.5;
-    } else {
-      this.effectImmune = 1;
+      polygonEffectImmune *= 0.5;
     }
 
     if (this.shape !== 2) this.night = false;
@@ -2942,6 +2947,11 @@ class Polygon extends Player {
     if (this.firstAbilityCooldown > 0) {
       this.firstAbilityCooldown -= time;
     }
+
+    if (this.ab2L) {
+      polygonEffectImmune *= [1, 0.9, 0.85, 0.8, 0.75][this.ab2L - 1];
+    }
+    this.effectImmune = polygonEffectImmune;
   }
 
   onEnemyCollide(enemy, immune) {

@@ -618,7 +618,12 @@ function loadImages(character) {
     "Cent": ["fusion", "mortar"],
     "Rameses": ["bandages", "latch"],
     "Reaper": ["atonement", "depart"],
-    "Mirage": ["shift", "obscure"]
+    "Mirage": ["shift", "obscure"],
+    "Polygon": ["unknown", "unknown"],
+    "Lantern": ["unknown", "unknown"],
+    "Pole": ["unknown", "unknown"],
+    "Burst": ["unknown", "unknown"],
+    "Idk": ["unknown", "unknown"]
   };
 
   if (character in abilityMap) {
