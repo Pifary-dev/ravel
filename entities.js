@@ -4321,7 +4321,7 @@ class Sizing extends Enemy {
         this.growing = true;
       }
     }
-    this.radiusMultiplier = this.sizing_multiplier;
+    this.radiusMultiplier *= this.sizing_multiplier;
   }
 }
 class Switch extends Enemy {
@@ -5367,7 +5367,7 @@ class Dripping extends Enemy {
       }
     }
 
-    this.radiusMultiplier = this.radius_multiplier;
+    this.radiusMultiplier *= this.radius_multiplier;
     this.speedMultiplier = this.speed_multiplier;
   }
 }
