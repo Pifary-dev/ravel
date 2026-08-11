@@ -272,34 +272,32 @@ function renderEntities(area, players, focus) {
   }
 
   // Render entities
-  for (const entityType in area.entities) {
-    const entities = area.entities[entityType];
-    const len = entities.length;
+  const sortedEntities = (area.renderList || []).sort((a, b) => b.radius - a.radius);
 
-    for (let i = 0; i < len; i++) {
-      const entity = entities[i];
+  const len = sortedEntities.length;
+  for (let i = 0; i < len; i++) {
+    const entity = sortedEntities[i];
 
-      const entityX = halfWidth + (areaX + entity.pos.x - focusX) * fov;
-      const entityY = halfHeight + (areaY + entity.pos.y - focusY) * fov;
-      const radius = entity.radius * fov;
+    const entityX = halfWidth + (areaX + entity.pos.x - focusX) * fov;
+    const entityY = halfHeight + (areaY + entity.pos.y - focusY) * fov;
+    const radius = entity.radius * fov;
 
-      // Check if the entity is within the visible range
-      if (entityX + radius < 0 || entityX - radius > width || entityY + radius < 0 || entityY - radius > height) {
-        continue;
-      }
-
-      // Render entity
-      if (entity.isShield) {
-        renderShieldEntity(ctx, entity, entityX, entityY);
-      } else if (entity.shatterTime > 0) {
-        renderShatteredEntity(ctx, entity, entityX, entityY, radius);
-      } else {
-        renderNormalEntity(ctx, entity, entityX, entityY, radius);
-      }
-
-      // Render provoked indicator if needed
-      entity.provoked && renderProvokedIndicator(ctx, entityX, entityY, radius);
+    // Check if the entity is within the visible range
+    if (entityX + radius < 0 || entityX - radius > width || entityY + radius < 0 || entityY - radius > height) {
+      continue;
     }
+
+    // Render entity
+    if (entity.isShield) {
+      renderShieldEntity(ctx, entity, entityX, entityY);
+    } else if (entity.shatterTime > 0) {
+      renderShatteredEntity(ctx, entity, entityX, entityY, radius);
+    } else {
+      renderNormalEntity(ctx, entity, entityX, entityY, radius);
+    }
+
+    // Render provoked indicator if needed
+    entity.provoked && renderProvokedIndicator(ctx, entityX, entityY, radius);
   }
 }
 

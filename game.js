@@ -149,6 +149,7 @@ class Game {
     obj.zones = area.zones;
     obj.assets = area.assets;
     obj.entities = area.entities;
+    obj.renderList = area.renderList;
     obj.static_entities = area.static_entities;
     obj.effects = area.effects;
     obj.background_color = area.background_color;
@@ -468,6 +469,7 @@ class Area {
     this.zones = [];
     this.assets = [];
     this.entities = {};
+    this.renderList = [];
     this.static_entities = {};
     this.effects = {};
     this.preset = [];
@@ -490,6 +492,7 @@ class Area {
     }
 
     // Update dynamic entities
+    this.renderList = [];
     for (const entityType in this.entities) {
       this.entities[entityType] = this.entities[entityType].filter(entity => {
         entity.update(time);
@@ -536,6 +539,7 @@ class Area {
             for (const player of players) {
               if (!player.god) entity.interact(player, areaOffset, time);
             }
+            this.renderList.push(entity);
             return true;
           }
         }
@@ -679,6 +683,7 @@ class Area {
     }
     if(settings.seeded_area_resets) this.loadCount++;
     this.entities = {};
+    this.renderList = [];
     this.static_entities = {};
     this.effects = {};
     const boundary = this.getActiveBoundary();
