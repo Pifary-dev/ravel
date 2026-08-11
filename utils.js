@@ -281,6 +281,11 @@ function returnToSafePoint (player, should_clear_timer = true){
 }
 
 function death(player,enemy){
+  const isInfectious = enemy && enemy.infectious;
+  if(isInfectious){
+    kill(player);
+    return;
+  }
   if(player.className == "Morfe" && !player.isDead){
     const entities = game.worlds[player.world].areas[player.area].entities;
     let longestHealingEffect = 0;
@@ -519,7 +524,7 @@ function interactionWithEnemy(player, enemy, offset, barrierInvulnerable, corros
   if (dead && enemy.able_to_kill) player.onFatalBlow(corrosive);
   if ((player.invincible && !corrosive) || isHarmless || !enemy.able_to_kill) dead = false;
 
-  if (dead && !player.isDead) death(player);
+  if (dead && !player.isDead) death(player, enemy);
 
   return { dead, inDistance: true };
 }
