@@ -1567,28 +1567,53 @@ class MonoPole extends Entity {
 }
 
 class Lantern extends Player {
+  static FOLLOWER_SPAWN_INTERVAL = 0.005;
+  static SHRINKER_SPAWN_INTERVAL = 0.01;
+  static SPAWN_DELAY_MS = 50;
+
+  static FOLLOWER_ENERGY_DRAIN = [8, 7, 6, 5, 4];
+  static SHRINKER_ENERGY_DRAIN = [9, 8, 7, 6, 5];
+
   constructor(pos, speed) {
     super(pos, 3, speed, "#008000", "Lantern");
     this.firstTime = 0;
     this.secondTime = 0;
-    this.energyDrainRate = 5;
     this.lastSpawnTime = { follower: 0, shrinker: 0 };
-    this.spawnDelay = 50;
+    this.spawnDelay = Lantern.SPAWN_DELAY_MS;
+    this.hasAB = true;
+    this.ab1L = settings.max_abilities ? 5 : 0;
+    this.ab2L = settings.max_abilities ? 5 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
   }
 
   abilities(time, area, offset) {
     const timeInSeconds = time / 1000;
     const currentTime = Date.now();
 
-    this.toggleAbility('firstAbilityActivated', this.firstAbility);
-    this.toggleAbility('secondAbilityActivated', this.secondAbility);
+    this.toggleAbility('firstAbilityActivated', this.firstAbility && this.ab1L > 0);
+    this.toggleAbility('secondAbilityActivated', this.secondAbility && this.ab2L > 0);
 
     if (this.firstAbilityActivated) {
-      this.useAbility(timeInSeconds, currentTime, area, offset, 'firstTime', 0.005, this.createFollower.bind(this), 'follower');
+      this.runSpawner(timeInSeconds, currentTime, area, offset, {
+        timeProperty: 'firstTime',
+        activeProperty: 'firstAbilityActivated',
+        interval: Lantern.FOLLOWER_SPAWN_INTERVAL,
+        entityType: 'follower',
+        energyDrainRate: Lantern.FOLLOWER_ENERGY_DRAIN[this.ab1L - 1],
+        spawn: this.createFollower.bind(this)
+      });
     }
 
     if (this.secondAbilityActivated) {
-      this.useAbility(timeInSeconds, currentTime, area, offset, 'secondTime', 0.01, this.createShrinker.bind(this), 'shrinker');
+      this.runSpawner(timeInSeconds, currentTime, area, offset, {
+        timeProperty: 'secondTime',
+        activeProperty: 'secondAbilityActivated',
+        interval: Lantern.SHRINKER_SPAWN_INTERVAL,
+        entityType: 'shrinker',
+        energyDrainRate: Lantern.SHRINKER_ENERGY_DRAIN[this.ab2L - 1],
+        spawn: this.createShrinker.bind(this)
+      });
     }
 
     this.updateEntities(area.entities);
@@ -1598,18 +1623,19 @@ class Lantern extends Player {
     if (trigger) this[abilityName] = !this[abilityName];
   }
 
-  useAbility(timeInSeconds, currentTime, area, offset, timeProperty, interval, createEntity, entityType) {
+  runSpawner(timeInSeconds, currentTime, area, offset, { timeProperty, activeProperty, interval, entityType, energyDrainRate, spawn }) {
     this[timeProperty] += timeInSeconds;
-    this.energy -= this.energyDrainRate * timeInSeconds;
+    this.energy -= energyDrainRate * timeInSeconds;
 
     if (this.energy < 0) {
       this.energy = 0;
-      this[timeProperty.replace('Time', 'AbilityActivated')] = false;
+      this[activeProperty] = false;
       return;
     }
 
-    if (this[timeProperty] > interval && currentTime - this.lastSpawnTime[entityType] >= this.spawnDelay) {
-      createEntity(area, offset);
+    const readyToSpawn = this[timeProperty] > interval && currentTime - this.lastSpawnTime[entityType] >= this.spawnDelay;
+    if (readyToSpawn) {
+      spawn(area, offset);
       this[timeProperty] = 0;
       this.lastSpawnTime[entityType] = currentTime;
     }
@@ -1646,7 +1672,7 @@ class Lantern extends Player {
 
 class Follower extends Entity {
   constructor(pos) {
-    super(pos, 1.2, "rgba(0,200,0,0.15)");
+    super(pos, 40 / 32, "rgba(0,200,0,0.15)");
     this.clock = 0;
     this.wall_push = false;
     this.lifespan = 1;
@@ -1680,7 +1706,7 @@ class Follower extends Entity {
 
 class Shrinker extends Entity {
   constructor(pos) {
-    super(pos, 1.8, "rgba(0,0,200,0.1)");
+    super(pos, 60 / 32, "rgba(0,0,200,0.1)");
     this.clock = 0;
     this.wall_push = false;
     this.lifespan = 3;
