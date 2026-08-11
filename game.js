@@ -243,6 +243,10 @@ class World {
             if (values[prop] !== undefined) object[prop] = values[prop];
           }
         }
+        if(type.includes('switch')){
+          object['switch_interval'] = values['switch_interval'];
+          object['switch_time'] = values['switch_time'];
+        }
       }
 
       ['move_clockwise', 'initial_side', 'horizontal'].forEach(prop => {
@@ -949,7 +953,7 @@ class Area {
       case "sizing":
         return new Sizing(new Vector(posX, posY), radius / 32, speed, angle);
       case "switch":
-        return new Switch(new Vector(posX, posY), radius / 32, speed, angle, j, count);
+        return new Switch(new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "sniper":
         return new Sniper(new Vector(posX, posY), radius / 32, speed, angle);
       case "freezing":
@@ -1106,23 +1110,23 @@ class Area {
       case "confectioner":
         return new Confectioner(new Vector(posX, posY), radius / 32, speed, angle);
       case "confectioner_switch":
-        return switchCombiner(Confectioner, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#cfc6f9");
+        return switchCombiner(Confectioner, "#cfc6f9", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "penny_switch":
-        return switchCombiner(Penny, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#d9b67f");
+        return switchCombiner(Penny, "#d9b67f", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "wavy_switch":
-        return switchCombiner(Wavy, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#fa5336");
+        return switchCombiner(Wavy, "#fa5336", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "spiral_switch":
-        return switchCombiner(Spiral, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#f5e199");
+        return switchCombiner(Spiral, "#f5e199", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "zoning_switch":
-        return switchCombiner(Zoning, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#b35f40");
+        return switchCombiner(Zoning, "#b35f40", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "oscillating_switch":
-        return switchCombiner(Oscillating, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#b6c46f");
+        return switchCombiner(Oscillating, "#b6c46f", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "homing_switch":
-        return switchCombiner(Homing, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#694d0e");
+        return switchCombiner(Homing, "#694d0e", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "dasher_switch":
-        return switchCombiner(Dasher, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#00243d");
+        return switchCombiner(Dasher, "#00243d", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "zigzag_switch":
-        return switchCombiner(Zigzag, new Vector(posX, posY), radius / 32, speed, angle, j, count, "#e0c6f9");
+        return switchCombiner(Zigzag, "#e0c6f9", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "vary":
         return new Vary(new Vector(posX, posY), radius / 32, speed, angle, preset.vary_modifier, preset.opacity_modifier)
       case "invisible":

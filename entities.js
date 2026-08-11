@@ -4324,28 +4324,52 @@ class Sizing extends Enemy {
     this.radiusMultiplier *= this.sizing_multiplier;
   }
 }
-class Switch extends Enemy {
-  constructor(pos, radius, speed, angle, index, count) {
-    super(pos, entityTypes.indexOf("switch"), radius, speed, angle, "#565656");
-    this.switching = true;
-    this.disabled = false;
-    if (index >= count / 2) {
-      this.disabled = true;
-    }
-    this.switch_clock = 0;
-    this.switch_total_time = 3000;
-    this.fading_effects_time = 1500;
 
-    this.syncRequiredProperties = ['switch_clock'];
+function initSwitchState(instance, index, count, switch_interval, switch_time) {
+  instance.switching = true;
+  instance.disabled = false;
+  if (index >= count / 2) {
+    instance.disabled = true;
   }
-  behavior(time, area, offset, players) {
-    this.switch_clock += time;
-    if (this.switch_clock > this.switch_total_time) {
-      this.disabled = !this.disabled;
-      this.switch_clock = this.switch_clock % this.switch_total_time;
-    }
+  instance.switch_total_time = (switch_interval !== undefined) ? switch_interval : 3000;
+  instance.switch_clock = (switch_time !== undefined) ? instance.switch_total_time - switch_time : 0;
+  instance.fading_effects_time = 1500;
+
+  instance.syncRequiredProperties = (instance.syncRequiredProperties || []).concat('switch_clock');
+}
+
+function updateSwitchState(instance, time) {
+  instance.switch_clock += time;
+  if (instance.switch_clock > instance.switch_total_time) {
+    instance.disabled = !instance.disabled;
+    instance.switch_clock = instance.switch_clock % instance.switch_total_time;
   }
 }
+
+class Switch extends Enemy {
+  constructor(pos, radius, speed, angle, index, count, switch_interval, switch_time) {
+    super(pos, entityTypes.indexOf("switch"), radius, speed, angle, "#565656");
+    initSwitchState(this, index, count, switch_interval, switch_time);
+  }
+  behavior(time, area, offset, players) {
+    updateSwitchState(this, time);
+  }
+}
+
+function switchCombiner(parentClass, color, ...properties) {
+  return new class SwitchCombiner extends parentClass {
+    constructor(pos, radius, speed, angle, index, count, switch_interval, switch_time) {
+      super(pos, radius, speed, angle);
+      initSwitchState(this, index, count, switch_interval, switch_time);
+      this.color = color;
+    }
+    behavior(time, area, offset, players) {
+      updateSwitchState(this, time);
+      super.behavior(time, area, offset, players);
+    }
+  }(...properties)
+}
+
 class Sniper extends Enemy {
   constructor(pos, radius, speed, angle, color = "#a05353") {
     super(pos, entityTypes.indexOf("sniper"), radius, speed, angle, color);
@@ -5697,41 +5721,6 @@ class Oscillating extends Enemy {
     this.speed = this.base_speed;
     this.angleToVel();
   }
-}
-
-function switchCombiner(parentClass, ...properties) {
-  return new class SwitchCombiner extends parentClass {
-    constructor(pos, radius, speed, angle, index, count) {
-      super(pos, radius, speed, angle);
-      this.switching = true;
-      this.disabled = false;
-      if (index >= count / 2) {
-        this.disabled = true;
-      }
-      this.switch_clock = 0;
-      this.switch_total_time = 3000;
-      this.fading_effects_time = 1500;
-
-      // evades code
-      if (radius == 1919) {
-        this.switch_total_time = 5500;
-        this.switch_clock = 5500 - 2000;
-      } else if (radius == 159) {
-        this.switch_total_time = 3000;
-        this.switch_clock = 3000 - 250;
-      }
-      // still better than doing extra million classes :)
-      this.color = properties[properties.length - 1];
-    }
-    behavior(time, area, offset, players) {
-      this.switch_clock += time;
-      if (this.switch_clock > this.switch_total_time) {
-        this.disabled = !this.disabled;
-        this.switch_clock = this.switch_clock % this.switch_total_time;
-      }
-      super.behavior(time, area, offset, players);
-    }
-  }(...properties)
 }
 
 class Radiating extends Enemy {
