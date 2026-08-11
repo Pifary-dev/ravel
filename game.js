@@ -1194,6 +1194,8 @@ class Area {
         return new Boss(new Vector(posX, posY), entityTypes.indexOf("custom_boss"), radius / 32, speed, angle, preset.color, preset.max_health, preset.name, preset.shield_time, preset.spawner, preset.cycle_amount, auraRadius, preset.cycle_interval);
       case "quantum":
         return new Quantum(new Vector(posX, posY), radius / 32, speed, angle, preset.blink_distance, preset.blink_cooldown);
+      case "ionizing":
+        return new Ionizing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }

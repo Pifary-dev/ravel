@@ -107,6 +107,7 @@ const entityTypes = [
   "sticky_sniper",
   "aegis_sniper",
   "quantum",
+  "ionizing",
 
   // og evades
   "vary",

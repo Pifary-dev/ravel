@@ -741,6 +741,13 @@ function renderPlayers(area, players, focus) {
       context.fill();
     }
 
+    if (player.ionCharge > 0) {
+      context.fillStyle = `rgba(56, 255, 245, ${Math.min(player.ionCharge / 800, 1) * 0.65})`;
+      context.beginPath();
+      context.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
+      context.fill();
+    }
+
     // Constants for rendering
     const WREATH_SIZE = 50;
     const ENERGY_BAR_WIDTH = 36;

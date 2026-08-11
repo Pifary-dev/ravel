@@ -432,6 +432,7 @@ class Player {
     this.webstickness = 0;
     this.web = false;
     this.cobweb = false;
+    this.ionCharge = 0;
     this.maxLives = 3;
     this.lives = this.maxLives;
     this.safeAmount = 0;
@@ -908,8 +909,12 @@ class Player {
     this.clearEffects();
   }
   move(x, y, timeFix) {
-    this.pos.x += x / 32 * timeFix;
-    this.pos.y += y / 32 * timeFix;
+    let ionMult = 1;
+    if (this.ionCharge > 1) {
+      ionMult = Math.max((800 - this.ionCharge) / 800, 0);
+    }
+    this.pos.x += x * ionMult / 32 * timeFix;
+    this.pos.y += y * ionMult / 32 * timeFix;
   }
   abilities(time, area, bound) {
 
@@ -958,6 +963,12 @@ class Player {
     } else if (this.webstickness > 0) this.webstickness = 0;
 
     if (this.sticky || this.stickness > 0) this.applySlowness(0.3);
+
+    if (this.ionizing) {
+      this.ionCharge = Math.min(700, this.ionCharge + 48 * timeFix * this.effectImmune);
+    } else if (this.ionCharge > 0) {
+      this.ionCharge = Math.max(0, this.ionCharge - 48 * timeFix);
+    }
 
     if (this.experienceDraining) {
       this.experience = Math.max(0, this.experience - (2 * this.level * time / 1e3) * this.effectImmune);
@@ -1149,6 +1160,7 @@ class Player {
       this.web = false;
       this.cobweb = false;
       this.sticky = false;
+      this.ionizing = false;
       this.draining = false;
       this.experienceDraining = false;
       this.speedghost = false;
@@ -7197,6 +7209,17 @@ class Static extends Enemy {
         this.target = player;
         this.targetFound = true;
       }
+    }
+  }
+}
+
+class Ionizing extends Enemy {
+  constructor(pos, radius, speed, angle, auraRadius = 130) {
+    super(pos, entityTypes.indexOf("ionizing"), radius, speed, angle, "#31a2cfff", true, "rgba(46, 117, 211, 0.15)", auraRadius / 32);
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      player.ionizing = true;
     }
   }
 }
