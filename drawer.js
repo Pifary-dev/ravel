@@ -283,21 +283,26 @@ function renderEntities(area, players, focus) {
     const radius = entity.radius * fov;
 
     // Check if the entity is within the visible range
-    if (entityX + radius < 0 || entityX - radius > width || entityY + radius < 0 || entityY - radius > height) {
-      continue;
+    const isOnScreen = !(entityX + radius < 0 || entityX - radius > width || entityY + radius < 0 || entityY - radius > height);
+
+    if (isOnScreen) {
+      // Render entity
+      if (entity.isShield) {
+        renderShieldEntity(ctx, entity, entityX, entityY);
+      } else if (entity.shatterTime > 0) {
+        renderShatteredEntity(ctx, entity, entityX, entityY, radius);
+      } else {
+        renderNormalEntity(ctx, entity, entityX, entityY, radius);
+      }
+
+      // Render provoked indicator if needed
+      entity.provoked && renderProvokedIndicator(ctx, entityX, entityY, radius);
     }
 
-    // Render entity
-    if (entity.isShield) {
-      renderShieldEntity(ctx, entity, entityX, entityY);
-    } else if (entity.shatterTime > 0) {
-      renderShatteredEntity(ctx, entity, entityX, entityY, radius);
-    } else {
-      renderNormalEntity(ctx, entity, entityX, entityY, radius);
+    // Render quantum blink destination ghost — always, regardless of enemy visibility
+    if (entity.nextBlinkPos) {
+      renderQuantumGhost(ctx, entity, area, halfWidth, halfHeight, areaX, areaY, focusX, focusY);
     }
-
-    // Render provoked indicator if needed
-    entity.provoked && renderProvokedIndicator(ctx, entityX, entityY, radius);
   }
 }
 
@@ -526,6 +531,61 @@ function renderProvokedIndicator(ctx, x, y, radius) {
   ctx.fillStyle = "rgba(161, 167, 172, 1)";
   ctx.font = "24px Tahoma, Verdana, Segoe, sans-serif";
   ctx.fillText("!", x, y - radius - 0.2 * fov);
+}
+
+function renderQuantumGhost(ctx, entity, area, halfWidth, halfHeight, areaX, areaY, focusX, focusY) {
+  const ghostX = halfWidth + (areaX + entity.nextBlinkPos.x - focusX) * fov;
+  const ghostY = halfHeight + (areaY + entity.nextBlinkPos.y - focusY) * fov;
+  const ghostRadius = entity.radius * fov;
+
+  // Don't draw if the ghost destination is fully off-screen
+  if (ghostX + ghostRadius < 0 || ghostX - ghostRadius > width || ghostY + ghostRadius < 0 || ghostY - ghostRadius > height) return;
+
+  const arrowAngle = entity.nextBlinkAngle;
+  // All arrow dimensions scale with the circle radius
+  const lineWidth = Math.max(1, ghostRadius * 0.15);
+  const headSize = ghostRadius * 0.55;
+  const arrowLength = ghostRadius * 0.9;
+  // Start line from the circle edge, not the center
+  const lineStartX = ghostX + Math.cos(arrowAngle) * ghostRadius;
+  const lineStartY = ghostY + Math.sin(arrowAngle) * ghostRadius;
+  const arrowTipX = lineStartX + Math.cos(arrowAngle) * arrowLength;
+  const arrowTipY = lineStartY + Math.sin(arrowAngle) * arrowLength;
+
+  ctx.globalAlpha = 0.5;
+
+  // Ghost circle at blink destination
+  ctx.beginPath();
+  ctx.arc(ghostX, ghostY, ghostRadius, 0, Math.PI * 2);
+  ctx.fillStyle = entity.color;
+  ctx.fill();
+  ctx.strokeStyle = "darkblue";
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+  ctx.closePath();
+
+  // Arrow line (from circle edge to just before arrowhead)
+  const headBaseX = arrowTipX - Math.cos(arrowAngle) * headSize;
+  const headBaseY = arrowTipY - Math.sin(arrowAngle) * headSize;
+  ctx.beginPath();
+  ctx.moveTo(lineStartX, lineStartY);
+  ctx.lineTo(headBaseX, headBaseY);
+  ctx.strokeStyle = "darkblue";
+  ctx.lineWidth = lineWidth;
+  ctx.stroke();
+
+  // Arrowhead (triangle from tip back to base)
+  const perpX = Math.cos(arrowAngle + Math.PI / 2) * headSize * 0.5;
+  const perpY = Math.sin(arrowAngle + Math.PI / 2) * headSize * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(arrowTipX, arrowTipY);
+  ctx.lineTo(headBaseX + perpX, headBaseY + perpY);
+  ctx.lineTo(headBaseX - perpX, headBaseY - perpY);
+  ctx.closePath();
+  ctx.fillStyle = "darkblue";
+  ctx.fill();
+
+  ctx.globalAlpha = 1;
 }
 
 function renderPlayers(area, players, focus) {

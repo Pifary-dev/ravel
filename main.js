@@ -126,16 +126,17 @@ function animate(time) {
     const area = world.areas[player.area];
     const wasVictory = area.getActiveBoundary().t;
     const strokeColor = area.title_stroke_color || "#425a6d";
+    const fillColor = area.title_fill_color || "#f4faff"
     const areaText = wasVictory ? "Victory!" : area.name;
     const areaUpdated = oldArea !== player.area || oldWorld !== player.world;
     
     renderArea(game.getStates(0), game.players, player.pos, areaUpdated);
     
     if(player.title) applyScale(context, settings.scale, () => {
-      drawAreaHeader(context, 6, strokeColor, areaText, staticWidth, 40, world);
+      drawAreaHeader(context, 6, strokeColor, areaText, staticWidth, 40, world, undefined, fillColor);
       
       if (settings.timer) {
-        const style = player.victoryTimer > 0 ? 'yellow' : null;
+        const style = player.victoryTimer > 0 ? 'yellow' : fillColor;
         const timerTime = secondsFormat(Math.floor(player.timer / 1000));
         drawAreaHeader(context, 6, strokeColor, timerTime, staticWidth, 80, null, 30, style);
       }

@@ -7546,3 +7546,63 @@ class MinimizeProjectile extends Enemy {
 
   interact() {}
 }
+
+class Quantum extends Enemy {
+  constructor(pos, radius, speed, angle, blinkDistance = 100, cooldown = 2000) {
+    super(pos, entityTypes.indexOf("quantum"), radius, speed, angle, "rgb(36, 90, 180)");
+    this.blinkDistance = blinkDistance / 32;
+    this.blinkCooldown = cooldown;
+    this.blinkCooldownLeft = cooldown;
+    this.nextBlinkPos = null;
+    this.nextBlinkAngle = null;
+  }
+
+  behavior(time, area) {
+    // Oscillating blue color
+    const blue = Math.sin(Date.now() / 200) * 75 + 180;
+    this.color = `rgb(${Math.round(blue * 0.2)}, ${Math.round(blue * 0.5)}, ${Math.round(blue)})`;
+
+    this.blinkCooldownLeft -= time;
+
+    // 1 second before blink: pre-calculate the destination so it can be shown to the player
+    if (!this.nextBlinkPos && this.blinkCooldownLeft <= 1000) {
+      const boundary = area.getActiveBoundary();
+      let newX, newY;
+
+      if (this.speed > 0) {
+        // Project forward along current direction
+        const dirX = this.vel.x / this.speed;
+        const dirY = this.vel.y / this.speed;
+        newX = this.pos.x + dirX * this.blinkDistance;
+        newY = this.pos.y + dirY * this.blinkDistance;
+      }
+
+      // Fall back to random if speed is 0 or projection lands out of bounds
+      if (
+        this.speed === 0 ||
+        newX - this.radius < boundary.x ||
+        newX + this.radius > boundary.x + boundary.w ||
+        newY - this.radius < boundary.y ||
+        newY + this.radius > boundary.y + boundary.h
+      ) {
+        newX = Math.random() * (boundary.w - 2 * this.radius) + boundary.x + this.radius;
+        newY = Math.random() * (boundary.h - 2 * this.radius) + boundary.y + this.radius;
+      }
+
+      this.nextBlinkPos = new Vector(newX, newY);
+      this.nextBlinkAngle = Math.random() * Math.PI * 2;
+    }
+
+    if (this.blinkCooldownLeft <= 0) {
+      if (this.nextBlinkPos) {
+        this.pos.x = this.nextBlinkPos.x;
+        this.pos.y = this.nextBlinkPos.y;
+        this.angle = this.nextBlinkAngle;
+        this.angleToVel();
+        this.nextBlinkPos = null;
+        this.nextBlinkAngle = null;
+      }
+      this.blinkCooldownLeft = this.blinkCooldown;
+    }
+  }
+}

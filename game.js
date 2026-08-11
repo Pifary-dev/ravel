@@ -275,6 +275,15 @@ class World {
           this.title_stroke_color = color;
         }
       }
+
+      if (properties.title_fill_color !== undefined) {
+        const color = properties.title_fill_color;
+        if (Array.isArray(color)) {
+          this.title_fill_color = "rgb(" + color[0] + "," + color[1] + "," + color[2] + ")";
+        } else {
+          this.title_fill_color = color;
+        }
+      }
       if (properties.friction !== undefined) {
         this.friction = properties.friction;
       }
@@ -345,6 +354,7 @@ class World {
         name: areaName,
         background_color: this.background_color,
         title_stroke_color: this.title_stroke_color,
+        title_fill_color: this.title_fill_color,
         text: curArea.text,
         lighting: this.lighting,
         pellet_count: this.pellet_count,
@@ -360,7 +370,6 @@ class World {
           area.background_color = `rgba(${colorC[0]},${colorC[1]},${colorC[2]},${colorC[3] / 255})`;
           area.color = true;
         }
-        if (propertiesC.title_stroke_color) area.title_stroke_color = propertiesC.title_stroke_color;
         if (propertiesC.lighting !== undefined) area.lighting = propertiesC.lighting;
         if (propertiesC.all_enemies_immune !== undefined) area.all_enemies_immune = propertiesC.all_enemies_immune;
         if (propertiesC.magnetism) area.magnetism = true;
@@ -1183,6 +1192,8 @@ class Area {
         return new Fibot(new Vector(posX, posY), radius / 32, speed, angle);
       case "custom_boss":
         return new Boss(new Vector(posX, posY), entityTypes.indexOf("custom_boss"), radius / 32, speed, angle, preset.color, preset.max_health, preset.name, preset.shield_time, preset.spawner, preset.cycle_amount, auraRadius, preset.cycle_interval);
+      case "quantum":
+        return new Quantum(new Vector(posX, posY), radius / 32, speed, angle, preset.blink_distance, preset.blink_cooldown);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }
