@@ -620,7 +620,7 @@ function loadImages(character) {
     "Reaper": ["atonement", "depart"],
     "Mirage": ["shift", "obscure"],
     "Polygon": ["morph", "resilience"],
-    "Lantern": ["unknown", "unknown"],
+    "Lantern": ["follower", "shrinkler"],
     "Pole": ["unknown", "unknown"],
     "Burst": ["unknown", "unknown"],
     "Idk": ["unknown", "unknown"]
