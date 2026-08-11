@@ -970,6 +970,22 @@ class Player {
       this.ionCharge = Math.max(0, this.ionCharge - 48 * timeFix);
     }
 
+    if (this.hastening) {
+      if (!this.hasteningBonus) this.hasteningBonus = 0;
+      if (!this.hasteningActive) {
+        this.hasteningBonus = Math.min(this.haste_cap, this.hasteningBonus + this.haste_burst * this.effectImmune);
+        this.hasteningActive = true;
+      }
+      this.hasteningBonus = Math.min(this.haste_cap, this.hasteningBonus + this.haste_rate * timeFix * this.effectImmune);
+      this.speedAdditioner += this.hasteningBonus;
+    } else {
+      this.hasteningBonus = 0;
+      this.hasteningActive = false;
+      this.haste_cap = 0;
+      this.haste_rate = 0;
+      this.haste_burst = 0;
+    }
+
     if (this.experienceDraining) {
       this.experience = Math.max(0, this.experience - (2 * this.level * time / 1e3) * this.effectImmune);
       if (this.experience < this.previousLevelExperience) {
@@ -1161,6 +1177,7 @@ class Player {
       this.cobweb = false;
       this.sticky = false;
       this.ionizing = false;
+      this.hastening = false;
       this.draining = false;
       this.experienceDraining = false;
       this.speedghost = false;
@@ -7224,6 +7241,23 @@ class Ionizing extends Enemy {
   }
 }
 
+class Hastening extends Enemy {
+  constructor(pos, radius, speed, angle, auraRadius = 150, haste_cap = 100, haste_rate = 0.3, haste_burst = 12) {
+    super(pos, entityTypes.indexOf("hastening"), radius, speed, angle, "#225ea3ff", true, "rgba(0, 46, 199, 0.3)", auraRadius / 32);
+    this.haste_cap = haste_cap;
+    this.haste_rate = haste_rate;
+    this.haste_burst = haste_burst;
+  }
+  auraEffect(player, worldPos) {
+    if (distance(player.pos, new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y)) < player.radius + this.auraSize) {
+      player.hastening = true;
+      player.haste_cap = Math.max(player.haste_cap || 0, this.haste_cap);
+      player.haste_rate = Math.max(player.haste_rate || 0, this.haste_rate);
+      player.haste_burst = Math.max(player.haste_burst || 0, this.haste_burst);
+    }
+  }
+}
+
 class Thunderbolt extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("thunderbolt"), radius, speed, angle, "#f4ff8c");
@@ -7578,6 +7612,8 @@ class Quantum extends Enemy {
     this.blinkCooldownLeft = cooldown;
     this.nextBlinkPos = null;
     this.nextBlinkAngle = null;
+    this.immune = true;
+    this.infectious = true;
   }
 
   behavior(time, area) {

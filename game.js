@@ -220,6 +220,7 @@ class World {
         liquid: ['player_detection_radius'],
         draining: ['drain'],
         slowing: ['slow'],
+        hastening: ['haste_cap', 'haste_rate', 'haste_burst'],
         charging: ['charge'],
         burning: ['burn_modifier'],
         pumpkin: ['player_detection_radius'],
@@ -1196,6 +1197,8 @@ class Area {
         return new Quantum(new Vector(posX, posY), radius / 32, speed, angle, preset.blink_distance, preset.blink_cooldown);
       case "ionizing":
         return new Ionizing(new Vector(posX, posY), radius / 32, speed, angle, auraRadius);
+      case "hastening":
+        return new Hastening(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, preset.haste_cap, preset.haste_rate, preset.haste_burst);
       default:
         return new Unknown(new Vector(posX, posY), radius / 32, speed, angle);
     }
