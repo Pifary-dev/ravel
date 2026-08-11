@@ -1447,7 +1447,12 @@ class Pole extends Player {
     this.gravity = 4 / 32;
     this.secondAbilityCost = 30;
     this.secondAbilityCooldown = 0;
-    this.secondTotalCooldown = 6000;
+    this.secondTotalCooldown = 10000;
+    this.hasAB = true;
+    this.ab1L = settings.max_abilities ? 5 : 0;
+    this.ab2L = settings.max_abilities ? 5 : 0;
+    this.firstAbilityUnlocked = true;
+    this.secondAbilityUnlocked = true;
   }
 
   abilities(time, area, offset) {
@@ -1456,6 +1461,8 @@ class Pole extends Player {
   }
 
   applyGravityField(time, area, offset) {
+    if (!this.ab1L) return;
+
     const playerPos = new Vector(this.pos.x - offset.x, this.pos.y - offset.y);
     const timeFactor = time / (1000 / 30);
 
@@ -1467,7 +1474,8 @@ class Pole extends Player {
   }
 
   isInGravityField(entity, playerPos) {
-    return distance(entity.pos, playerPos) < (150 / 32) + entity.radius;
+    const fieldDistance = [70, 90, 110, 130, 150][this.ab1L - 1];
+    return distance(entity.pos, playerPos) < (fieldDistance / 32) + entity.radius;
   }
 
   attractEntity(entity, playerPos, timeFactor) {
@@ -1484,11 +1492,18 @@ class Pole extends Player {
   }
 
   useSecondAbility(time, area, offset) {
+    if (!this.ab2L) return;
+
     if (this.secondAbility && this.energy >= this.secondAbilityCost && this.secondAbilityCooldown === 0) {
       this.energy -= this.secondAbilityCost;
+      this.secondTotalCooldown = this.getSecondAbilityCooldown(this.ab2L);
       this.secondAbilityCooldown = this.secondTotalCooldown;
       this.spawnMonoPole(area, offset);
     }
+  }
+
+  getSecondAbilityCooldown(level) {
+    return [10000, 9000, 8000, 7000, 6000][level - 1];
   }
 
   spawnMonoPole(area, offset) {
