@@ -619,7 +619,7 @@ function loadImages(character) {
     "Rameses": ["bandages", "latch"],
     "Reaper": ["atonement", "depart"],
     "Mirage": ["shift", "obscure"],
-    "Polygon": ["unknown", "unknown"],
+    "Polygon": ["morph", "resilience"],
     "Lantern": ["unknown", "unknown"],
     "Pole": ["unknown", "unknown"],
     "Burst": ["unknown", "unknown"],
