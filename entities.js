@@ -5771,7 +5771,8 @@ class Radiating extends Enemy {
   constructor(pos, radius, speed, angle, releaseInterval = 4000, releaseTime) {
     super(pos, entityTypes.indexOf("radiating_bullets"), radius, speed, angle, "#d3134f");
     this.releaseTime = releaseInterval;
-    this.clock = releaseTime || Math.random() * this.releaseTime;
+    this.clock = (releaseTime) ? releaseInterval - releaseTime : Math.random() * this.releaseTime;
+
   }
   behavior(time, area, offset, players) {
     this.clock += time;
