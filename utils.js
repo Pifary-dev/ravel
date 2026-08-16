@@ -106,6 +106,7 @@ const entityTypes = [
   "burning",
   "sticky_sniper",
   "aegis_sniper",
+  "cage_sniper",
   "quantum",
   "ionizing",
   "hastening",
@@ -121,7 +122,8 @@ const entityTypes = [
   
   custom:
   "clown_trail",
-  "sticky_trail"
+  "sticky_trail",
+  "cage_zone"
   */
 ];
 
@@ -344,6 +346,9 @@ function kill(player){
     if(settings.seed !== undefined && settings.seeded_area_resets) game.worlds[player.world].areas.forEach(area => area.loadCount = 0);
     returnToSafePoint(player);
   }
+  
+  player.previousPos = new Vector(player.pos.x, player.pos.y);
+  player.oldPos = new Vector(player.pos.x, player.pos.y);
 }
 
 const secondsFormat = (time) => {

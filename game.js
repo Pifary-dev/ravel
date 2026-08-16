@@ -1049,6 +1049,8 @@ class Area {
         return new Burning(new Vector(posX, posY), radius / 32, speed, angle, auraRadius, preset.burn_modifier);
       case "sticky_sniper":
         return new StickySniper(new Vector(posX, posY), radius / 32, speed, angle);
+      case "cage_sniper":
+        return new CageSniper(new Vector(posX, posY), radius / 32, speed, angle);
       case "ice_ghost":
         return new Ice(new Vector(posX, posY), radius / 32, speed, angle);
       case "positive_magnetic_ghost":
@@ -1233,7 +1235,8 @@ class Area {
       19: { name: "NinjaStarSniperProjectile", class: NinjaStarSniperBullet },
       20: { name: "VoidSniperProjectile", class: VoidSniperBullet },
       21: { name: "VoidSwarmProjectile", class: VoidSwarmBullet },
-      22: { name: "AegisSniperProjectile", class: AegisSniperBullet }
+      22: { name: "AegisSniperProjectile", class: AegisSniperBullet },
+      23: { name: "CageSniperProjectile", class: CageSniperBullet }
     };
 
     if (bulletTypes[type]) {

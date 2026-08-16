@@ -7347,6 +7347,122 @@ class StickySniperBullet extends SniperBullet {
   }
 }
 
+class CageSniper extends Sniper {
+  constructor(pos, radius, speed, angle) {
+    super(pos, radius, speed, angle, "#3a1f5c");
+    this.type = entityTypes.indexOf("cage_sniper");
+    this.releaseTime = 3000;
+    this.bulletType = 23;
+    this.bulletSpeed = 11;
+    this.bulletRadius = radius / 1.5;
+  }
+}
+
+class CageSniperBullet extends SniperBullet {
+  constructor(pos, angle, radius, speed) {
+    super(pos, angle, radius, speed);
+    this.color = "#3a1f5c";
+    this.Harmless = true;
+  }
+  interact(player, worldPos) {
+    const impact = new Vector(this.pos.x + worldPos.x, this.pos.y + worldPos.y);
+    if (distance(player.pos, impact) < player.radius + this.radius) {
+      const maxRadius = (5 / 32 * 10) * 3;
+      const rampTime = 400;
+      const duration = 2500;
+      const initialRadius = distance(player.pos, impact) + player.radius;
+
+      const world = game.worlds[player.world];
+      const area = world.areas[player.area];
+      const zone = new CageZone(new Vector(impact.x - world.pos.x - area.pos.x, impact.y - world.pos.y - area.pos.y), initialRadius, maxRadius, rampTime, duration);
+      area.addEntity("cage_zone", zone, true);
+
+      this.toRemove = true;
+    }
+  }
+}
+
+class CageZone extends Enemy {
+  constructor(pos, initialRadius, maxRadius, rampTime, duration) {
+    super(pos, entityTypes.indexOf("cage_zone"), 0, 0, undefined, "rgba(58,31,92,0.18)");
+    this.clock = 0;
+    this.alpha = 1;
+    this.initialRadius = initialRadius;
+    this.maxRadius = maxRadius;
+    this.rampTime = rampTime;
+    this.duration = duration;
+    this.radius = initialRadius;
+    this.immune = true;
+    this.no_collide = true;
+    this.outline = true;
+    this.strokeColor = "#3a1f5c";
+    this.aura = true;
+    this.auraColor = "rgba(58,31,92,0.18)";
+    this.auraSize = this.auraStaticSize = initialRadius;
+    this.auraOnly = true;
+  }
+  behavior(time, area, offset, players) {
+    const grown = this.maxRadius * Math.min(this.rampTime, this.clock) / this.rampTime;
+    this.radius = Math.max(this.initialRadius, grown);
+    this.auraSize = this.radius;
+    this.clock += time;
+    if (this.clock >= this.duration) {
+      this.alpha -= time / 400;
+      if (this.alpha <= 0) { this.alpha = 0.001 }
+    }
+    if (this.clock >= this.duration + 400) {
+      this.toRemove = true;
+    }
+  }
+  interact(player, worldPos, time) {
+    if (player.safeZone || player.isDead) return;
+
+    const world = game.worlds[player.world];
+    const area = world.areas[player.area];
+    const zones = area.entities["cage_zone"];
+    if (!zones || zones.length === 0) return;
+
+    const containment = (pos) => {
+      let best = null;
+      for (const zone of zones) {
+        const center = new Vector(zone.pos.x + worldPos.x, zone.pos.y + worldPos.y);
+        const dx = pos.x - center.x;
+        const dy = pos.y - center.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const maxDist = Math.max(0, zone.radius - player.radius);
+        if (dist <= maxDist) return { inside: true };
+        const excess = dist - maxDist;
+        if (!best || excess < best.excess) {
+          best = { dx, dy, dist, maxDist, pos: center, excess };
+        }
+      }
+      return { inside: false, nearest: best };
+    };
+
+    const now = containment(player.pos);
+    if (now.inside) return;
+
+    const before = containment(player.previousPos);
+    if (!before.inside) return;
+
+    const best = now.nearest;
+    if (best && best.dist > 0) {
+      const margin = 0.05;
+      const clampDist = Math.max(0, best.maxDist - margin);
+      const nx = best.dx / best.dist;
+      const ny = best.dy / best.dist;
+      player.pos.x = best.pos.x + nx * clampDist;
+      player.pos.y = best.pos.y + ny * clampDist;
+      const outwardVel = player.vel.x * nx + player.vel.y * ny;
+      if (outwardVel > 0) {
+        player.vel.x -= outwardVel * nx;
+        player.vel.y -= outwardVel * ny;
+      }
+      game.worlds[player.world].collisionPlayer(player.area, player);
+    }
+  }
+}
+
 class StickyTrail extends Enemy {
   constructor(pos) {
     super(pos, entityTypes.indexOf("sticky_trail"), 0, 0, undefined, "rgb(0,0,69,0.5)");

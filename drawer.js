@@ -291,7 +291,7 @@ function renderEntities(area, players, focus) {
         renderShieldEntity(ctx, entity, entityX, entityY);
       } else if (entity.shatterTime > 0) {
         renderShatteredEntity(ctx, entity, entityX, entityY, radius);
-      } else {
+      } else if (!entity.auraOnly) {
         renderNormalEntity(ctx, entity, entityX, entityY, radius);
       }
 
