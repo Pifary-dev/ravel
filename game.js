@@ -906,12 +906,8 @@ class Area {
           if (angleRaw !== undefined && typeof angleRaw === 'string') angle = (Math.PI * parseRange(angleRaw)) / 180;
 
           let changing_angle = angle;
-          if (angle === undefined && randomizeAngle) {
-            if (relativeSpawn) {
-              changing_angle = (extraSpawnerProps.angle + Math.PI * 2 / count * index) + degrees_to_radians(Math.random() * 45);
-            } else {
-              changing_angle = Math.random() * Math.PI * 2;
-            }
+          if (angle === undefined && randomizeAngle && relativeSpawn) {
+            changing_angle = (extraSpawnerProps.angle + Math.PI * 2 / count * index) + degrees_to_radians(Math.random() * 45);
           }
           let enemy = this.createEnemy(currentEnemyType, posX, posY, radius, speed, changing_angle, preset, currentAuraRadius, index, count);
           enemy.isSpawned = true;
