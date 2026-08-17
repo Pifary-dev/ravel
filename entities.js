@@ -5844,7 +5844,7 @@ class FrostGiant extends Enemy {
     }
     if (this.rotation) {
       this.velToAngle();
-      this.angle += 2 * ((this.turn_speed * timeFix) * time * this.direction);
+      this.angle += (this.turn_speed * timeFix * this.direction);
       this.angleToVel();
     }
   }
