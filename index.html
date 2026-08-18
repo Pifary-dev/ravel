@@ -114,14 +114,8 @@
         </div>
 
         <div class="tab-panel settingsElement" id="panel-visuals" style="line-height:75%;">
-          <input type="checkbox" id="outline" checked>
-          <label for="outline">Enemy outline</label>
-          <br><br>
           <input type="checkbox" id="projectile_outline" checked>
           <label for="projectile_outline">Projectile outline</label>
-          <br><br>
-          <input type="checkbox" id="different_outlines">
-          <label for="different_outlines">Different outlines</label>
           <br><br>
           <input type="checkbox" id="pellets" checked>
           <label for="pellets">Pellets</label>
@@ -141,6 +135,15 @@
             <option value="tiles_empty">No Tiles</option>
             <option value="tiles_dark">Tiles Dark</option>
             <option value="tiles_dark_empty">No Tiles Dark</option>
+          </select>
+          <br><br>
+          <label for="outline">Enemy Outlines:</label>
+          <select id="outline">
+            <option value="disabled">Disabled</option>
+            <option value="enabled" selected>Enabled</option>
+            <option value="smart">Smart</option>
+            <option value="always_dark">Always Dark</option>
+            <option value="always_light">Always Light</option>
           </select>
           <br><br>
           <label for="ui_scale">UI Scale:</label>

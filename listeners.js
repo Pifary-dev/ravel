@@ -3,9 +3,8 @@ let inMenu = true;
 let keys = [];
 
 const settings = {
-  outline: true,
+  outline: 'enabled',
   projectile_outline: true,
-  different_outlines: false,
   cooldown: true,
   fps_limit: "60",
   timer: true,

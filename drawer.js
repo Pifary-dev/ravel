@@ -7,6 +7,25 @@ const context = canvas.getContext("2d");
 let width = canvas.width,
   height = canvas.height;
 
+function isDarkTiles() {
+  return settings.tiles === 'tiles_dark' || settings.tiles === 'tiles_dark_empty';
+}
+
+function getOutlineColor(entity) {
+  const mode = settings.outline;
+  if (mode === 'always_light') return "white";
+  if (mode === 'always_dark') return "black";
+
+  const darkTiles = isDarkTiles();
+
+  if (mode === 'smart' && entity) {
+    if (entity.whiteOutline) return "white";
+    if (entity.blackOutline) return "black";
+  }
+
+  return darkTiles ? "white" : "black";
+}
+
 function renderArea(area, players, focus, areaUpdated) {
   if (!images.tiles.complete) return;
   const player = players[0];
@@ -473,7 +492,7 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     ctx.fill();
   }
 
-  const isOutline = (settings.outline && entity.outline);
+  const isOutline = (settings.outline !== 'disabled' && entity.outline);
   const isProjectile = (settings.projectile_outline && !entity.static && !entity.texture && entity.projectile_outline);
   if (entity.outlineAlpha || entity.outlineAlpha === 0) ctx.globalAlpha = entity.outlineAlpha;
 
@@ -484,7 +503,7 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
     else if (!entity.outline) ctx.lineWidth = 1 / (32 / fov);
 
     if (isOutline || !entity.outline) {
-      ctx.strokeStyle = entity.whiteOutline && settings.different_outlines ? "white" : "black";
+      ctx.strokeStyle = getOutlineColor(entity);
       ctx.stroke();
     }
   }
@@ -651,8 +670,8 @@ function renderPlayers(area, players, focus) {
       context.fillStyle = heavyBalloonColors[player.prevColor];
       context.arc(playerX, playerY, player.heavyBallonSize / 32 * fov, 0, Math.PI * 2);
       context.fill();
-      if (settings.outline) {
-        context.strokeStyle = "black";
+      if (settings.outline !== 'disabled') {
+        context.strokeStyle = getOutlineColor();
         context.lineWidth = 2 / (32 / fov);
         context.stroke();
       }

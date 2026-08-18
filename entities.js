@@ -6324,6 +6324,7 @@ class Snowman extends Enemy {
     this.shrinkingRemaining = 1;
     this.isLight = true;
     this.lightCount = this.radius * 32 + 60;
+    this.blackOutline = true;
   }
   collide(boundary) {
     if (collisionEnemy(this, boundary, this.vel, this.pos, this.radius, true).col) this.wallHit = true;
