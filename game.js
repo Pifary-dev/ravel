@@ -174,7 +174,7 @@ class World {
     this.areas = [];
     this.id = id;
     this.name = "Default";
-    this.background_color = "rgba(255,255,255,0)";
+    this.background_color = "rgba(255, 255, 255, 0)";
     this.friction = 1;
     this.lighting = 1;
     this.magnetism = false;

@@ -429,7 +429,7 @@ function renderNormalEntity(ctx, entity, x, y, radius) {
 
   if (entity.name) {
     const health = entity.health / entity.maxHealth;
-    ctx.fillStyle = "black";
+    ctx.fillStyle = (settings.tiles == 'tiles' || settings.tiles == 'tiles_empty') ? "black" : "white";
     ctx.fillText(entity.name, x, y - entity.radius * fov - 11 / 32 * fov)
     ctx.strokeStyle="rgb(255, 68, 68)";
     ctx.strokeRect(x - 18 / 32 * fov, y - entity.radius * fov - 8 / 32 * fov, 36 / 32 * fov, 7 / 32 * fov);
@@ -803,7 +803,7 @@ function renderPlayers(area, players, focus) {
 
     // Render player name
     if (!player.reaperShade) {
-      context.fillStyle = "black";
+      context.fillStyle = (settings.tiles == 'tiles' || settings.tiles == 'tiles_empty') ? "black" : "white";
       context.font = `${NAME_FONT_SIZE / 32 * fov}px Tahoma, Verdana, Segoe, sans-serif`;
       context.textAlign = "center";
       context.fillText(player.name, playerX, playerY - player.radius * fov - NAME_Y_OFFSET / 32 * fov);
@@ -837,29 +837,34 @@ function renderMinimap(area, players, focus) {
     const canvasSize = new Vector(bound.w * coef, bound.h * coef);
     minimapCanvas = createOffscreenCanvas(canvasSize.x, canvasSize.y);
     const ctx = minimapCanvas.getContext("2d");
+    const dark = settings.tiles !== 'tiles' && settings.tiles !== 'tiles_empty';
     ctx.imageSmoothingEnabled = false;
+
+    const ZONE_COLORS = {
+      default: ["rgb(255, 255, 255, 255)", "rgb(17, 17, 17, 255)"],
+      1:       ["rgb(195, 195, 195, 255)", "rgb(60, 60, 60, 255)"],
+      2:       ["rgb(255, 244, 108, 255)", "rgb(148, 136, 0, 255)"],
+      4:       ["rgb(255, 244, 108, 255)", "rgb(148, 136, 0, 255)"],
+      3:       ["rgb(106, 208, 222, 255)", "rgb(33, 135, 149, 255)"],
+      5:       ["rgb(255, 249, 186, 255)", "rgb(107, 99, 0, 255)"],
+    };
 
     for (const i in area.zones) {
       const zone = area.zones[i];
-      let style = "rgb(255, 255, 255, 255)";
-      switch (zone.type) {
-        case 1: style = "rgb(195, 195, 195, 255)"; break;
-        case 2: case 4: style = "rgb(255, 244, 108, 255)"; break;
-        case 3: style = "rgb(106, 208, 222, 255)"; break;
-        case 5: style = "rgb(255, 249, 186, 255)"; break;
-      }
-      style = toRGBArray(style);
+      const colors = ZONE_COLORS[zone.type] ?? ZONE_COLORS.default;
+      let style = toRGBArray(dark ? colors[1] : colors[0]);
+
       const x = (zone.pos.x - bound.x) * coef;
       const y = (zone.pos.y - bound.y) * coef;
       const w = zone.size.x * coef;
       const h = zone.size.y * coef;
 
-      let background_color = toRGBArray(zone.background_color);
-      background_color[3] *= 255;
-      background_color = arrayToInt32(background_color);
-      const background_color_array = [background_color >> 24 & 255, background_color >> 16 & 255, background_color >> 8 & 255, 255 & background_color];
+      let bgColor = toRGBArray(zone.background_color);
+      bgColor[3] *= 255;
+      const bgInt = arrayToInt32(bgColor);
+      const bgArray = [bgInt >> 24 & 255, bgInt >> 16 & 255, bgInt >> 8 & 255, bgInt & 255];
 
-      ctx.fillStyle = arrayToRGBStr(mixColors(style, background_color_array));
+      ctx.fillStyle = arrayToRGBStr(mixColors(style, bgArray));
       ctx.fillRect(x, y, w, h);
     }
 

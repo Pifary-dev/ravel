@@ -213,7 +213,9 @@ class Enemy extends Entity {
 
 class Pellet extends Entity {
   constructor(pos, power = 1, zones = []) {
-    const colors = ["#b84dd4", "#a32dd8", "#3b96fd", "#43c59b", "#f98f6b", "#61c736"];
+    const colors = (settings.tiles == 'tiles' || settings.tiles == 'tiles_empty') ? 
+    ["#b84dd4", "#a32dd8", "#3b96fd", "#43c59b", "#f98f6b", "#61c736"]
+    : ["#621c74", "#52146e", "#02499a", "#1f654e", "#ab3107", "#30631b"];
     super(pos, 8 / 32, colors[Math.floor(Math.random() * colors.length)]);
     this.multiplier = power;
     this.spawnZones = zones;

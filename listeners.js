@@ -12,7 +12,7 @@ const settings = {
   timer_clear: true,
   mouse_toggle: true,
   fading_effects: true,
-  tiles: true,
+  tiles: 'tiles',
   pellets: true,
   dev: false,
   death_cooldown: false,

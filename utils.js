@@ -612,8 +612,15 @@ function parseRange(value) {
         : value;
 }
 
+const tileTextures = {
+  tiles: "texture/tiles.jpg",
+  tiles_empty: "texture/tiles_empty.jpg",
+  tiles_dark: "texture/tiles_dark.jpg",
+  tiles_dark_empty: "texture/tiles_dark_empty.jpg",
+};
+
 function loadImages(character) {
-  images.tiles.src = localStorage.tiles === "true" ? "texture/tiles.jpg" : "texture/tiles2.jpg";
+  images.tiles.src = tileTextures[settings.tiles] || tileTextures.tiles;
 
   const abilityMap = {
     "Magmax": ["flow", "harden"],

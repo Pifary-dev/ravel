@@ -91,7 +91,8 @@ function animate(time) {
   
   if (!inMenu) {
     if (settings.dev) calculateFps();
-    updateBackground(context, width, height, '#333');
+    const bgColor = (settings.tiles == 'tiles' || settings.tiles == 'tiles_empty') ? "#333333" : "#050505"
+    updateBackground(context, width, height, bgColor);
     
     const input = { keys: [...keys], mouse: mousePos, isMouse: mouse };
     
