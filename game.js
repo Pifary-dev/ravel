@@ -942,6 +942,8 @@ class Area {
         return new Normal(new Vector(posX, posY), radius / 32, speed, angle);
       case "wall":
         return new Wall(new Vector(posX, posY), radius / 32, speed, this.getActiveBoundary(), j, count, preset.move_clockwise, preset.initial_side);
+        case "wacky_wall":
+        return new WackyWall(new Vector(posX, posY), radius / 32, speed, this.getActiveBoundary(), j, count, preset.move_clockwise, preset.initial_side);
       case "dasher":
         return new Dasher(new Vector(posX, posY), radius / 32, speed, angle);
       case "homing":

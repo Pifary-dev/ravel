@@ -110,6 +110,7 @@ const entityTypes = [
   "quantum",
   "ionizing",
   "hastening",
+  "wacky_wall",
 
   // og evades
   "vary",

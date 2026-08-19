@@ -3719,6 +3719,35 @@ class Wall extends Enemy {
   }
 }
 
+class WackyWall extends Wall {
+  constructor(pos, radius, speed, boundary, wallIndex, count, move_clockwise = true, initial_side) {
+    super(pos, radius, speed, boundary, wallIndex, count, move_clockwise, initial_side);
+    this.type = entityTypes.indexOf("wacky_wall");
+    this.min_speed = 1 / 3 * speed;
+    this.max_speed = 5 / 3 * speed;
+    this.increasing_speed = false;
+    this.color = "#332233";
+  }
+
+  behavior(time, area, offset, players) {
+    const speedChange = 2 * this.speed * (time / 1000);
+    if (this.increasing_speed) {
+      this.speed += speedChange;
+      if (this.speed > this.max_speed) {
+        this.speed = this.max_speed;
+        this.increasing_speed = false;
+      }
+    } else {
+      this.speed -= speedChange;
+      if (this.speed < this.min_speed) {
+        this.speed = this.min_speed;
+        this.increasing_speed = true;
+      }
+    }
+    super.behavior(time, area, offset, players);
+  }
+}
+
 class Dasher extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("dasher"), radius, speed, angle, "#003c66");
