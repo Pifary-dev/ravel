@@ -330,6 +330,7 @@ class Player {
     this.area = 0;
     this.herocard = true;
     this.minimap = true;
+    this.enemies_minimap = (settings.enemies_minimap) ? true : false;
     this.overlay = true;
     this.title = true;
     this.experienceDraining = false;

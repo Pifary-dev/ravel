@@ -8,6 +8,7 @@ const settings = {
   cooldown: true,
   fps_limit: "60",
   timer: true,
+  enemies_minimap: false,
   timer_clear: true,
   mouse_toggle: true,
   fading_effects: true,
@@ -26,6 +27,7 @@ const settings = {
   diff: 'Easy',
   tick_delay: 0,
   input_delay: 0,
+  minimap_scale: 0.5,
   ui_scale: 1,
   scale: 1,
   cheats: true,
@@ -201,13 +203,20 @@ window.onload = () => {
   document.addEventListener("contextmenu", e => e.preventDefault());
   document.getElementById("hero").value = (typeof window.localStorage.hero === 'string') ? window.localStorage.hero : 'Normal';
   
-  // Add event listener for ui_scale range input
   const uiScaleInput = document.getElementById("ui_scale");
   const uiScaleValue = document.getElementById("ui_scale_value");
   if (uiScaleInput && uiScaleValue) {
     uiScaleInput.addEventListener("input", () => {
       console.log(uiScaleInput.value)
       uiScaleValue.textContent = Number(uiScaleInput.value).toFixed(2);
+    });
+  }
+
+  const minimapScaleInput = document.getElementById("minimap_scale");
+  const minimapScaleValue = document.getElementById("minimap_scale_value");
+  if (minimapScaleInput && minimapScaleValue) {
+    minimapScaleInput.addEventListener("input", () => {
+      minimapScaleValue.textContent = Number(minimapScaleInput.value).toFixed(2);
     });
   }
 
@@ -362,6 +371,9 @@ function keydownKeys(e) {
     }
     if (e.keyCode == 77) {
       player.minimap = !player.minimap;
+    }
+    if (e.keyCode == 71) {
+      player.enemies_minimap = !player.enemies_minimap;
     }
     if (e.keyCode == 188) {
       player.overlay = !player.overlay;

@@ -906,10 +906,43 @@ function renderMinimap(area, players, focus) {
   context.drawImage(minimapCanvas, 0, staticHeight - Math.round(minimapSize.y), Math.round(minimapSize.x), Math.round(minimapSize.y));
   context.imageSmoothingEnabled = true;
 
-  // Draw players on main context with correct size and position
+  const minimapScaleX = minimapSize.x / minimapCanvas.width;
+  const minimapScaleY = minimapSize.y / minimapCanvas.height;
+  const radiusScale = coef * Math.min(minimapScaleX, minimapScaleY);
+  const entityScalePadding = 4 * settings.minimap_scale * uiScale;
+
+  if (players[0].enemies_minimap) {
+    const sortedEntities = area.renderList || [];
+    for (const i in sortedEntities) {
+      const enemy = sortedEntities[i];
+      if (!enemy.isEnemy || enemy.hidden) continue;
+
+      const enemyMinimapRadius = enemy.radius * radiusScale + entityScalePadding;
+      const newPos = new Vector(
+        (enemy.pos.x - bound.x) * coef,
+        (enemy.pos.y - bound.y) * coef
+      );
+      const enemyX = newPos.x * minimapScaleX;
+      const enemyY = staticHeight - minimapSize.y + newPos.y * minimapScaleY;
+
+      context.beginPath();
+      context.globalAlpha = enemy.isHarmless && enemy.isHarmless() ? 0.5 : 1;
+      context.fillStyle = enemy.color;
+      context.arc(enemyX, enemyY, enemyMinimapRadius, 0, Math.PI * 2, true);
+      context.fill();
+      if (settings.outline !== 'disabled') {
+        context.strokeStyle = getOutlineColor(enemy);
+        context.lineWidth = 1 * uiScale;
+        context.stroke();
+      }
+      context.closePath();
+    }
+    context.globalAlpha = 1;
+  }
+
   for (const i in players) {
     const player = players[i];
-    const playerMinimapRadius = Math.min((player.radius + coef), 4) * uiScale;
+    const playerMinimapRadius = player.radius * radiusScale + entityScalePadding;
     const newPos = new Vector(
       (player.pos.x - area.pos.x - bound.x) * coef,
       (player.pos.y - area.pos.y - bound.y) * coef
@@ -918,7 +951,7 @@ function renderMinimap(area, players, focus) {
     context.fillStyle = player.color;
     context.strokeStyle = player.strokeColor;
     context.lineWidth = 2 * uiScale;
-    context.arc(newPos.x * (minimapSize.x / minimapCanvas.width), staticHeight - minimapSize.y + newPos.y * (minimapSize.y / minimapCanvas.height), playerMinimapRadius, 0, Math.PI * 2, true);
+    context.arc(newPos.x * minimapScaleX, staticHeight - minimapSize.y + newPos.y * minimapScaleY, playerMinimapRadius, 0, Math.PI * 2, true);
     context.fill();
     context.stroke();
     context.closePath();
