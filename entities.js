@@ -2296,7 +2296,8 @@ class Rime extends Player {
     const playerPos = new Vector(this.pos.x - offset.x, this.pos.y - offset.y);
     Object.values(area.entities).flat().forEach(entity => {
       if (!entity.immune && distance(entity.pos, playerPos) < radius + entity.radius) {
-        entity.freeze = duration;
+        entity.frozenTimeLeft = duration;
+        entity.frozenTime = duration;
       }
     });
   }
