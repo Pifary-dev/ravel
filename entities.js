@@ -4084,6 +4084,7 @@ class Silence extends Enemy {
       this.auraSize += 2 / 32 * timeFix;
       if (this.auraSize > this.maxRadius) this.auraSize = this.maxRadius;
     }
+    if(this.auraSize < 0) this.auraSize = 0;
     this.auraStaticSize = this.auraSize;
   }
 }
