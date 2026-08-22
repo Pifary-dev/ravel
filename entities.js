@@ -5694,6 +5694,64 @@ class Zigzag extends Enemy {
   }
 }
 
+class Dorito extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("dorito"), radius, speed, angle, "#05dad1");
+    const starting_angle = random_between([0, 120, 240]);
+    this.change_angle(degrees_to_radians(starting_angle));
+    this.base_speed = speed;
+    this.noAngleUpdate = true;
+
+    this.turn_coin = Math.random();
+    this.dir = 1;
+
+    this.switch_interval = 1000;
+    this.switch_time = Math.random() * this.switch_interval;
+    this.turn_angle = 2 * Math.PI / 3;
+    this.maximum_speed = this.base_speed;
+    this.turning = true;
+    this.returnCollision = true;
+    this.syncRequiredProperties = ['switch_time', 'base_speed'];
+  }
+  behavior(time, area, offset, players) {
+    const timeFix = time / (1000 / 30);
+    const amaster = 13 * timeFix;
+    if (this.switch_time > 0) {
+      this.switch_time -= time;
+      this.compute_speed();
+      if (this.switch_time < this.switch_interval * 0.45 && this.base_speed > 0) {
+        this.base_speed -= this.maximum_speed / amaster;
+        if (this.base_speed < 0) {
+          this.base_speed = 0;
+        }
+      }
+      if (this.switch_time >= this.switch_interval * 0.45 && this.base_speed < this.maximum_speed) {
+        this.base_speed += this.maximum_speed / amaster;
+        if (this.base_speed > this.maximum_speed) {
+          this.base_speed = this.maximum_speed;
+        }
+      }
+    } else {
+      this.switch_time = this.switch_interval;
+      if (this.turn_coin < 0.5) {
+        this.angle += this.turn_angle * this.dir;
+      } else {
+        this.angle -= this.turn_angle * this.dir;
+      }
+      this.change_angle(this.angle);
+    }
+  }
+  change_angle(change) {
+    this.velToAngle();
+    this.angle = change;
+    this.compute_speed();
+  }
+  compute_speed() {
+    this.speed = this.base_speed;
+    this.angleToVel();
+  }
+}
+
 class Zoning extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("zoning"), radius, speed, angle, "#a03811");

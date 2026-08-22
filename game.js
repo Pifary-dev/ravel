@@ -994,6 +994,8 @@ class Area {
         return new Gravity_Ghost(new Vector(posX, posY), radius / 32, speed, angle);
       case "repelling_ghost":
         return new Repelling_Ghost(new Vector(posX, posY), radius / 32, speed, angle);
+      case "dorito":
+        return new Dorito(new Vector(posX, posY), radius / 32, speed, angle);
       case "wavy":
         return new Wavy(new Vector(posX, posY), radius / 32, speed, angle);
       case "zigzag":
