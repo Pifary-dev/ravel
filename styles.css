@@ -114,7 +114,7 @@ p {
   border-radius: 29px;
   border: none;
   background: linear-gradient(45deg, var(--green), var(--green-dark));
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition: box-shadow 0.2s ease, filter 0.2s ease;
   box-shadow: 0 4px 14px rgba(76, 175, 80, 0.35);
   letter-spacing: 1px;
   margin-bottom: 18px;
@@ -122,18 +122,285 @@ p {
 
 #connect:hover {
   filter: brightness(1.06);
-  transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(76, 175, 80, 0.45);
 }
 
 #connect:active {
-  transform: translateY(1px);
   box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
 }
 
 #connect:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5), 0 4px 14px rgba(76, 175, 80, 0.35);
+}
+
+/* ---------- Hero picker ---------- */
+
+#hero-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background-color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+#hero-preview:hover {
+  border-color: var(--green);
+}
+
+#hero-preview:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.hero-preview-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15) inset;
+}
+
+.hero-preview-text {
+  flex: 1;
+  text-align: left;
+}
+
+.hero-preview-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #777;
+}
+
+.hero-preview-name {
+  display: block;
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--text-dark);
+}
+
+.hero-preview-chevron {
+  color: #999;
+  font-size: 0.8rem;
+}
+
+.hero-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.hero-modal-overlay[hidden] {
+  display: none;
+}
+
+.hero-modal {
+  width: min(720px, 92vw);
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--panel-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.hero-modal-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.hero-modal-header h2 {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text-dark);
+}
+
+.hero-modal-close {
+  border: none;
+  background: transparent;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: #777;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.hero-modal-close:hover {
+  background-color: #eee;
+  color: var(--text-dark);
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  padding: 16px 20px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--green) transparent;
+}
+
+.hero-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px;
+  border: 2px solid var(--hero-color, #ccc);
+  border-radius: var(--radius-md);
+  background-color: color-mix(in srgb, var(--hero-color, #ccc) 12%, #fff);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.hero-card:hover {
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+}
+
+.hero-card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.hero-card.selected {
+  box-shadow: 0 0 0 3px var(--hero-color, var(--green));
+}
+
+.hero-card .hero-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--hero-color, #ccc);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6) inset;
+}
+
+.hero-card .hero-name {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: var(--text-dark);
+  text-align: center;
+}
+
+.hero-card.locked {
+  cursor: not-allowed;
+  background-color: #eee;
+  border-color: #ccc;
+}
+
+.hero-card.locked .hero-avatar {
+  background-color: #bbb;
+  filter: grayscale(1);
+}
+
+.hero-card.locked .hero-name {
+  color: #999;
+}
+
+.hero-card .hero-requirement {
+  font-size: 0.65rem;
+  color: #888;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.hero-card .lock-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-info-btn {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background-color: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: bold;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  padding: 0;
+}
+
+.hero-info-btn:hover,
+.hero-info-btn:focus-visible {
+  background-color: var(--hero-color, #000);
+  outline: none;
+}
+
+.hero-tooltip {
+  position: fixed;
+  z-index: 60;
+  width: 240px;
+  background-color: rgba(20, 20, 20, 0.96);
+  color: #fff;
+  border: 1px solid var(--hero-color, var(--glass-border));
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+.hero-tooltip[hidden] {
+  display: none;
+}
+
+.hero-tooltip .ability-name {
+  color: var(--hero-color, var(--green));
+  font-weight: bold;
+  font-size: 0.78rem;
+}
+
+.hero-tooltip .ability-text {
+  color: rgba(255, 255, 255, 0.85);
+  margin: 2px 0 8px;
+  line-height: 1.3;
+}
+
+.hero-tooltip .ability-text:last-child {
+  margin-bottom: 0;
 }
 
 /* ---------- Loadout strip ---------- */
@@ -223,7 +490,10 @@ input[type="file"]::file-selector-button:hover {
   to { opacity: 1; }
 }
 
-#world, #hero, #diff, #wreath, #fps_limit {
+/* Shared control style: put this class on any <select> instead of
+   listing its #id here. Adding a new dropdown no longer means editing
+   this rule. */
+.select-control {
   padding: 8px 10px;
   border: 1px solid #ccc;
   border-radius: var(--radius-sm);
@@ -231,10 +501,22 @@ input[type="file"]::file-selector-button:hover {
   color: var(--text-dark);
   font-size: 0.9rem;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-#hero {
+.select-control:hover {
+  border-color: var(--green);
+}
+
+.select-control:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-color: var(--green);
+}
+
+/* one-off size variant, opted into per-element instead of baked into
+   the shared selector list */
+.select-control--wide {
   width: 50%;
   box-sizing: border-box;
   padding-top: 13px;
@@ -242,15 +524,16 @@ input[type="file"]::file-selector-button:hover {
   font-size: 1rem;
 }
 
-#world:hover, #hero:hover, #diff:hover, #wreath:hover, #fps_limit:hover {
-  transform: scale(1.03);
-  border-color: var(--green);
-}
-
-#world:focus, #hero:focus, #diff:focus, #wreath:focus, #fps_limit:focus {
-  outline: none;
-  box-shadow: var(--focus-ring);
-  border-color: var(--green);
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+  margin: -1px;
 }
 
 /* ---------- Alert ---------- */

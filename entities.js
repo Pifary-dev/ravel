@@ -3059,7 +3059,7 @@ class Polygon extends Player {
 }
 class Poop extends Player {
   constructor(pos, speed) {
-    super(pos, 8, speed, "#FFC0CB", "Idk");
+    super(pos, 8, speed, "#af7e87", "Idk");
     this.shields = [];
     this.dist = 2;
   }

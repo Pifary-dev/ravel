@@ -13,29 +13,15 @@
         <div id="name">
           <input type="text" id="nick" value="Sandbox" placeholder="Username">
         </div>
-        <select id='hero'>
-          <option>Normal</option>
-          <option>Magmax</option>
-          <option>Rime</option>
-          <option>Morfe</option>
-          <option>Aurora</option>
-          <option>Necro</option>
-          <option>Brute</option>
-          <option>Shade</option>
-          <option>Chrono</option>
-          <option>Reaper</option>
-          <option>Rameses</option>
-          <option>Cent</option>
-          <option>Jötunn</option>
-          <option>Candy</option>
-          <option>Mirage</option>
-          <option>Clown</option>
-          <option>Burst</option>
-          <option>Lantern</option>
-          <option>Pole</option>
-          <option>Polygon</option>
-          <option>Idk</option>
-        </select>
+        <select id='hero' class="visually-hidden"></select>
+        <button type="button" id="hero-preview">
+          <span class="hero-preview-avatar" id="hero-preview-avatar"></span>
+          <span class="hero-preview-text">
+            <span class="hero-preview-label">Hero</span>
+            <span class="hero-preview-name" id="hero-preview-name">Normal</span>
+          </span>
+          <span class="hero-preview-chevron">&#9662;</span>
+        </button>
       </div>
     </div>
     <div id='alert'></div>
@@ -48,7 +34,7 @@
       </div>
       <div class="panel-item">
         <span class="panel-label">World</span>
-        <select id='world'>
+        <select id='world' class="select-control">
         <option>Original</option>
         <option>Hard</option>
         <option>Bruh</option>
@@ -57,7 +43,7 @@
       </div>
       <div class="panel-item">
         <span class="panel-label">Difficulty</span>
-        <select id='diff'>
+        <select id='diff' class="select-control">
         <option>Easy</option>
         <option>Medium</option>
         <option>Hard</option>
@@ -65,7 +51,7 @@
       </div>
       <div class="panel-item">
         <span class="panel-label">Wreath</span>
-        <select id='wreath'>
+        <select id='wreath' class="select-control">
         <option>Gold</option>
         <option>Spring</option>
         <option>Autumn</option>
@@ -203,7 +189,7 @@
           <label for="seed">Seed:</label>
           <input type="number" id="seed" placeholder="Empty = random" min="0" style="width:120px">
           <br><br>
-          <label for="fps_limit">FPS Limit:</label>          <select id="fps_limit">
+          <label for="fps_limit">FPS Limit:</label>          <select id="fps_limit" class="select-control">
             <option value="unlimited">Unlimited FPS</option>
             <option value="60" selected>60 FPS</option>
             <option value="30">30 FPS</option>
@@ -251,6 +237,16 @@
         <li>P - Change Timer Clear</li>
         <li>O - Reset Timer</li>
       </ul>
+    </div>
+  </div>
+  <div class="hero-modal-overlay" id="hero-modal" hidden>
+    <div class="hero-modal" role="dialog" aria-modal="true" aria-labelledby="hero-modal-title">
+      <div class="hero-modal-header">
+        <h2 id="hero-modal-title">Choose your Hero</h2>
+        <button type="button" class="hero-modal-close" id="hero-modal-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="hero-grid" id="hero-grid"></div>
+      <div class="hero-tooltip" id="hero-tooltip" role="tooltip" hidden></div>
     </div>
   </div>
   <script src="listeners.js"></script>
