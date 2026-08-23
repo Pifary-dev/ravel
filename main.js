@@ -94,12 +94,15 @@ function animate(time) {
     const bgColor = (settings.tiles == 'tiles' || settings.tiles == 'tiles_empty') ? "#333333" : "#050505"
     updateBackground(context, width, height, bgColor);
     
-    const input = { keys: [...keys], mouse: mousePos, isMouse: mouse };
-    
+    // spread would drop the string-keyed mouse binds
+    const input = { keys: Object.assign([], keys), mouse: mousePos, isMouse: mouse };
+
     if (settings.slow_upgrade) {
-      const allowedKeys = [KEYS.LEFT, KEYS.RIGHT, KEYS.UP, KEYS.DOWN, KEYS.W, KEYS.A, KEYS.S, KEYS.D, KEYS.SHIFT];
+      const allowedKeys = ['up', 'down', 'left', 'right', 'slow']
+        .flatMap(id => keybinds[id])
+        .filter(k => k !== null);
       Object.keys(keys).forEach(key => {
-        if (keys[key] && !allowedKeys.includes(parseInt(key))) {
+        if (keys[key] && !allowedKeys.includes(parseInt(key)) && !allowedKeys.includes(key)) {
           keys[key] = false;
         }
       });

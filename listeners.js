@@ -51,6 +51,376 @@ const ping = {
   array: [],
 }
 
+// ---------- Keybinds ----------
+
+const KEYBIND_SECTIONS = [
+  { id: 'movement', label: 'Movement' },
+  { id: 'gameplay', label: 'Gameplay' },
+  { id: 'upgrades', label: 'Upgrades' },
+  { id: 'interface', label: 'Interface' },
+  { id: 'system', label: 'System' },
+  { id: 'cheats', label: 'Cheats' },
+  { id: 'advanced', label: 'Advanced Mode' },
+];
+
+const KEYBIND_ACTIONS = [
+  { id: 'up', label: 'Move Up', section: 'movement', defaults: [87, 38] },
+  { id: 'down', label: 'Move Down', section: 'movement', defaults: [83, 40] },
+  { id: 'left', label: 'Move Left', section: 'movement', defaults: [65, 37] },
+  { id: 'right', label: 'Move Right', section: 'movement', defaults: [68, 39] },
+  { id: 'slow', label: 'Slow Movement', section: 'movement', defaults: [16, null] },
+  { id: 'ability1', label: 'Use First Ability', section: 'gameplay', defaults: [90, 74] },
+  { id: 'ability2', label: 'Use Second Ability', section: 'gameplay', defaults: [88, 75] },
+  { id: 'ability3', label: 'Use Third Ability', section: 'gameplay', defaults: [67, 76] },
+  { id: 'upgrade_speed', label: 'Upgrade Speed', section: 'upgrades', defaults: [49, null] },
+  { id: 'upgrade_energy', label: 'Upgrade Energy', section: 'upgrades', defaults: [50, null] },
+  { id: 'upgrade_regen', label: 'Upgrade Regen', section: 'upgrades', defaults: [51, null] },
+  { id: 'upgrade_ab1', label: 'Upgrade Ability 1', section: 'upgrades', defaults: [52, null] },
+  { id: 'upgrade_ab2', label: 'Upgrade Ability 2', section: 'upgrades', defaults: [53, null] },
+  { id: 'toggle_title', label: 'Hide Area Title', section: 'interface', defaults: [85, null] },
+  { id: 'toggle_herocard', label: 'Hide Herocard', section: 'interface', defaults: [72, null] },
+  { id: 'toggle_minimap', label: 'Hide Minimap', section: 'interface', defaults: [77, null] },
+  { id: 'toggle_minimap_enemies', label: 'Hide Minimap Enemies', section: 'interface', defaults: [71, null] },
+  { id: 'toggle_overlay', label: 'Hide Overlay', section: 'interface', defaults: [188, null] },
+  { id: 'reset_run', label: 'Reset Your Run', section: 'system', defaults: [35, null] },
+  { id: 'cheat_forward', label: 'Teleport Forward', section: 'cheats', defaults: [84, null] },
+  { id: 'cheat_back', label: 'Teleport Backward', section: 'cheats', defaults: [69, null] },
+  { id: 'cheat_10forward', label: 'Teleport 10 Areas Forward', section: 'cheats', defaults: [82, null] },
+  { id: 'god_mode', label: 'God Mode', section: 'cheats', defaults: [86, null] },
+  { id: 'unlimited_energy', label: 'Unlimited Energy', section: 'cheats', defaults: [66, null] },
+  { id: 'no_collision', label: 'No Collision', section: 'cheats', defaults: [78, null] },
+  { id: 'safepoint_create', label: 'Create SafePoint', section: 'advanced', defaults: [219, null] },
+  { id: 'safepoint_clear', label: 'Clear SafePoint', section: 'advanced', defaults: [221, null] },
+  { id: 'safepoint_return', label: 'Return to SafePoint', section: 'advanced', defaults: [220, null] },
+  { id: 'timer_clear_toggle', label: 'Change Timer Clear', section: 'advanced', defaults: [80, null] },
+  { id: 'timer_reset', label: 'Reset Timer', section: 'advanced', defaults: [79, null] },
+];
+
+const KEYBIND_LOADOUTS = [1, 2, 3];
+let activeLoadout = 1;
+const keybinds = {};       // binds of the active loadout
+let allLoadouts = {};      // every loadout's binds
+
+function loadKeybinds() {
+  let stored = null;
+  try { stored = JSON.parse(localStorage.keybinds); } catch (e) {}
+  // old pre-loadout format: a plain id -> slots map
+  if (stored && typeof stored === 'object' && !stored.loadouts) {
+    stored = { loadout: 1, loadouts: { 1: stored } };
+  }
+  const loadouts = (stored && stored.loadouts) || {};
+  activeLoadout = (stored && KEYBIND_LOADOUTS.includes(stored.loadout)) ? stored.loadout : 1;
+  // null = unbound on purpose; only missing or corrupt values fall back to defaults
+  const validSlot = (v) => v === null || Number.isInteger(v) || typeof v === 'string';
+  for (const n of KEYBIND_LOADOUTS) {
+    const saved = loadouts[n] || {};
+    const map = {};
+    for (const action of KEYBIND_ACTIONS) {
+      const slots = Array.isArray(saved[action.id]) ? saved[action.id] : null;
+      map[action.id] = [
+        (slots && validSlot(slots[0])) ? slots[0] : action.defaults[0],
+        (slots && validSlot(slots[1])) ? slots[1] : action.defaults[1],
+      ];
+    }
+    allLoadouts[n] = map;
+  }
+  for (const id in allLoadouts[activeLoadout]) keybinds[id] = allLoadouts[activeLoadout][id].slice();
+}
+
+function saveKeybinds() {
+  const snapshot = {};
+  for (const id in keybinds) snapshot[id] = keybinds[id].slice();
+  allLoadouts[activeLoadout] = snapshot;
+  localStorage.keybinds = JSON.stringify({ loadout: activeLoadout, loadouts: allLoadouts });
+}
+
+function setActiveLoadout(n) {
+  if (n === activeLoadout) return;
+  activeLoadout = n;
+  for (const id in allLoadouts[n]) keybinds[id] = allLoadouts[n][id].slice();
+  rebindTarget = null;
+  saveKeybinds();
+  renderKeybindsUI();
+  renderHotkeysPanel();
+}
+
+function isKeyAction(inputKeys, id) {
+  const binds = keybinds[id];
+  if (!inputKeys || !binds) return false;
+  return ((binds[0] !== null && inputKeys[binds[0]]) ||
+          (binds[1] !== null && inputKeys[binds[1]])) ? true : false;
+}
+
+function getActionsForKey(code) {
+  const actions = [];
+  for (const id in keybinds) {
+    if (keybinds[id][0] === code || keybinds[id][1] === code) actions.push(id);
+  }
+  return actions;
+}
+
+const KEY_NAMES = {
+  8: 'Backspace', 9: 'Tab', 13: 'Enter', 16: 'Shift', 17: 'Ctrl', 18: 'Alt',
+  19: 'Pause', 20: 'Caps Lock', 27: 'Esc', 32: 'Space', 33: 'PgUp', 34: 'PgDn',
+  35: 'End', 36: 'Home', 37: '\u2190', 38: '\u2191', 39: '\u2192', 40: '\u2193',
+  45: 'Insert', 46: 'Delete', 91: 'Win',
+  106: 'Num *', 107: 'Num +', 109: 'Num -', 110: 'Num .', 111: 'Num /',
+  186: ';', 187: '=', 188: ',', 189: '-', 190: '.', 191: '/', 192: '`',
+  219: '[', 220: '\\', 221: ']', 222: "'",
+};
+
+function keyNameFromCode(code) {
+  if (typeof code === 'string') {
+    return { Mouse0: 'Left Click', Mouse1: 'Middle Click', Mouse2: 'Right Click',
+             WheelUp: 'Wheel Up', WheelDown: 'Wheel Down' }[code] ||
+           code.replace(/^Mouse(\d+)$/, 'Mouse$1');
+  }
+  if (KEY_NAMES[code]) return KEY_NAMES[code];
+  if (code >= 48 && code <= 57) return String.fromCharCode(code);
+  if (code >= 65 && code <= 90) return String.fromCharCode(code);
+  if (code >= 96 && code <= 105) return 'Num ' + (code - 96);
+  if (code >= 112 && code <= 135) return 'F' + (code - 111);
+  return 'Key ' + code;
+}
+
+// ----- Controls tab UI -----
+
+let rebindTarget = null;      // { actionId, slot } while listening for input
+let pendingModifier = null;
+
+function renderKeybindsUI() {
+  const panel = document.getElementById('panel-controls');
+  if (!panel) return;
+  const scrollTop = panel.scrollTop;
+  panel.innerHTML = '';
+
+  const loadouts = document.createElement('div');
+  loadouts.className = 'keybind-loadouts';
+  const loadoutsLabel = document.createElement('span');
+  loadoutsLabel.className = 'keybind-loadouts-label';
+  loadoutsLabel.textContent = 'Loadouts:';
+  loadouts.appendChild(loadoutsLabel);
+  for (const n of KEYBIND_LOADOUTS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'keybind-loadout' + (n === activeLoadout ? ' active' : '');
+    btn.textContent = n;
+    btn.setAttribute('aria-label', `Loadout ${n}`);
+    btn.addEventListener('click', () => setActiveLoadout(n));
+    loadouts.appendChild(btn);
+  }
+  panel.appendChild(loadouts);
+
+  const hint = document.createElement('div');
+  hint.className = 'keybind-hint';
+  hint.textContent = 'Click a key, then press any key (or click / scroll) to bind. \u00d7 unbinds, Escape cancels.';
+  panel.appendChild(hint);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.type = 'button';
+  resetBtn.className = 'keybind-reset';
+  resetBtn.textContent = 'Reset to Defaults';
+  resetBtn.addEventListener('click', () => {
+    for (const action of KEYBIND_ACTIONS) keybinds[action.id] = action.defaults.slice();
+    rebindTarget = null;
+    saveKeybinds();
+    renderKeybindsUI();
+    renderHotkeysPanel();
+  });
+  panel.appendChild(resetBtn);
+
+  for (const section of KEYBIND_SECTIONS) {
+    const actions = KEYBIND_ACTIONS.filter(a => a.section === section.id);
+    if (!actions.length) continue;
+    const title = document.createElement('div');
+    title.className = 'keybind-section-title';
+    title.textContent = section.label;
+    panel.appendChild(title);
+    for (const action of actions) panel.appendChild(createKeybindRow(action));
+  }
+  panel.scrollTop = scrollTop;
+}
+
+function createKeybindRow(action) {
+  const row = document.createElement('div');
+  row.className = 'keybind-row';
+  const label = document.createElement('span');
+  label.className = 'keybind-label';
+  label.textContent = action.label;
+  label.title = action.label;
+  row.appendChild(label);
+
+  const slots = document.createElement('span');
+  slots.className = 'keybind-slots';
+  for (let slot = 0; slot < 2; slot++) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'keybind-slot';
+    const listening = rebindTarget && rebindTarget.actionId === action.id && rebindTarget.slot === slot;
+    const code = keybinds[action.id][slot];
+    btn.setAttribute('aria-label', `${action.label} key ${slot + 1}`);
+    if (listening) {
+      btn.textContent = 'Press a key\u2026';
+      btn.classList.add('listening');
+    } else {
+      btn.textContent = (code === null) ? '+' : keyNameFromCode(code);
+      btn.classList.toggle('unbound', code === null);
+    }
+    btn.addEventListener('click', () => {
+      rebindTarget = { actionId: action.id, slot };
+      renderKeybindsUI();
+    });
+    slots.appendChild(btn);
+
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'keybind-clear' + ((code === null && !listening) ? ' hidden-slot' : '');
+    clearBtn.textContent = '\u00d7';
+    clearBtn.title = 'Unbind';
+    clearBtn.setAttribute('aria-label', `Unbind ${action.label} key ${slot + 1}`);
+    clearBtn.addEventListener('click', () => {
+      keybinds[action.id][slot] = null;
+      rebindTarget = null;
+      saveKeybinds();
+      renderKeybindsUI();
+      renderHotkeysPanel();
+    });
+    slots.appendChild(clearBtn);
+  }
+  row.appendChild(slots);
+  return row;
+}
+
+function finishRebind(save) {
+  if (save) saveKeybinds();
+  rebindTarget = null;
+  renderKeybindsUI();
+  renderHotkeysPanel();
+}
+
+function assignKey(code) {
+  const { actionId, slot } = rebindTarget;
+  // strip the key from any other action first
+  for (const id in keybinds) {
+    keybinds[id] = keybinds[id].map((k, i) =>
+      (k === code && !(id === actionId && i === slot)) ? null : k);
+  }
+  keybinds[actionId][slot] = code;
+  finishRebind(true);
+}
+
+// capture phase; events that start on UI controls keep their normal behavior
+const UI_CONTROL = 'button, label, input, select, textarea';
+
+const rebindKeydown = (e) => {
+  if (!rebindTarget) return;
+  if (e.target.closest(UI_CONTROL)) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (e.keyCode === 27) {
+    finishRebind(false);
+  } else if (e.keyCode === 8 || e.keyCode === 46) {
+    keybinds[rebindTarget.actionId][rebindTarget.slot] = null;
+    finishRebind(true);
+  } else if (e.keyCode === 16 || e.keyCode === 17 || e.keyCode === 18) {
+    // modifiers fire alone and in combos; bind the bare one only on keyup
+    pendingModifier = e.keyCode;
+  } else {
+    pendingModifier = null;
+    assignKey(e.keyCode);
+  }
+};
+
+const rebindKeyup = (e) => {
+  if (!rebindTarget) return;
+  if (e.target.closest(UI_CONTROL)) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (pendingModifier !== null && e.keyCode === pendingModifier) {
+    assignKey(pendingModifier);
+  }
+};
+
+// a click or wheel while listening binds that input
+let suppressNextClick = false;
+
+const rebindMousedown = (e) => {
+  // clear a stale suppress flag (wheel bind or release outside the window)
+  if (!rebindTarget) { suppressNextClick = false; return; }
+  if (e.target.closest(UI_CONTROL)) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  suppressNextClick = true;
+  pendingModifier = null;
+  assignKey(`Mouse${e.button}`);
+};
+
+const rebindWheel = (e) => {
+  if (!rebindTarget) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  suppressNextClick = true;
+  pendingModifier = null;
+  assignKey(e.deltaY < 0 ? 'WheelUp' : 'WheelDown');
+};
+
+const suppressClick = (e) => {
+  if (!suppressNextClick) return;
+  suppressNextClick = false;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+};
+
+document.addEventListener('keydown', rebindKeydown, true);
+document.addEventListener('keyup', rebindKeyup, true);
+document.addEventListener('mousedown', rebindMousedown, true);
+document.addEventListener('wheel', rebindWheel, true);
+document.addEventListener('click', suppressClick, true);
+
+// rebinding lives in the menu; drop the capture handlers once the game starts
+function detachRebindListeners() {
+  document.removeEventListener('keydown', rebindKeydown, true);
+  document.removeEventListener('keyup', rebindKeyup, true);
+  document.removeEventListener('mousedown', rebindMousedown, true);
+  document.removeEventListener('wheel', rebindWheel, true);
+  document.removeEventListener('click', suppressClick, true);
+}
+
+// ----- Hotkeys panel (menu, top right) -----
+
+function hotkeysListHTML(ids) {
+  return ids.map(id => {
+    const action = KEYBIND_ACTIONS.find(a => a.id === id);
+    if (!action) return '';
+    const keys = keybinds[id].filter(k => k !== null).map(k => `<kbd>${keyNameFromCode(k)}</kbd>`);
+    const keyText = keys.length ? keys.join('/') : '<span class="hotkey-unbound">unbound</span>';
+    return `<li>${keyText} - ${action.label}</li>`;
+  }).join('');
+}
+
+function renderHotkeysPanel() {
+  const main = document.getElementById('hotkeys-main');
+  if (!main) return;
+  main.innerHTML = hotkeysListHTML([
+    'up', 'down', 'left', 'right', 'slow',
+    'ability1', 'ability2', 'ability3',
+    'toggle_title', 'toggle_herocard', 'toggle_minimap', 'toggle_minimap_enemies',
+    'toggle_overlay', 'reset_run',
+  ]);
+  document.getElementById('hotkeys-cheats').innerHTML = hotkeysListHTML([
+    'cheat_forward', 'cheat_back', 'cheat_10forward',
+    'god_mode', 'unlimited_energy', 'no_collision',
+  ]);
+  document.getElementById('hotkeys-advanced').innerHTML = hotkeysListHTML([
+    'safepoint_create', 'safepoint_clear', 'safepoint_return',
+    'timer_clear_toggle', 'timer_reset',
+  ]);
+}
+
+loadKeybinds();
+renderKeybindsUI();
+renderHotkeysPanel();
+
 const HEROES = [
   { name: "Normal", className: "Basic", color: "#FF0000",
     abilities: [] },
@@ -516,107 +886,136 @@ window.onload = () => {
     document.addEventListener("mousemove", Pos, false);
     document.addEventListener("keydown", keydownKeys, false);
     document.addEventListener("keyup", keyupKeys, false);
+    detachRebindListeners();
     document.onmousedown = (e) => {
+      const code = `Mouse${e.button}`;
+      // bound buttons must not autoscroll or navigate back/forward
+      if (!inMenu && getActionsForKey(code).length) e.preventDefault();
       applyInputDelay(settings.input_delay,()=>{
-        if (e.buttons == 1 && !inMenu) {
+        keys[code] = true;
+        if (!inMenu) handleBoundActions(getActionsForKey(code));
+        if (e.buttons == 1 && !inMenu && !getActionsForKey('Mouse0').length) {
           mouse = !mouse;
         }
       });
     };
-    
+
     document.onmouseup = (e) => {
-      applyInputDelay(settings.input_delay,()=> {if (!settings.mouse_toggle && !inMenu) mouse = !mouse;})
+      applyInputDelay(settings.input_delay,()=> {
+        delete keys[`Mouse${e.button}`];
+        if (!settings.mouse_toggle && !inMenu) mouse = !mouse;
+      })
     };
+
+    // the wheel is a pulse, not a hold
+    document.addEventListener('wheel', (e) => {
+      const dir = (e.deltaY < 0) ? 'WheelUp' : 'WheelDown';
+      if (inMenu || !getActionsForKey(dir).length) return;
+      e.preventDefault();
+      applyInputDelay(settings.input_delay,()=>{
+        keys[dir] = true;
+        handleBoundActions(getActionsForKey(dir));
+        setTimeout(() => { delete keys[dir]; }, 60);
+      });
+    }, { passive: false });
   }
 }
 function keydownKeys(e) {
-  const player = game.players[0];
+  // bound keys must not fire browser defaults (F5 reload, Backspace nav, ...)
+  if (getActionsForKey(e.keyCode).length) e.preventDefault();
   if(e.code == 'KeyD' && settings.dev){
     ping.activationTime = new Date().getTime();
   }
   applyInputDelay(settings.input_delay,()=>{
     const code = e.keyCode;
     if(keys[code] !== false) keys[e.keyCode] = true;
-    if(settings.cheats){
-      if (e.keyCode == 84) {
-        player.hasCheated = true;
-        player.area++
-        if (player.area>=game.worlds[player.world].areas.length-1) {
-          player.area=game.worlds[player.world].areas.length-1
-        }
-        game.worlds[player.world].areas[player.area].load();
-        tilesCanvas = null;
+    handleBoundActions(getActionsForKey(code));
+  })
+}
+
+// hotkey side effects shared by keyboard and mouse binds
+function handleBoundActions(bound) {
+  if (!bound.length || inMenu) return;
+  const player = game.players[0];
+  if(settings.cheats){
+    if (bound.includes('cheat_forward')) {
+      player.hasCheated = true;
+      player.area++
+      if (player.area>=game.worlds[player.world].areas.length-1) {
+        player.area=game.worlds[player.world].areas.length-1
       }
-      if (e.keyCode == 82) {
-        player.hasCheated = true;
-        player.area = Number(player.area) + 10;
-        if (player.area>=game.worlds[player.world].areas.length-1) {
-          player.area=game.worlds[player.world].areas.length-1
-        }
-        game.worlds[player.world].areas[player.area].load();
-        tilesCanvas = null;
-      }
-      if (e.keyCode == 69) {
-        player.hasCheated = true;
-        player.area = Number(player.area) - 1;
-        if (player.area<0) {
-          player.area=0;
-        }
-        game.worlds[player.world].areas[player.area].load();
-        tilesCanvas = null;
-      }
-      if (e.keyCode == 86) {
-        player.hasCheated = true;
-        player.god = !player.god;
-      }
-      if (e.keyCode == 78) {
-        player.hasCheated = true;
-        player.ghost = !player.ghost;
-      }
-      if (e.keyCode == 66) {
-        player.hasCheated = true;
-        settings.cooldown = !settings.cooldown;
-      }
-    }
-    if (e.keyCode == 72) {
-      player.herocard = !player.herocard;
-    }
-    if (e.keyCode == 77) {
-      player.minimap = !player.minimap;
-    }
-    if (e.keyCode == 71) {
-      player.enemies_minimap = !player.enemies_minimap;
-    }
-    if (e.keyCode == 188) {
-      player.overlay = !player.overlay;
-    }
-    if (e.keyCode == 85) {
-      player.title = !player.title;
-    }
-    if (e.keyCode == 35) {
-      player.reset();
-    }
-    if (e.keyCode == 219 && settings.dev) {
-      player.safePoint = {world:player.world,area:player.area,pos:{x:player.pos.x,y:player.pos.y}};
-      player.safeAmount++;
-    }
-    if (e.keyCode == 221 && settings.dev) {
-      player.safePoint = undefined;
-    }
-    if (e.keyCode == 220 && settings.dev && player.safePoint) {
-      returnToSafePoint(player);
-      player.lives = 3;
-      player.victoryTimer = 0;
+      game.worlds[player.world].areas[player.area].load();
       tilesCanvas = null;
     }
-    if (e.keyCode == 79 && settings.dev) {
-      player.timer = 0;
-      player.victoryTimer = 0;
+    if (bound.includes('cheat_10forward')) {
+      player.hasCheated = true;
+      player.area = Number(player.area) + 10;
+      if (player.area>=game.worlds[player.world].areas.length-1) {
+        player.area=game.worlds[player.world].areas.length-1
+      }
+      game.worlds[player.world].areas[player.area].load();
+      tilesCanvas = null;
     }
-    if (e.keyCode == 80 && settings.dev) {
-      settings.timer_clear = !settings.timer_clear;
+    if (bound.includes('cheat_back')) {
+      player.hasCheated = true;
+      player.area = Number(player.area) - 1;
+      if (player.area<0) {
+        player.area=0;
+      }
+      game.worlds[player.world].areas[player.area].load();
+      tilesCanvas = null;
     }
-  })
+    if (bound.includes('god_mode')) {
+      player.hasCheated = true;
+      player.god = !player.god;
+    }
+    if (bound.includes('no_collision')) {
+      player.hasCheated = true;
+      player.ghost = !player.ghost;
+    }
+    if (bound.includes('unlimited_energy')) {
+      player.hasCheated = true;
+      settings.cooldown = !settings.cooldown;
+    }
+  }
+  if (bound.includes('toggle_herocard')) {
+    player.herocard = !player.herocard;
+  }
+  if (bound.includes('toggle_minimap')) {
+    player.minimap = !player.minimap;
+  }
+  if (bound.includes('toggle_minimap_enemies')) {
+    player.enemies_minimap = !player.enemies_minimap;
+  }
+  if (bound.includes('toggle_overlay')) {
+    player.overlay = !player.overlay;
+  }
+  if (bound.includes('toggle_title')) {
+    player.title = !player.title;
+  }
+  if (bound.includes('reset_run')) {
+    player.reset();
+  }
+  if (bound.includes('safepoint_create') && settings.dev) {
+    player.safePoint = {world:player.world,area:player.area,pos:{x:player.pos.x,y:player.pos.y}};
+    player.safeAmount++;
+  }
+  if (bound.includes('safepoint_clear') && settings.dev) {
+    player.safePoint = undefined;
+  }
+  if (bound.includes('safepoint_return') && settings.dev && player.safePoint) {
+    returnToSafePoint(player);
+    player.lives = 3;
+    player.victoryTimer = 0;
+    tilesCanvas = null;
+  }
+  if (bound.includes('timer_reset') && settings.dev) {
+    player.timer = 0;
+    player.victoryTimer = 0;
+  }
+  if (bound.includes('timer_clear_toggle') && settings.dev) {
+    settings.timer_clear = !settings.timer_clear;
+  }
 }
 
 function keyupKeys(e) {

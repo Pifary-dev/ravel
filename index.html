@@ -96,10 +96,12 @@
         <input type="radio" name="settingsTab" id="tab-visuals" checked>
         <input type="radio" name="settingsTab" id="tab-gameplay">
         <input type="radio" name="settingsTab" id="tab-advanced">
+        <input type="radio" name="settingsTab" id="tab-controls">
         <div class="tab-bar">
           <label for="tab-visuals">Visuals</label>
           <label for="tab-gameplay">Gameplay</label>
           <label for="tab-advanced">Advanced</label>
+          <label for="tab-controls">Controls</label>
         </div>
 
         <div class="tab-panel settingsElement" id="panel-visuals">
@@ -236,42 +238,17 @@
             <input type="number" id="tick_delay" placeholder="1 tick is 33ms" value="0" min="0">
           </div>
         </div>
+
+        <div class="tab-panel settingsElement" id="panel-controls"></div>
       </div>
     </div>
     <div id="hotkeys">
       <h3>Hotkeys</h3>
-      <ul>
-        <li><kbd>W</kbd>/<kbd>&uarr;</kbd> - Move Up</li>
-        <li><kbd>S</kbd>/<kbd>&darr;</kbd> - Move Down</li>
-        <li><kbd>A</kbd>/<kbd>&larr;</kbd> - Move Left</li>
-        <li><kbd>D</kbd>/<kbd>&rarr;</kbd> - Move Right</li>
-        <li><kbd>Shift</kbd> - Slow Movement</li>
-        <li><kbd>Z</kbd>/<kbd>J</kbd> - Use First Ability</li>
-        <li><kbd>X</kbd>/<kbd>K</kbd> - Use Second Ability</li>
-        <li><kbd>C</kbd>/<kbd>L</kbd> - Use Third Ability</li>
-        <li><kbd>U</kbd> - Hide Area Title</li>
-        <li><kbd>H</kbd> - Hide Herocard</li>
-        <li><kbd>M</kbd> - Hide Minimap</li>
-        <li><kbd>G</kbd> - Hide Minimap Enemies</li>
-        <li><kbd>,</kbd> - Hide Overlay</li>
-        <li><kbd>END</kbd> - Reset Your Run</li>
-      </ul>
+      <ul id="hotkeys-main"></ul>
       <h4>Cheats:</h4>
-      <ul>
-        <li><kbd>T</kbd> - Teleport Forward</li>
-        <li><kbd>E</kbd> - Teleport Backward</li>
-        <li><kbd>R</kbd> - Teleport 10 Areas Forward</li>
-        <li><kbd>V</kbd> - God Mode</li>
-        <li><kbd>B</kbd> - Unlimited Energy</li>
-        <li><kbd>N</kbd> - No Collision</li>
-      </ul>
+      <ul id="hotkeys-cheats"></ul>
       <h4>Advanced Mode:</h4>
-      <ul>
-        <li><kbd>[</kbd> - Create SafePoint</li>
-        <li><kbd>]</kbd> - Clear SafePoint</li>
-        <li><kbd>P</kbd> - Change Timer Clear</li>
-        <li><kbd>O</kbd> - Reset Timer</li>
-      </ul>
+      <ul id="hotkeys-advanced"></ul>
     </div>
   </div>
   <div class="hero-modal-overlay" id="hero-modal" hidden>

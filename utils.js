@@ -811,29 +811,6 @@ const hexToRgb = hex =>
     .substring(1).match(/.{2}/g)
     .map(x => parseInt(x, 16))
 
-const KEYS = {
-  LEFT: 37,
-  UP: 38,
-  RIGHT: 39,
-  DOWN: 40,
-  W: 87,
-  A: 65,
-  S: 83,
-  D: 68,
-  J: 74,
-  K: 75,
-  L: 76,
-  Z: 90,
-  X: 88,
-  C: 67,
-  SHIFT: 16,
-  1: 49,
-  2: 50,
-  3: 51,
-  4: 52,
-  5: 53
-}
-
 function calculateFps(){
   const thisFrameTime = (thisLoop = new Date) - lastLoop;
   frameTime += (thisFrameTime - frameTime) / filterStrength;

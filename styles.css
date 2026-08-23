@@ -554,7 +554,7 @@ canvas {
   box-shadow: var(--shadow);
   max-height: 80vh;
   overflow-y: auto;
-  width: 250px;
+  width: 280px;
   font-size: var(--font-size-base);
   animation: fadeInSettle 0.35s ease-out 0.05s both;
   scrollbar-width: thin;
@@ -626,14 +626,16 @@ canvas {
 
 #tab-visuals:checked ~ .tab-bar label[for="tab-visuals"],
 #tab-gameplay:checked ~ .tab-bar label[for="tab-gameplay"],
-#tab-advanced:checked ~ .tab-bar label[for="tab-advanced"] {
+#tab-advanced:checked ~ .tab-bar label[for="tab-advanced"],
+#tab-controls:checked ~ .tab-bar label[for="tab-controls"] {
   background-color: var(--green);
   color: #FFF;
 }
 
 #tab-visuals:focus-visible ~ .tab-bar label[for="tab-visuals"],
 #tab-gameplay:focus-visible ~ .tab-bar label[for="tab-gameplay"],
-#tab-advanced:focus-visible ~ .tab-bar label[for="tab-advanced"] {
+#tab-advanced:focus-visible ~ .tab-bar label[for="tab-advanced"],
+#tab-controls:focus-visible ~ .tab-bar label[for="tab-controls"] {
   box-shadow: var(--focus-ring);
 }
 
@@ -647,7 +649,8 @@ canvas {
 
 #tab-visuals:checked ~ #panel-visuals,
 #tab-gameplay:checked ~ #panel-gameplay,
-#tab-advanced:checked ~ #panel-advanced {
+#tab-advanced:checked ~ #panel-advanced,
+#tab-controls:checked ~ #panel-controls {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -691,8 +694,9 @@ select:focus, input[type="text"]:focus, input[type="number"]:focus {
 }
 
 .setting-row input[type="range"] {
-  flex: 0 0 90px;
-  width: 90px;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 60px;
 }
 
 /* Slider rows never wrap, so the value stays beside the slider. */
@@ -701,10 +705,11 @@ select:focus, input[type="text"]:focus, input[type="number"]:focus {
   min-height: 30px;
 }
 
+/* fill the width right of the 114px label column */
 .setting-row select,
 .setting-row input[type="number"] {
   box-sizing: border-box;
-  width: 126px;
+  width: calc(100% - 122px);
 }
 
 #seed {
@@ -716,6 +721,190 @@ select:focus, input[type="text"]:focus, input[type="number"]:focus {
   text-align: right;
   font-size: var(--font-size-sm);
   color: #555;
+}
+
+/* ---------- Controls tab (keybinds) ---------- */
+
+.keybind-loadouts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.keybind-loadouts-label {
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  color: #555;
+}
+
+.keybind-loadout {
+  min-width: 30px;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: var(--radius-sm);
+  background-color: #FFF;
+  color: #555;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.keybind-loadout:hover {
+  border-color: var(--green);
+}
+
+.keybind-loadout.active {
+  background-color: var(--green);
+  border-color: var(--green);
+  color: #FFF;
+}
+
+.keybind-loadout:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.keybind-hint {
+  font-size: var(--font-size-xs);
+  color: #777;
+  line-height: 1.4;
+}
+
+.keybind-reset {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid #ccc;
+  border-radius: var(--radius-sm);
+  background-color: #FFF;
+  color: #555;
+  font-size: var(--font-size-xs);
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.keybind-reset:hover {
+  background-color: var(--green);
+  border-color: var(--green);
+  color: #FFF;
+}
+
+.keybind-reset:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.keybind-section-title {
+  margin-top: 6px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #e0e0e0;
+  color: #777;
+  font-size: var(--font-size-xs);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.keybind-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 26px;
+}
+
+.keybind-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-sm);
+}
+
+.keybind-slots {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.keybind-slot {
+  min-width: 46px;
+  padding: 3px 6px;
+  border: 1px solid #ccc;
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background-color: #FFF;
+  color: var(--text-dark);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: bold;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.keybind-slot:hover {
+  border-color: var(--green);
+}
+
+.keybind-slot:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.keybind-slot.unbound {
+  color: #aaa;
+  border-style: dashed;
+  font-weight: normal;
+}
+
+.keybind-slot.listening {
+  border-color: var(--green);
+  background-color: var(--green);
+  color: #FFF;
+  font-weight: normal;
+  animation: keybindPulse 1s ease-in-out infinite;
+}
+
+.keybind-clear {
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background-color: #e53935;
+  color: #FFF;
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.keybind-clear:hover {
+  background-color: #c62828;
+}
+
+.keybind-clear:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.keybind-clear.hidden-slot {
+  visibility: hidden;
+}
+
+@keyframes keybindPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(0.82); }
+}
+
+.hotkey-unbound {
+  color: #999;
+  font-style: italic;
 }
 
 input[type="range"] {

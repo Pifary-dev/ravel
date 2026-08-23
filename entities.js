@@ -477,15 +477,15 @@ class Player {
     // Handle upgrades
     if (input.keys && this.points > 0) {
       const upgrades = [
-        { key: KEYS[1], prop: 'speed', max: this.maxSpeed, inc: 0.5, unlocked: true },
-        { key: KEYS[2], prop: 'maxEnergy', max: this.maxUpgradableEnergy, inc: 5, unlocked: true },
-        { key: KEYS[3], prop: 'regen', max: this.maxRegen, inc: 0.2, unlocked: true },
-        { key: KEYS[4], prop: 'ab1L', max: this.ab1ML, unlocked: this.firstAbilityUnlocked },
-        { key: KEYS[5], prop: 'ab2L', max: this.ab2ML, unlocked: this.secondAbilityUnlocked }
+        { id: 'upgrade_speed', prop: 'speed', max: this.maxSpeed, inc: 0.5, unlocked: true },
+        { id: 'upgrade_energy', prop: 'maxEnergy', max: this.maxUpgradableEnergy, inc: 5, unlocked: true },
+        { id: 'upgrade_regen', prop: 'regen', max: this.maxRegen, inc: 0.2, unlocked: true },
+        { id: 'upgrade_ab1', prop: 'ab1L', max: this.ab1ML, unlocked: this.firstAbilityUnlocked },
+        { id: 'upgrade_ab2', prop: 'ab2L', max: this.ab2ML, unlocked: this.secondAbilityUnlocked }
       ];
 
-      upgrades.forEach(({ key, prop, max, inc, unlocked }) => {
-        if (input.keys[key] && this[prop] < max && unlocked) {
+      upgrades.forEach(({ id, prop, max, inc, unlocked }) => {
+        if (isKeyAction(input.keys, id) && this[prop] < max && unlocked) {
           this[prop] = Math.min(this[prop] + (inc || 1), max);
           this.points--;
         }
@@ -494,7 +494,7 @@ class Player {
     // Handle dead state
     if (this.isDead) {
       if ((this.className === "Necro" || this.className === "Chrono") && input.keys) {
-        const abilityKeys = input.keys[KEYS.J] || input.keys[KEYS.Z];
+        const abilityKeys = isKeyAction(input.keys, 'ability1');
         this.firstAbility = abilityKeys && !this.firstAbilityPressed;
         this.firstAbilityPressed = abilityKeys;
       }
@@ -504,21 +504,21 @@ class Player {
     // Handle abilities
     if (input.keys && !this.disabling) {
       const abilities = [
-        { keys: [KEYS.J, KEYS.Z], ability: 'first' },
-        { keys: [KEYS.K, KEYS.X], ability: 'second' }
+        { id: 'ability1', ability: 'first' },
+        { id: 'ability2', ability: 'second' }
       ];
 
-      abilities.forEach(({ keys, ability }) => {
-        const pressed = keys.some(key => input.keys[key]);
+      abilities.forEach(({ id, ability }) => {
+        const pressed = isKeyAction(input.keys, id);
         this[`${ability}Ability`] = pressed && !this[`${ability}AbilityPressed`];
         this[`${ability}AbilityPressed`] = pressed;
       });
     }
 
-    if (input.keys[KEYS.SHIFT]) {
+    if (isKeyAction(input.keys, 'slow')) {
       this.shift = true;
     }
-    if (this.energy - 1 > 0 && !this.disabling && !this.magnetAbilityPressed && (this.magnet || this.flashlight || this.lantern) && (input.keys[KEYS.C] || input.keys[KEYS.L])) {
+    if (this.energy - 1 > 0 && !this.disabling && !this.magnetAbilityPressed && (this.magnet || this.flashlight || this.lantern) && isKeyAction(input.keys, 'ability3')) {
       if (this.magnetDirection == "Down") { this.magnetDirection = "Up" }
       else if (this.magnetDirection == "Up") { this.magnetDirection = "Down" }
       this.magnetAbilityPressed = true;
@@ -527,7 +527,7 @@ class Player {
       if (this.magnet) this.energy -= 1;
     }
 
-    if (!(input.keys[KEYS.C] || input.keys[KEYS.L])) {
+    if (!isKeyAction(input.keys, 'ability3')) {
       this.magnetAbilityPressed = false;
     }
 
@@ -559,10 +559,10 @@ class Player {
         this.moving = true;
         input.isMouse = false;
       }
-      this.dirY = (input.keys[KEYS.W] || input.keys[KEYS.UP]) ? -1 :
-        (input.keys[KEYS.S] || input.keys[KEYS.DOWN]) ? 1 : 0;
-      this.dirX = (input.keys[KEYS.D] || input.keys[KEYS.RIGHT]) ? 1 :
-        (input.keys[KEYS.A] || input.keys[KEYS.LEFT]) ? -1 : 0;
+      this.dirY = isKeyAction(input.keys, 'up') ? -1 :
+        isKeyAction(input.keys, 'down') ? 1 : 0;
+      this.dirX = isKeyAction(input.keys, 'right') ? 1 :
+        isKeyAction(input.keys, 'left') ? -1 : 0;
       this.input_angle = Math.atan2(this.dirY, this.dirX);
 
     }
@@ -663,7 +663,8 @@ class Player {
     return ((this.className == "Cent" && this.leadTimeLeft <= 0) || (this.className != "Cent" && this.leadTimeLeft > 0));
   }
   isMovementKeyPressed(input) {
-    return (input.keys[87] || input.keys[38] || input.keys[65] || input.keys[37] || input.keys[83] || input.keys[40] || input.keys[68] || input.keys[39]);
+    return isKeyAction(input.keys, 'up') || isKeyAction(input.keys, 'down') ||
+           isKeyAction(input.keys, 'left') || isKeyAction(input.keys, 'right');
   }
   calculateExperience(HeroLevel) {
     return Math.floor(Math.min(HeroLevel, 100) * Math.min(HeroLevel + 1, 101) * 2 + Math.max(0, HeroLevel * (HeroLevel + 1) * (2 * HeroLevel - 179) / 60 - 3535))
