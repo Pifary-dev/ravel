@@ -998,6 +998,8 @@ class Area {
         return new Dorito(new Vector(posX, posY), radius / 32, speed, angle);
       case "wavy":
         return new Wavy(new Vector(posX, posY), radius / 32, speed, angle);
+      case "infinity":
+        return new InfinityEnemy(new Vector(posX, posY), radius / 32, speed, angle);
       case "zigzag":
         return new Zigzag(new Vector(posX, posY), radius / 32, speed, angle);
       case "zoning":
@@ -1127,6 +1129,10 @@ class Area {
         return switchCombiner(Penny, "#d9b67f", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "wavy_switch":
         return switchCombiner(Wavy, "#fa5336", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
+      case "infinity_switch":
+        return switchCombiner(InfinityEnemy, "#ffb4e2", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
+      case "dorito_switch":
+        return switchCombiner(Dorito, "#9bf0ec", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "spiral_switch":
         return switchCombiner(Spiral, "#f5e199", new Vector(posX, posY), radius / 32, speed, angle, j, count, preset.switch_interval, preset.switch_time);
       case "zoning_switch":

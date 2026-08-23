@@ -5638,6 +5638,34 @@ class Wavy extends Enemy {
     this.angleToVel();
   }
 }
+class InfinityEnemy extends Enemy {
+  constructor(pos, radius, speed, angle) {
+    super(pos, entityTypes.indexOf("infinity"), radius, speed, angle, "#ff69c5");
+    this.change_angle(Math.random() < 0.5 ? Math.PI / 2 : (3 * Math.PI) / 2);
+    this.angle_increment = parseFloat((0.0175 * speed).toFixed(4));
+    this.dir = 1;
+    this.switch_interval = 12800 / speed;
+    this.switch_time = this.switch_interval;
+    this.turning = true;
+    this.returnCollision = true;
+    this.syncRequiredProperties = ['switch_time'];
+  }
+  behavior(time, area, offset, players) {
+    const timeFix = time / (1000 / 30);
+    if (this.switch_time > 0) {
+      this.switch_time -= time;
+    } else {
+      this.switch_time = this.switch_interval;
+      this.dir *= -1;
+    }
+    this.change_angle(this.angle + this.angle_increment * timeFix * this.dir);
+  }
+  change_angle(change) {
+    this.velToAngle();
+    this.angle = change;
+    this.angleToVel();
+  }
+}
 class Zigzag extends Enemy {
   constructor(pos, radius, speed, angle) {
     super(pos, entityTypes.indexOf("zigzag"), radius, speed, angle, "#b371f2");

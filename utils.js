@@ -90,6 +90,9 @@ const entityTypes = [
   "static",
   "thunderbolt",
   "superstar",
+  "dorito",
+  "infinity",
+  "wacky_wall",
   // Bosses
   "aibot",
   "eabot",
@@ -110,12 +113,11 @@ const entityTypes = [
   "quantum",
   "ionizing",
   "hastening",
-  "wacky_wall",
 
   // og evades
   "vary",
   "invisible",
-  "halfwall"
+  "halfwall",
 
   /* Those cannot be spawned by area spawner
   "reverse_projectile",
