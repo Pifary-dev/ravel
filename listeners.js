@@ -203,7 +203,7 @@ function renderHeroPicker() {
       const select_hero = () => {
         select.selectedIndex = i;
         syncPreview();
-        document.getElementById('hero-modal').hidden = true;
+        closeModal();
       };
       card.addEventListener('click', select_hero);
       card.addEventListener('keydown', (e) => {
@@ -241,10 +241,17 @@ function renderHeroPicker() {
   const modal = document.getElementById('hero-modal');
   const closeButton = document.getElementById('hero-modal-close');
   const tooltip = document.getElementById('hero-tooltip');
+
+  function closeModal() {
+    modal.hidden = true;
+    tooltip.hidden = true;
+    previewButton.focus();
+  }
+
   previewButton.addEventListener('click', () => { modal.hidden = false; });
-  closeButton.addEventListener('click', () => { modal.hidden = true; tooltip.hidden = true; });
-  modal.addEventListener('click', (e) => { if (e.target === modal) { modal.hidden = true; tooltip.hidden = true; } });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { modal.hidden = true; tooltip.hidden = true; } });
+  closeButton.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
   renderHeroPicker.syncPreview = syncPreview;
 }
 renderHeroPicker();
@@ -429,8 +436,11 @@ window.onload = () => {
     }
   }
 
-  document.getElementById("connect").onclick = () => {
-    const hero = document.getElementById("hero");
+  document.getElementById("nick").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("connect").click();
+  });
+
+  document.getElementById("connect").onclick = () => {    const hero = document.getElementById("hero");
     const head = document.getElementById("wreath");
     settings.world = document.getElementById("world");
     if(head.value){
@@ -634,6 +644,8 @@ function handleFiles() {
   loaded = true;
   const fileList = this.files[0];
   inputElement.loadedFileName = fileList.name;
+  const nameDisplay = document.getElementById('load-filename');
+  if (nameDisplay) nameDisplay.textContent = fileList.name;
   const reader = new FileReader();
   reader.onloadend = (evt) => {
     if (evt.target.readyState == FileReader.DONE) { // DONE == 2

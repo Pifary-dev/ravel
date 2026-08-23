@@ -14,6 +14,15 @@
   --focus-ring: 0 0 0 3px rgba(76, 175, 80, 0.35);
   --locked: #ff9800;
   --locked-dark: #b26a00;
+  --font-size-xs: 0.7rem;
+  --font-size-sm: 0.8rem;
+  --font-size-base: 0.9rem;
+  --font-size-md: 1rem;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
 }
 
 body, html {
@@ -32,12 +41,6 @@ canvas {
   display: block;
   transform-origin: center center;
   cursor: default;
-}
-
-p {
-  margin: 0;
-  font-size: 1.25rem;
-  color: #FFF;
 }
 
 /* ---------- Main play card ---------- */
@@ -72,13 +75,6 @@ p {
 
 #name {
   margin-bottom: 18px;
-}
-
-#username {
-  color: #FFF;
-  font-size: 1rem;
-  margin-bottom: 5px;
-  display: block;
 }
 
 #nick {
@@ -417,30 +413,39 @@ p {
 }
 
 .file-upload-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
   cursor: pointer;
-  font-size: 0.85rem;
 }
 
-input[type="file"] {
-  font-size: 0.75rem;
-  color: #444;
-  max-width: 210px;
-}
-
-input[type="file"]::file-selector-button {
+.file-upload-button {
+  display: inline-block;
   background-color: var(--green);
   color: #FFF;
-  border: none;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
   font-size: 0.78rem;
-  cursor: pointer;
-  margin-right: 8px;
+  white-space: nowrap;
   transition: background-color 0.2s ease;
 }
 
-input[type="file"]::file-selector-button:hover {
+.file-upload-button:hover {
   background-color: var(--green-dark);
+}
+
+.file-upload-label:focus-within .file-upload-button {
+  box-shadow: var(--focus-ring);
+}
+
+.file-upload-name {
+  font-size: var(--font-size-xs);
+  color: #555;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #panel {
@@ -536,39 +541,6 @@ input[type="file"]::file-selector-button:hover {
   margin: -1px;
 }
 
-/* ---------- Alert ---------- */
-
-#alert {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  padding: 12px 22px;
-  border-radius: var(--radius-sm);
-  color: #FFF;
-  background-color: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: var(--shadow);
-  animation: fadeInUp 0.4s ease-out;
-}
-
-#alert:empty {
-  display: none;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 20px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
 /* ---------- Settings panel ---------- */
 
 #settings {
@@ -582,7 +554,8 @@ input[type="file"]::file-selector-button:hover {
   box-shadow: var(--shadow);
   max-height: 80vh;
   overflow-y: auto;
-  font-size: 0.9rem;
+  width: 250px;
+  font-size: var(--font-size-base);
   animation: fadeInSettle 0.35s ease-out 0.05s both;
   scrollbar-width: thin;
   scrollbar-color: var(--green) transparent;
@@ -601,29 +574,29 @@ input[type="file"]::file-selector-button:hover {
   background: transparent;
 }
 
-#settings > div:first-child {
+#settings > h2 {
   font-weight: bold;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   text-align: center;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
+  margin: 0 0 var(--space-2);
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid #e0e0e0;
-}
-
-.settingsElement {
-  margin: 6px 0;
 }
 
 /* ---------- Settings tabs ---------- */
 /* CSS-only tabs: radio inputs drive which .tab-panel is visible via the
    general sibling combinator. No JS needed, every input keeps its id. */
 
-#settings {
-  width: 250px;
-}
-
 .tabs input[type="radio"] {
-  display: none;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+  margin: -1px;
 }
 
 .tab-bar {
@@ -658,17 +631,26 @@ input[type="file"]::file-selector-button:hover {
   color: #FFF;
 }
 
+#tab-visuals:focus-visible ~ .tab-bar label[for="tab-visuals"],
+#tab-gameplay:focus-visible ~ .tab-bar label[for="tab-gameplay"],
+#tab-advanced:focus-visible ~ .tab-bar label[for="tab-advanced"] {
+  box-shadow: var(--focus-ring);
+}
+
 .tab-panel {
   display: none;
   height: 375px;
-  padding-top: 14px;
+  padding-top: 4px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 #tab-visuals:checked ~ #panel-visuals,
 #tab-gameplay:checked ~ #panel-gameplay,
 #tab-advanced:checked ~ #panel-advanced {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   animation: fadeInSettle 0.2s ease-out;
 }
 
@@ -688,6 +670,54 @@ select:focus, input[type="text"]:focus, input[type="number"]:focus {
   border: 1px solid var(--green);
 }
 
+.setting-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+/* Labels that precede a control (always the row's first child) share one
+   fixed-width column, so dropdowns, number inputs and sliders all start
+   at the same x. Checkbox labels come after their input, so they are
+   excluded and never truncate. min-width: 0 + ellipsis guarantee the
+   column can never push or clip the controls. */
+.setting-row > label:first-child {
+  flex: 0 0 114px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.setting-row input[type="range"] {
+  flex: 0 0 90px;
+  width: 90px;
+}
+
+/* Slider rows never wrap, so the value stays beside the slider. */
+.setting-row:has(input[type="range"]) {
+  flex-wrap: nowrap;
+  min-height: 30px;
+}
+
+.setting-row select,
+.setting-row input[type="number"] {
+  box-sizing: border-box;
+  width: 126px;
+}
+
+#seed {
+  font-size: var(--font-size-sm);
+}
+
+.setting-value {
+  min-width: 24px;
+  text-align: right;
+  font-size: var(--font-size-sm);
+  color: #555;
+}
+
 input[type="range"] {
   accent-color: var(--green);
   vertical-align: middle;
@@ -704,7 +734,6 @@ input[type="checkbox"] {
   cursor: pointer;
   position: relative;
   vertical-align: middle;
-  margin-right: 8px;
   transition: background-color 0.2s ease;
 }
 
@@ -756,13 +785,9 @@ label:hover {
   color: var(--green-dark);
 }
 
-#settings div {
-  color: #000;
-  margin-bottom: 6px;
-}
-
 .settings-divider {
   border-top: 1px solid #ddd;
+  border-bottom: 1px solid #e0e0e0;
   margin: 10px 0 8px;
 }
 
@@ -834,13 +859,13 @@ label.locked-setting {
   margin: 0 0 8px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--glass-border);
-  font-size: 1.05rem;
+  font-size: var(--font-size-md);
 }
 
 #hotkeys h4 {
   color: var(--green);
   margin: 12px 0 6px;
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
 }
 
 #hotkeys ul {
@@ -858,7 +883,29 @@ label.locked-setting {
   color: var(--green);
 }
 
+#hotkeys kbd {
+  display: inline-block;
+  min-width: 16px;
+  padding: 1px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background-color: rgba(255, 255, 255, 0.08);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+
 /* ---------- Responsive ---------- */
+
+/* Let the top-left strip wrap into rows before it can collide with the
+   Hotkeys panel on the right. */
+@media (max-width: 920px) {
+  #panel {
+    flex-wrap: wrap;
+    max-width: 440px;
+  }
+}
 
 @media (max-width: 720px) {
   #hotkeys {
