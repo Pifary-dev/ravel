@@ -7399,8 +7399,49 @@ class Thunderbolt extends Enemy {
     this.immune = true;
     this.Harmless = true;
     this.no_collide = true;
+    this.wallMovementRetries = 0;
     this.updateThunderboltEffects();
   }
+
+  collidesWithWall(pos, area) {
+    if (!area || !area.assets) return false;
+    for (const asset of area.assets) {
+      if (asset.type !== 1) continue;
+      const closestX = Math.max(asset.pos.x, Math.min(pos.x, asset.pos.x + asset.size.x));
+      const closestY = Math.max(asset.pos.y, Math.min(pos.y, asset.pos.y + asset.size.y));
+      const dx = pos.x - closestX;
+      const dy = pos.y - closestY;
+      if (dx * dx + dy * dy < this.radius * this.radius) return true;
+    }
+    return false;
+  }
+
+  isValidLandingSpot(pos, area) {
+    if (!area || !area.getActiveBoundary) return true;
+    const boundary = area.getActiveBoundary();
+    const withinBounds = pointInRectangle(
+      pos,
+      { x: boundary.x + this.radius, y: boundary.y + this.radius },
+      { x: boundary.w - this.radius * 2, y: boundary.h - this.radius * 2 }
+    );
+    if (!withinBounds) return false;
+    return !this.collidesWithWall(pos, area);
+  }
+
+  pickLandingSpot(origin, area) {
+    let landingPos = origin;
+    for (let attempts = 0; attempts <= 50; attempts++) {
+      const direction = Math.PI * 2 * Math.random();
+      const magnitude = Math.random() * (this.staticSpeed + this.staticRadius);
+      landingPos = new Vector(
+        origin.x + Math.cos(direction) * magnitude,
+        origin.y + Math.sin(direction) * magnitude
+      );
+      if (this.isValidLandingSpot(landingPos, area)) break;
+    }
+    return landingPos;
+  }
+
   behavior(time, area, offset, players) {
     if (typeof this.frozenTimeLeft !== "undefined" && this.frozenTimeLeft > 0) {
       this.updateThunderboltEffects();
@@ -7412,10 +7453,9 @@ class Thunderbolt extends Enemy {
       this.no_collide = false;
       this.groundTimeLeft -= time;
       if (this.groundTimeLeft <= 0) {
-        const direction = Math.PI * 2 * Math.random();
-        const magnitude = Math.random() * (this.staticSpeed + this.staticRadius);
-        this.pos.x += Math.cos(direction) * magnitude;
-        this.pos.y += Math.sin(direction) * magnitude;
+        const landingPos = this.pickLandingSpot(this.pos, area);
+        this.pos.x = landingPos.x;
+        this.pos.y = landingPos.y;
 
         this.fallingTimeLeft = this.fallingTimeTotal;
         this.Harmless = true;
