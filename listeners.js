@@ -887,6 +887,7 @@ window.onload = () => {
     document.addEventListener("keydown", keydownKeys, false);
     document.addEventListener("keyup", keyupKeys, false);
     detachRebindListeners();
+    detachLoadMapListeners();
     document.onmousedown = (e) => {
       const code = `Mouse${e.button}`;
       // bound buttons must not autoscroll or navigate back/forward
@@ -1040,11 +1041,15 @@ const inputElement = document.getElementById("load");
 inputElement.addEventListener("change", handleFiles, false);
 
 function handleFiles() {
-  loaded = true;
   const fileList = this.files[0];
-  inputElement.loadedFileName = fileList.name;
+  if (fileList) loadMapFile(fileList);
+}
+
+function loadMapFile(file) {
+  loaded = true;
+  inputElement.loadedFileName = file.name;
   const nameDisplay = document.getElementById('load-filename');
-  if (nameDisplay) nameDisplay.textContent = fileList.name;
+  if (nameDisplay) nameDisplay.textContent = file.name;
   const reader = new FileReader();
   reader.onloadend = (evt) => {
     if (evt.target.readyState == FileReader.DONE) { // DONE == 2
@@ -1053,7 +1058,53 @@ function handleFiles() {
       document.getElementById("world").selectedIndex = 3;
     }
   };
-  reader.readAsBinaryString(fileList);
+  reader.readAsBinaryString(file);
+}
+
+
+const dropZone = document.getElementById("interact");
+
+function dropZoneDragOver(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  dropZone.classList.add("drag-over");
+}
+
+function dropZoneDragLeave(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  dropZone.classList.remove("drag-over");
+}
+
+function dropZoneDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  dropZone.classList.remove("drag-over");
+  const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file) loadMapFile(file);
+}
+
+const DROP_ZONE_EVENTS = {
+  dragenter: dropZoneDragOver,
+  dragover: dropZoneDragOver,
+  dragleave: dropZoneDragLeave,
+  dragend: dropZoneDragLeave,
+  drop: dropZoneDrop,
+};
+
+if (dropZone) {
+  for (const evtName in DROP_ZONE_EVENTS) {
+    dropZone.addEventListener(evtName, DROP_ZONE_EVENTS[evtName], false);
+  }
+}
+
+function detachLoadMapListeners() {
+  inputElement.removeEventListener("change", handleFiles, false);
+  if (dropZone) {
+    for (const evtName in DROP_ZONE_EVENTS) {
+      dropZone.removeEventListener(evtName, DROP_ZONE_EVENTS[evtName], false);
+    }
+  }
 }
 
 window.onblur = () => {

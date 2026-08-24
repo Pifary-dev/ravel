@@ -412,6 +412,12 @@ canvas {
   background-color: #FFF;
 }
 
+#interact.drag-over {
+  background-color: #FFF;
+  outline: 2px dashed var(--green);
+  outline-offset: -2px;
+}
+
 .file-upload-label {
   display: flex;
   align-items: center;
