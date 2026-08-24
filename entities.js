@@ -7386,43 +7386,60 @@ class Thunderbolt extends Enemy {
     super(pos, entityTypes.indexOf("thunderbolt"), radius, speed, angle, "#f4ff8c");
     this.staticRadius = this.radius;
     this.staticSpeed = speed;
-    this.radius *= 2;
     this.speed = 0;
 
     this.angleToVel();
-    this.groundTimeLeft = 0;
+
+    this.grounded = false;
+    this.fallingTimeTotal = 3000;
+    this.fallingTimeLeft = this.fallingTimeTotal;
     this.groundTimeTotal = 1000;
-    this.fallingTimeLeft = 0;
-    this.fallingTimeTotal = 10000;
+    this.groundTimeLeft = this.groundTimeTotal;
+
+    this.immune = true;
     this.Harmless = true;
+    this.no_collide = true;
     this.updateThunderboltEffects();
   }
   behavior(time, area, offset, players) {
-    this.fallingTimeLeft -= time * this.staticSpeed * this.speedMultiplier;
-    if(this.fallingTimeLeft <= 0) {
-      this.fallingTimeLeft = 0;
-      this.groundTimeLeft -= time;
-      this.no_collide = false;
-    } else {
-      this.no_collide = true;
+    if (typeof this.frozenTimeLeft !== "undefined" && this.frozenTimeLeft > 0) {
+      this.updateThunderboltEffects();
+      return;
     }
 
-    if(this.groundTimeLeft <= 0) {
-      const direction = Math.PI * 2 * Math.random();
-      const speed = (Math.random() * this.staticSpeed * this.speedMultiplier) + this.staticRadius;
-      this.pos.x += Math.cos(direction) * speed;
-      this.pos.y += Math.sin(direction) * speed;
-      this.Harmless = true;
-      this.fallingTimeLeft = this.fallingTimeTotal;
-      this.groundTimeLeft = this.groundTimeTotal;
+    if (this.grounded) {
+      this.immune = false;
+      this.no_collide = false;
+      this.groundTimeLeft -= time;
+      if (this.groundTimeLeft <= 0) {
+        const direction = Math.PI * 2 * Math.random();
+        const magnitude = Math.random() * (this.staticSpeed + this.staticRadius);
+        this.pos.x += Math.cos(direction) * magnitude;
+        this.pos.y += Math.sin(direction) * magnitude;
+
+        this.fallingTimeLeft = this.fallingTimeTotal;
+        this.Harmless = true;
+        this.immune = true;
+        this.no_collide = true;
+        this.grounded = false;
+      }
+    } else {
+      this.immune = true;
+      const fallRate = this.staticSpeed > 0 ? this.staticSpeed / 5 : 1;
+      this.fallingTimeLeft -= time * fallRate;
+      if (this.fallingTimeLeft <= 0) {
+        this.fallingTimeLeft = 0;
+        this.groundTimeLeft = this.groundTimeTotal;
+        this.grounded = true;
+        this.Harmless = false;
+      }
     }
 
     this.updateThunderboltEffects();
   }
 
   updateThunderboltEffects(){
-    this.HarmlessEffect = this.fallingTimeLeft / (this.staticSpeed * this.speedMultiplier);
-    this.radius = this.staticRadius * (1 + (this.fallingTimeLeft / this.fallingTimeTotal))
+    this.radius = this.staticRadius * (1 + (this.fallingTimeLeft / this.fallingTimeTotal));
   }
 }
 
