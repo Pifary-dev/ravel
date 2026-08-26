@@ -584,6 +584,7 @@ class Player {
     this.pos = new Vector(Math.random() * 7 + 2.5, Math.random() * 10 + 2.5);
   }
   reset(){
+    if (settings.speedrun_mode || settings.tournament_mode) this.onDeath();
     this.world = 0;
     this.area = 0;
     this.isDead = false;
@@ -2178,7 +2179,7 @@ class Rameses extends Player {
     }
   }
   onDeath(){
-    this.bandage=true;
+    this.bandage = true;
   }
 }
 class Magmax extends Player {
