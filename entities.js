@@ -830,7 +830,7 @@ class Player {
     this.oldPos = (this.previousPos.x == this.pos.x && this.previousPos.y == this.pos.y) ? this.oldPos : new Vector(this.previousPos.x, this.previousPos.y)
     this.previousPos = new Vector(this.pos.x, this.pos.y);
     if (!this.slippery) {
-      const frictionTimeFix = (settings.fps_limit == '30') ? time / (1000 / 30) : time / (1000 / 60);
+      const frictionTimeFix = (settings.fps_limit == '30') ? time / (1000 / 30) : 1;
       const friction_factor = 1 - (friction * frictionTimeFix);
 
       this.slide_x = this.distance_moved_previously[0];
@@ -839,8 +839,10 @@ class Player {
       this.slide_x *= friction_factor;
       this.slide_y *= friction_factor;
 
-      this.d_x *= frictionTimeFix;
-      this.d_y *= frictionTimeFix;
+      if (settings.fps_limit == '30') {
+        this.d_x *= frictionTimeFix;
+        this.d_y *= frictionTimeFix;
+      }
 
       this.d_x += this.slide_x;
       this.d_y += this.slide_y;
