@@ -69,6 +69,7 @@ const KEYBIND_ACTIONS = [
   { id: 'left', label: 'Move Left', section: 'movement', defaults: [65, 37] },
   { id: 'right', label: 'Move Right', section: 'movement', defaults: [68, 39] },
   { id: 'slow', label: 'Slow Movement', section: 'movement', defaults: [16, null] },
+  { id: 'mouse_move', label: 'Mouse Movement', section: 'movement', defaults: ['Mouse0', null] },
   { id: 'ability1', label: 'Use First Ability', section: 'gameplay', defaults: [90, 74] },
   { id: 'ability2', label: 'Use Second Ability', section: 'gameplay', defaults: [88, 75] },
   { id: 'ability3', label: 'Use Third Ability', section: 'gameplay', defaults: [67, 76] },
@@ -121,6 +122,16 @@ function loadKeybinds() {
         (slots && validSlot(slots[0])) ? slots[0] : action.defaults[0],
         (slots && validSlot(slots[1])) ? slots[1] : action.defaults[1],
       ];
+    }
+    // an action added after the user saved must not steal a key they already bound elsewhere
+    for (const action of KEYBIND_ACTIONS) {
+      if (Array.isArray(saved[action.id])) continue;
+      map[action.id] = map[action.id].map(k => {
+        if (k === null) return k;
+        const taken = KEYBIND_ACTIONS.some(o => o.id !== action.id &&
+          Array.isArray(saved[o.id]) && saved[o.id].includes(k));
+        return taken ? null : k;
+      });
     }
     allLoadouts[n] = map;
   }
@@ -402,7 +413,7 @@ function renderHotkeysPanel() {
   const main = document.getElementById('hotkeys-main');
   if (!main) return;
   main.innerHTML = hotkeysListHTML([
-    'up', 'down', 'left', 'right', 'slow',
+    'up', 'down', 'left', 'right', 'slow', 'mouse_move',
     'ability1', 'ability2', 'ability3',
     'toggle_title', 'toggle_herocard', 'toggle_minimap', 'toggle_minimap_enemies',
     'toggle_overlay', 'reset_run',
@@ -895,16 +906,14 @@ window.onload = () => {
       applyInputDelay(settings.input_delay,()=>{
         keys[code] = true;
         if (!inMenu) handleBoundActions(getActionsForKey(code));
-        if (e.buttons == 1 && !inMenu && !getActionsForKey('Mouse0').length) {
-          mouse = !mouse;
-        }
+        mouseMovePress(code);
       });
     };
 
     document.onmouseup = (e) => {
       applyInputDelay(settings.input_delay,()=> {
         delete keys[`Mouse${e.button}`];
-        if (!settings.mouse_toggle && !inMenu) mouse = !mouse;
+        mouseMoveRelease(`Mouse${e.button}`);
       })
     };
 
@@ -916,6 +925,7 @@ window.onload = () => {
       applyInputDelay(settings.input_delay,()=>{
         keys[dir] = true;
         handleBoundActions(getActionsForKey(dir));
+        if (keybinds.mouse_move.includes(dir)) mouse = !mouse; // pulse: always a plain toggle
         setTimeout(() => { delete keys[dir]; }, 60);
       });
     }, { passive: false });
@@ -931,7 +941,24 @@ function keydownKeys(e) {
     const code = e.keyCode;
     if(keys[code] !== false) keys[e.keyCode] = true;
     handleBoundActions(getActionsForKey(code));
+    mouseMovePress(code);
   })
+}
+
+// Mouse movement bind. Works for any bound key, mouse button or wheel.
+// The held set stops key auto-repeat from re-toggling while the key is down.
+const mouseMoveHeld = new Set();
+
+function mouseMovePress(code) {
+  if (inMenu || mouseMoveHeld.has(code) || !keybinds.mouse_move.includes(code)) return;
+  mouseMoveHeld.add(code);
+  mouse = !mouse;
+}
+
+function mouseMoveRelease(code) {
+  if (!mouseMoveHeld.delete(code)) return;
+  // with toggle off, mouse movement is hold-to-move
+  if (!settings.mouse_toggle && !inMenu) mouse = !mouse;
 }
 
 // hotkey side effects shared by keyboard and mouse binds
@@ -1020,7 +1047,10 @@ function handleBoundActions(bound) {
 }
 
 function keyupKeys(e) {
-  applyInputDelay(settings.input_delay,()=>delete keys[e.keyCode]);
+  applyInputDelay(settings.input_delay,()=>{
+    delete keys[e.keyCode];
+    mouseMoveRelease(e.keyCode);
+  });
 }
 
 function Pos(p) {
@@ -1110,6 +1140,7 @@ function detachLoadMapListeners() {
 window.onblur = () => {
   isActive = false;
   keys = [];
+  [...mouseMoveHeld].forEach(mouseMoveRelease);
 }
 window.onfocus = () => {
   isActive = true;
