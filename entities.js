@@ -1738,6 +1738,10 @@ class Follower extends Entity {
     this.wall_push = false;
     this.lifespan = 1;
     this.projectile_outline = false;
+    this.aura = true;
+    this.auraColor = "rgba(0,200,0,0.15)";
+    this.auraSize = this.auraStaticSize = 40 / 32;
+    this.auraOnly = true;
   }
 
   behavior(time, area, offset, players) {
@@ -1772,6 +1776,10 @@ class Shrinker extends Entity {
     this.wall_push = false;
     this.lifespan = 3;
     this.projectile_outline = false;
+    this.aura = true;
+    this.auraColor = "rgba(0,0,200,0.1)";
+    this.auraSize = this.auraStaticSize = 60 / 32;
+    this.auraOnly = true;
   }
 
   behavior(time, area, offset, players) {
