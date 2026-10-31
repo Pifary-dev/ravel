@@ -447,6 +447,7 @@ class Player {
     this.tournamentTimeLimit = 0;
     this.tournamentAreaPoints = 0;
     this.tournamentFinished = false;
+    this.tournamentStarted = false;
   }
   input(input) {
     // Dev overlay ping calculation
@@ -551,6 +552,9 @@ class Player {
       this.input_angle = this.mouse_angle = Math.atan2(this.dirY, this.dirX);
       this.mouse_distance = Math.min(this.mouse_distance_full_strength, Math.sqrt(this.dirX ** 2 + this.dirY ** 2))
       this.distance_movement = this.mouse_distance / this.mouse_distance_full_strength;
+      if (settings.tournament_mode && !this.tournamentStarted && this.distance_movement > 0) {
+        this.tournamentStarted = true;
+      }
     } else {
       this.dirY = 0;
       this.dirX = 0;
@@ -558,6 +562,9 @@ class Player {
       if (this.isMovementKeyPressed(input)) {
         this.moving = true;
         input.isMouse = false;
+        if (settings.tournament_mode && !this.tournamentStarted) {
+          this.tournamentStarted = true;
+        }
       }
       this.dirY = isKeyAction(input.keys, 'up') ? -1 :
         isKeyAction(input.keys, 'down') ? 1 : 0;
@@ -589,6 +596,7 @@ class Player {
     this.area = 0;
     this.isDead = false;
     this.tournamentFinished = false;
+    this.tournamentStarted = false;
     this.resetPosition();
     game.worlds[this.world].areas.forEach(area => area.loadCount = 0);
     this.area = 0;
@@ -760,7 +768,9 @@ class Player {
     }
 
     if (this.victoryTimer <= 0) {
-      this.timer += time;
+      if (!settings.tournament_mode || this.tournamentStarted) {
+        this.timer += time;
+      }
     } else {
       this.victoryTimer -= time;
       if (this.victoryTimer <= 0) {

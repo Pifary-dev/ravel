@@ -314,6 +314,10 @@ function death(player,enemy){
     player.isDead = true;
   } else if(player.isDead && player.deathTimer <= 0 ){
     player.isDead = false;
+  } else if (settings.tournament_mode && !player.isDead) {
+    // Show 1-second death animation before actually killing
+    player.deathTimer = 1000;
+    player.isDead = true;
   }
   if(player.isDead){
     player.distance_moved_previously = [0,0];
@@ -338,7 +342,13 @@ function kill(player){
     player.onDeath();
   }
 
-  if(diff == "Easy" || (diff == "Medium" && player.lives-1>=0)){
+  if (settings.tournament_mode) {
+    // Reload area 0 so its enemies reset on death
+    game.worlds[player.world].areas[0].load();
+    // Respawn at dyingPos (standard Easy-mode behaviour)
+    player.pos = new Vector(player.dyingPos.x, player.dyingPos.y);
+    player.tournamentStarted = false;
+  } else if(diff == "Easy" || (diff == "Medium" && player.lives-1>=0)){
     player.pos = new Vector(player.dyingPos.x, player.dyingPos.y);
     if(diff == "Medium") player.lives--;
   } else {
