@@ -83,7 +83,7 @@ class Game {
 
           if (zone.type === 2) {
             const previousArea = player.area;
-            player.area = this.findClosestArea(targetPoint, player.world);
+            player.area = this.findClosestArea(targetPoint, player.world, previousArea);
             if (previousArea != player.area) player.onTeleport('area');
           } else {
             const previousWorld = player.world;
@@ -103,10 +103,13 @@ class Game {
     player.onTele = onTele;
   }
 
-  findClosestArea(targetPoint, worldIndex) {
+  findClosestArea(targetPoint, worldIndex, excludeIndex = -1) {
     const world = this.worlds[worldIndex];
     let minDist = Infinity;
     let closestArea = 0;
+    let minDistExcluded = Infinity;
+    let closestAreaExcluded = -1;
+    let currentAreaDist = Infinity;
 
     world.areas.forEach((area, index) => {
       const rect = area.getBoundary();
@@ -118,8 +121,20 @@ class Game {
         minDist = dist;
         closestArea = index;
       }
+      if (index === excludeIndex) {
+        currentAreaDist = dist;
+      } else if (dist < minDistExcluded) {
+        minDistExcluded = dist;
+        closestAreaExcluded = index;
+      }
     });
 
+    // If the targetPoint is outside the current area's boundary (dist > 0),
+    // it means the exit zone points away from this area — never stay put.
+    // Fall back to the closest non-current area instead.
+    if (closestArea === excludeIndex && closestAreaExcluded !== -1 && currentAreaDist > 0) {
+      return closestAreaExcluded;
+    }
     return closestArea;
   }
 
