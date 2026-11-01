@@ -413,6 +413,14 @@ class Player {
     this.cent_deceleration = this.cent_acceleration * 4;
     this.cent_accelerating = false;
     this.cent_is_moving = false;
+    this.cent_stepped = false;
+    this.cent_input_pending = false;
+    this.cent_saved_angle = 0;
+    this.input_angle = 0;
+    this.slip_wall_contact = false;
+    this.slip_heading_x = 0;
+    this.slip_heading_y = 0;
+    this.cent_tick_time = 0;
     this.distance_moved_previously = [0, 0];
     this.aura = false;
     this.auraType = -1;
@@ -450,7 +458,6 @@ class Player {
     this.tournamentStarted = false;
   }
   input(input) {
-    // Dev overlay ping calculation
     if (this.overlay && settings.dev) {
       const now = Date.now();
       let latency;
@@ -470,12 +477,11 @@ class Player {
       if (ping.array.length > 25) ping.array.shift();
     }
 
-    // Reset state
     this.mouseActive = false;
+    this.cent_input_pending = false;
     this.distance_movement = this.isDead ? 0 : 1;
     this.firstAbility = this.secondAbility = this.shift = false;
 
-    // Handle upgrades
     if (input.keys && this.points > 0) {
       const upgrades = [
         { id: 'upgrade_speed', prop: 'speed', max: this.maxSpeed, inc: 0.5, unlocked: true },
@@ -492,7 +498,6 @@ class Player {
         }
       });
     }
-    // Handle dead state
     if (this.isDead) {
       if ((this.className === "Necro" || this.className === "Chrono") && input.keys) {
         const abilityKeys = isKeyAction(input.keys, 'ability1');
@@ -502,7 +507,6 @@ class Player {
       return;
     }
 
-    // Handle abilities
     if (input.keys && !this.disabling) {
       const abilities = [
         { id: 'ability1', ability: 'first' },
@@ -532,12 +536,7 @@ class Player {
       this.magnetAbilityPressed = false;
     }
 
-    if (this.cent_is_moving || (this.isSlipping && !this.no_slip)) return;
-    if (this.shouldCentMove() && !this.cent_can_change_input_angle()) {
-      this.mouse_angle = this.cent_saved_angle;
-      this.distance_movement = 1;
-      return;
-    } else if (input.isMouse && !this.isMovementKeyPressed(input)) {
+    if (input.isMouse && !this.isMovementKeyPressed(input)) {
       this.mouse_distance_full_strength = 150 * settings.scale;
       this.mouseActive = true;
       this.dirX = Math.round(input.mouse.x - width / 2);
@@ -550,6 +549,7 @@ class Player {
       }
 
       this.input_angle = this.mouse_angle = Math.atan2(this.dirY, this.dirX);
+      this.cent_input_pending = this.dirX !== 0 || this.dirY !== 0;
       this.mouse_distance = Math.min(this.mouse_distance_full_strength, Math.sqrt(this.dirX ** 2 + this.dirY ** 2))
       this.distance_movement = this.mouse_distance / this.mouse_distance_full_strength;
       if (settings.tournament_mode && !this.tournamentStarted && this.distance_movement > 0) {
@@ -570,14 +570,84 @@ class Player {
         isKeyAction(input.keys, 'down') ? 1 : 0;
       this.dirX = isKeyAction(input.keys, 'right') ? 1 :
         isKeyAction(input.keys, 'left') ? -1 : 0;
-      this.input_angle = Math.atan2(this.dirY, this.dirX);
-
+      if (this.dirX !== 0 || this.dirY !== 0) {
+        this.input_angle = Math.atan2(this.dirY, this.dirX);
+        this.cent_input_pending = true;
+      }
     }
-    if (this.shouldCentMove() && this.cent_can_change_input_angle() && (this.isMovementKeyPressed(input) || input.isMouse)) {
+    const centDash = this.shouldCentMove() && !this.cent_input_ready;
+    if (centDash) this.mouse_angle = this.cent_saved_angle;
+    let headingX = 0, headingY = 0;
+    if (centDash) {
+      headingX = Math.cos(this.cent_saved_angle);
+      headingY = Math.sin(this.cent_saved_angle);
+    } else if (this.cent_input_pending) {
+      headingX = Math.cos(this.input_angle);
+      headingY = Math.sin(this.input_angle);
+    }
+    const stopped = this.distance_moved_previously[0] === 0 && this.distance_moved_previously[1] === 0;
+    if (!this.isSlipping || this.slip_wall_contact || stopped) {
+      this.slip_heading_x = headingX;
+      this.slip_heading_y = headingY;
+    }
+  }
+  centTick(speed, friction, pinY, alive) {
+    const tickFix = 0.5;
+    const base = alive ? speed : 0;
+    const focus = this.shift ? 0.5 : 1;
+    this.cent_max_distance = base * 2;
+    if (this.cent_is_moving) {
+      if (this.cent_accelerating) {
+        if (this.cent_distance < this.cent_max_distance) {
+          this.cent_distance += this.cent_acceleration * base * tickFix;
+        } else {
+          this.cent_distance = this.cent_max_distance;
+          this.cent_accelerating = false;
+        }
+      } else if (this.cent_distance > 0) {
+        this.cent_distance -= this.cent_deceleration * base * tickFix;
+      } else {
+        this.cent_distance = 0;
+        this.cent_accelerating = true;
+        this.cent_is_moving = false;
+        this.cent_input_ready = true;
+      }
+    }
+    const wasStepped = this.cent_stepped;
+    const step = (wasStepped ? this.cent_distance : base) * focus;
+    const moveDistance = wasStepped ? this.cent_distance * focus : base;
+    if (!this.slippery && base > 0 && this.cent_input_ready && this.cent_input_pending) {
       this.cent_saved_angle = this.input_angle;
       this.cent_input_ready = false;
       this.cent_is_moving = true;
     }
+    if (!this.slippery) this.cent_stepped = step !== 0 && !this.cent_input_ready;
+    let vx = 0, vy = 0;
+    if (!this.cent_input_ready) {
+      this.mouse_angle = this.cent_saved_angle;
+      vx = moveDistance * Math.cos(this.cent_saved_angle);
+      vy = moveDistance * Math.sin(this.cent_saved_angle);
+    }
+    if (pinY) vy = 0;
+    if (!this.slippery) {
+      const retention = Math.max(0, 1 - friction);
+      vx += this.distance_moved_previously[0] * retention;
+      vy += this.distance_moved_previously[1] * retention;
+      if (Math.abs(vx) < 0.001) vx = 0;
+      if (Math.abs(vy) < 0.001) vy = 0;
+      if (Math.abs(vx) > this.cent_max_distance) vx *= this.cent_max_distance / Math.abs(vx);
+      if (Math.abs(vy) > this.cent_max_distance) vy *= this.cent_max_distance / Math.abs(vy);
+      this.isSlipping = false;
+    } else {
+      const wall = this.slip_wall_contact ? 2 : 1;
+      vx = this.slip_heading_x * speed * wall;
+      vy = this.slip_heading_y * speed * wall;
+      this.isSlipping = true;
+    }
+    this.distance_moved_previously = [vx, vy];
+    this.d_x = vx;
+    this.d_y = vy;
+    this.move(vx, vy, tickFix);
   }
   resetPosition(){
     const safeZone = game.worlds[0].areas[0].zones.find(zone => zone.type === 1);
@@ -667,9 +737,9 @@ class Player {
     this.tournamentPoints = this.tournamentAreaPoints - Math.floor(Math.min(this.timer / 1000, this.tournamentTimeLimit)) / 15 - this.deathCounter;
   }
   shouldCentMove() {
-    //special case for harden
     if (this.harden) return false;
-    return ((this.className == "Cent" && this.leadTimeLeft <= 0) || (this.className != "Cent" && this.leadTimeLeft > 0));
+    const leadActive = this.leadTimeLeft > 0 && this.effectImmune !== 0;
+    return (this.className == "Cent") !== leadActive;
   }
   isMovementKeyPressed(input) {
     return isKeyAction(input.keys, 'up') || isKeyAction(input.keys, 'down') ||
@@ -782,51 +852,25 @@ class Player {
       if(settings.tournament_mode && !this.tournamentFinished) if (this.timer < this.tournamentTimeLimit * 1000) this.tournamentAreaPoints = Math.max(3 * this.area, this.tournamentAreaPoints);
       this.updateExperience(12 * (parseInt(this.area)) * world.map_exp_multiplier);
     }
-    this.distance_movement *= speed;
-    if (this.shouldCentMove() && (!this.slippery || this.collides)) {
-      this.cent_max_distance = this.distance_movement * 2;
-      if (this.cent_is_moving) {
-        if (this.cent_accelerating) {
-          if (this.cent_distance < this.cent_max_distance) {
-            this.cent_distance += this.cent_acceleration * this.distance_movement * timeFix;
-          } else {
-            this.cent_distance = this.cent_max_distance;
-            this.cent_accelerating = false;
-          }
-        } else {
-          if (this.cent_distance > 0) {
-            this.cent_distance -= this.cent_deceleration * this.distance_movement * timeFix;
-          } else {
-            this.cent_distance = 0;
-            this.cent_accelerating = true;
-            this.cent_is_moving = false;
-            this.cent_input_ready = true;
-          }
-        }
+    const centMove = this.shouldCentMove();
+    const pinY = !this.safeZone && magnetism && !partial_magnetism;
+    const alive = this.distance_movement > 0;
+    if (!centMove) {
+      this.distance_movement *= speed;
+      if (this.shift) {
+        this.distance_movement *= 0.5;
       }
-      this.distance_movement = this.cent_distance;
+      if (this.mouseActive) {
+        this.d_x = this.distance_movement * Math.cos(this.mouse_angle);
+        this.d_y = this.distance_movement * Math.sin(this.mouse_angle);
+      } else {
+        this.d_x = this.distance_movement * this.dirX;
+        this.d_y = this.distance_movement * this.dirY;
+      }
     }
-    if (this.shift) {
-      this.distance_movement *= 0.5;
-    }
-    if (this.shouldCentMove() && !this.cent_can_change_input_angle()) {
-      this.mouse_angle = this.cent_saved_angle;
-      this.d_x = this.distance_movement * Math.cos(this.mouse_angle);
-      this.d_y = this.distance_movement * Math.sin(this.mouse_angle);
-    } else if (this.shouldCentMove()) {
-      this.d_x = 0;
-      this.d_y = 0;
-    } else if (this.mouseActive) {
-      this.d_x = this.distance_movement * Math.cos(this.mouse_angle);
-      this.d_y = this.distance_movement * Math.sin(this.mouse_angle);
-    } else {
-      this.d_x = this.distance_movement * this.dirX;
-      this.d_y = this.distance_movement * this.dirY;
-    }
-
 
     if (!this.safeZone && (magnetism || partial_magnetism)) {
-      if (!partial_magnetism) {
+      if (!centMove && !partial_magnetism) {
         this.d_y = 0;
       }
       if (this.magnetDirection == "Down") {
@@ -839,7 +883,13 @@ class Player {
 
     this.oldPos = (this.previousPos.x == this.pos.x && this.previousPos.y == this.pos.y) ? this.oldPos : new Vector(this.previousPos.x, this.previousPos.y)
     this.previousPos = new Vector(this.pos.x, this.pos.y);
-    if (!this.slippery) {
+    if (centMove) {
+      const tickTime = 1000 / 60;
+      this.cent_tick_time = Math.min(this.cent_tick_time + time, tickTime * 10);
+      const ticks = Math.floor(this.cent_tick_time / tickTime);
+      this.cent_tick_time -= ticks * tickTime;
+      for (let i = 0; i < ticks; i++) this.centTick(speed, friction, pinY, alive);
+    } else if (!this.slippery) {
       const frictionTimeFix = (settings.fps_limit == '30') ? time / (1000 / 30) : 1;
       const friction_factor = 1 - (friction * frictionTimeFix);
 
@@ -867,30 +917,22 @@ class Player {
         this.d_y = 0;
       }
 
-      if (this.shouldCentMove()) {
-        if (this.abs_d_x > this.cent_max_distance) {
-          this.d_x *= this.cent_max_distance / this.abs_d_x;
-        }
-        if (this.abs_d_y > this.cent_max_distance) {
-          this.d_y *= this.cent_max_distance / this.abs_d_y;
-        }
-      } else {
-        if (this.abs_d_x > this.distance_movement) {
-          this.d_x *= this.distance_movement / this.abs_d_x;
-        }
-        if (this.abs_d_y > this.distance_movement) {
-          this.d_y *= this.distance_movement / this.abs_d_y;
-        }
+      if (this.abs_d_x > this.distance_movement) {
+        this.d_x *= this.distance_movement / this.abs_d_x;
+      }
+      if (this.abs_d_y > this.distance_movement) {
+        this.d_y *= this.distance_movement / this.abs_d_y;
       }
       this.distance_moved_previously = [this.d_x, this.d_y];
       this.isSlipping = false;
     } else {
-      const angle = this.input_angle;
-      this.d_x = Math.cos(angle) * this.calculateSpeedChanges(this.speed);
-      this.d_y = Math.sin(angle) * this.calculateSpeedChanges(this.speed);
-      this.distance_moved_previously = [0, 0];
+      const wall = this.slip_wall_contact ? 2 : 1;
+      this.d_x = this.slip_heading_x * speed * wall;
+      this.d_y = this.slip_heading_y * speed * wall;
+      this.distance_moved_previously = [this.d_x, this.d_y];
       this.isSlipping = true;
     }
+    this.slip_wall_contact = false;
 
     if (this.mouseActive || this.moving) {
       this.previousAngle = (this.mouseActive) ? this.mouse_angle : Math.atan2(this.d_y, this.d_x);
@@ -913,7 +955,7 @@ class Player {
       this.secondPellet = 0;
     }
     this.tempColor = this.color;
-    this.move(this.d_x, this.d_y, timeFix);
+    if (!centMove) this.move(this.d_x, this.d_y, timeFix);
     if (this.god && this.isDead) { this.isDead = false; }
     else if (this.deathTimer <= 0 && this.isDead) { death(this); }
     else if (this.isDead) this.deathTimer -= time;
@@ -1288,7 +1330,7 @@ class Player {
   }
   onWallCollision() {
     this.no_slip = true;
-    if (this.isSlipping) this.speedMultiplier *= 2;
+    this.slip_wall_contact = true;
   }
   damage(corrosive){
     if(!this.isInvulnerable() && this.bandage && !corrosive){
@@ -4573,17 +4615,17 @@ class VoidSwarm extends Sniper {
   constructor(pos, radius, speed, angle, color = "#393042") {
     super(pos, radius, speed, angle, color);
     this.type = entityTypes.indexOf("void_swarm");
-    this.releaseTime = 4500;            
+    this.releaseTime = 4500;
     this.bulletType = 21;
-    this.bulletSpeed = 7;               
-    this.bulletRadius = this.radius / 6; 
-    this.detectionDistance = 600 / 32;  
+    this.bulletSpeed = 7;
+    this.bulletRadius = this.radius / 6;
+    this.detectionDistance = 600 / 32;
     this.additionalProperties = [];
 
-    this.burstCount = 6;                
-    this.projectilesPerShot = 3;        
-    this.shotIntervalMs = 3 * (1000 / 30); 
-    this.positionJitterScale = 1 / 3; 
+    this.burstCount = 6;
+    this.projectilesPerShot = 3;
+    this.shotIntervalMs = 3 * (1000 / 60);
+    this.positionJitterScale = 1 / 3;
 
     this.clock = Math.random() * this.releaseTime;
     this.ready = false;
