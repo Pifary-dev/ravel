@@ -4573,79 +4573,60 @@ class VoidSwarm extends Sniper {
   constructor(pos, radius, speed, angle, color = "#393042") {
     super(pos, radius, speed, angle, color);
     this.type = entityTypes.indexOf("void_swarm");
-    this.releaseTime = 4500;
+    this.releaseTime = 4500;            
     this.bulletType = 21;
-    this.bulletSpeed = 7;
-    this.bulletRadius = this.radius / 6;
-    this.clock = Math.random() * this.releaseTime;
-    this.detectionDistance = 600 / 32;
+    this.bulletSpeed = 7;               
+    this.bulletRadius = this.radius / 6; 
+    this.detectionDistance = 600 / 32;  
     this.additionalProperties = [];
-    this.swarmMaxGroups = 6;
-    this.swarmGroupSpawned = 0;
-    this.swarmMaxInGroup = 3;
-    this.swarmSpawnedInGroup = 0;
-    this.cooldownBetweenGroups = 50;
-    this.previousTargetPos = {
-      x: 0,
-      y: 0
-    };
+
+    this.burstCount = 6;                
+    this.projectilesPerShot = 3;        
+    this.shotIntervalMs = 3 * (1000 / 30); 
+    this.positionJitterScale = 1 / 3; 
+
+    this.clock = Math.random() * this.releaseTime;
+    this.ready = false;
+    this.shotsRemaining = 0;
+    this.shotDelay = 0;
   }
 
   behavior(time, area, offset, players) {
-    this.clock += time;
+    if (!this.ready) {
+      this.clock += time;
+      if (this.clock >= this.releaseTime) {
+        this.ready = true;
+        this.shotsRemaining = this.burstCount;
+        this.shotDelay = this.shotIntervalMs;
+      }
+      return;
+    }
 
-    if (this.clock <= this.releaseTime) return;
+    this.shotDelay = Math.max(0, this.shotDelay - time);
+    if (this.shotDelay > 0) return;
 
     const target = this.findClosestPlayer(players, offset, area.getActiveBoundary());
-    const hasValidTarget = target && target.isDetectable();
+    if (!target || !target.isDetectable()) return;
 
-    // Continue group if already started, even without target
-    const shouldFire = hasValidTarget || this.swarmSpawnedInGroup > 0;
+    const angle = Math.atan2(
+      (target.pos.y - offset.y) - this.pos.y,
+      (target.pos.x - offset.x) - this.pos.x
+    );
 
-    if (shouldFire) {
-      // Create bullet with slight position randomization
+    const width = this.radius * this.positionJitterScale;
+    for (let i = 0; i < this.projectilesPerShot; i++) {
       const bulletPos = {
-        x: this.pos.x + min_max(-this.bulletRadius, this.bulletRadius),
-        y: this.pos.y + min_max(-this.bulletRadius, this.bulletRadius)
+        x: this.pos.x + (0.5 - Math.random()) * width,
+        y: this.pos.y + (0.5 - Math.random()) * width
       };
-
-      let angle = 0;
-      if (hasValidTarget) {
-        angle = Math.atan2(
-          (target.pos.y - offset.y) - bulletPos.y,
-          (target.pos.x - offset.x) - bulletPos.x
-        );
-        this.previousTargetPos = {
-          x: target.pos.x,
-          y: target.pos.y
-        }
-      } else {
-        angle = Math.atan2(
-          (this.previousTargetPos.y - offset.y) - bulletPos.y,
-          (this.previousTargetPos.x - offset.x) - bulletPos.x
-        );
-      }
-
       area.addSniperBullet(this.bulletType, bulletPos, angle, this.bulletRadius, this.bulletSpeed, ...this.additionalProperties);
-      this.handleSwarmProgression();
     }
-  }
 
-  handleSwarmProgression() {
-    this.swarmSpawnedInGroup++;
-
-    if (this.swarmSpawnedInGroup >= this.swarmMaxInGroup) {
-      this.swarmGroupSpawned++;
-      this.swarmSpawnedInGroup = 0;
-
-      if (this.swarmGroupSpawned >= this.swarmMaxGroups) {
-        // Reset entire swarm cycle
-        this.clock = 0;
-        this.swarmGroupSpawned = 0;
-      } else {
-        // Short delay between groups
-        this.clock = this.releaseTime - this.cooldownBetweenGroups;
-      }
+    this.shotsRemaining--;
+    this.shotDelay = this.shotIntervalMs;
+    if (this.shotsRemaining <= 0) {
+      this.clock = 0;
+      this.ready = false;
     }
   }
 }
